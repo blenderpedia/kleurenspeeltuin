@@ -406,7 +406,6 @@ const blokken=(()=>{
     const r={m,b,sh,col:blockCols[ci]}; m.userData.blk=r; m.quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w); m.updateMatrixWorld(); blocks.push(r);
     if(!quiet) popIn(m,.25); return r; }
   function removeBlock(r){ if(r===held){ held=null; ring.visible=false; } else world.removeBody(r.b); g.remove(r.m); r.m.material.dispose(); blocks=blocks.filter(x=>x!==r); }
-  function build(){ ['kubus','kubus','cilinder','kubus'].forEach((s,i)=>spawn(s,0,TOPY+HALF+i*.942,0,true)); spawn('dak',-2,TOPY+RH/3,1,true); spawn('boog',2,TOPY+HALF,1,true); spawn('kubus',-1,TOPY+HALF,2,true); spawn('cilinder',1,TOPY+HALF,-2,true); }
 
   /* highest thing under a block-sized footprint at (x,z), ignoring one block */
   function surface(x,z,ex){ const list=[matM]; for(const r of blocks) if(r!==ex) list.push(r.m); let y=0, sup=null;
@@ -444,8 +443,7 @@ const blokken=(()=>{
 
   function knock(){ if(!blocks.length){ sfx.boop(); return; } sfx.crash();
     for(const r of blocks){ if(r===held) continue; const p=r.b.position, d=Math.hypot(p.x,p.z)||1; r.b.wakeUp(); r.b.velocity.set(p.x/d*R(1,3)+R(-2,2),R(5,9),p.z/d*R(1,3)+R(-2,2)); r.b.angularVelocity.set(R(-6,6),R(-6,6),R(-6,6)); } }
-  function reset(){ blocks.slice().forEach(removeBlock); held=null; ring.visible=false; build(); blocks.forEach(r=>popIn(r.m,.3)); sfx.boop(); }
-  build();
+  function reset(){ if(!blocks.length){ sfx.boop(); return; } blocks.slice().forEach(removeBlock); held=null; ring.visible=false; ptr=null; pop(matM,.04); sfx.boing(); }
   return { g, frame, get blocks(){ return blocks; },
     update(dt){ if(!ptr) sway+=dt; camAngle=AMP*Math.sin(sway*.35)*.2;
       world.step(1/60,dt,4);
@@ -571,7 +569,7 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
   mkBtn(p,{id:'kleed-verrassing',icon:'dice',c:'var(--green)',label:'Verrassing',on:()=>aankleden.dice()}); }
 { const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
   mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
-  mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
+  mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Alles weg, opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
 { const r=sub(tr,'toren'); mkBtn(r,{id:'tReset',icon:'reset',c:'var(--orange)',label:'Opnieuw bouwen',on:()=>toren.reset()}); }
 { const w=$('#word'), cs=['red','orange','yellow','green','blue','purple','pink']; w.innerHTML=[...w.textContent].map((ch,i)=>'<span style="color:var(--'+cs[i%cs.length]+');animation-delay:'+(-i*.17).toFixed(2)+'s">'+ch+'</span>').join(''); }
 
