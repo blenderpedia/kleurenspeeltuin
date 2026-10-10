@@ -569,9 +569,9 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
 { const r=sub(tr,'aankleden'), fs=[]; ['beer','poes','kikker','kuiken'].forEach(k=>{ fs.push(mkBtn(r,{id:'dier-'+k,cls:'btn face',svg:FACE[k],label:k[0].toUpperCase()+k.slice(1),on:b=>{ aankleden.animal(k); choose(fs,b); }})); }); fs[0].classList.add('on');
   const p=sub(bot,'aankleden'); [['hoed','var(--pink)','Hoed'],['trui','var(--red)','Trui'],['bril','var(--blue)','Bril'],['sjaal','var(--purple)','Sjaal'],['laarzen','var(--orange)','Laarzen']].forEach(([k,c,l])=>mkBtn(p,{id:'kleed-'+k,icon:k,c,label:l,on:()=>aankleden.next(k)}));
   mkBtn(p,{id:'kleed-verrassing',icon:'dice',c:'var(--green)',label:'Verrassing',on:()=>aankleden.dice()}); }
-{ const r=sub(tr,'blokken'); mkBtn(r,{id:'bReset',icon:'reset',c:'var(--orange)',label:'Opnieuw beginnen',on:()=>blokken.reset()});
-  const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
-  mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()}); }
+{ const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
+  mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
+  mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
 { const r=sub(tr,'toren'); mkBtn(r,{id:'tReset',icon:'reset',c:'var(--orange)',label:'Opnieuw bouwen',on:()=>toren.reset()}); }
 { const w=$('#word'), cs=['red','orange','yellow','green','blue','purple','pink']; w.innerHTML=[...w.textContent].map((ch,i)=>'<span style="color:var(--'+cs[i%cs.length]+');animation-delay:'+(-i*.17).toFixed(2)+'s">'+ch+'</span>').join(''); }
 
