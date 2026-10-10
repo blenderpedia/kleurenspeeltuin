@@ -462,53 +462,96 @@ const blokken=(()=>{
   };
 })();
 
-/* ---------- regenboogtoren ---------- */
+/* ---------- regenboogtoren (levels: 2, 3, 4, 5 en 6 schijven) ---------- */
 const toren=(()=>{
   const g=new T.Group(); scene.add(g);
-  const N=6, TUBE=.27, STEP=.5, BASEY=.25, TZ=-2.4, LOOSE=.62, POLE=N*STEP+.55;
-  mesh(cyl(1.95,2.05,BASEY,40),mat(C.wood),0,BASEY/2,TZ,g); mesh(cyl(.15,.17,POLE,16),mat(C.wood),0,BASEY+POLE/2,TZ,g);
+  const N=6, H=.5, BASEY=.25, TZ=-2.4, LOOSE=.62, POLE=N*H+.55;
+  const SETS={2:[0,5],3:[0,3,5],4:[0,2,3,5],5:[0,1,3,4,5],6:[0,1,2,3,4,5]};
+  mesh(cyl(2.15,2.25,BASEY,40),mat(C.wood),0,BASEY/2,TZ,g); mesh(cyl(.15,.17,POLE,16),mat(C.wood),0,BASEY+POLE/2,TZ,g);
+  /* a chunky disc with a hole: a rounded rectangle spun around the pole */
+  function discGeo(ro,ri,h,r){ const p=[], arc=(cx,cy,a0,a1)=>{ for(let k=0;k<=5;k++){ const t=a0+(a1-a0)*k/5; p.push(new T.Vector2(cx+Math.cos(t)*r,cy+Math.sin(t)*r)); } };
+    arc(ri+r,-h/2+r,PI,PI*1.5); arc(ro-r,-h/2+r,PI*1.5,PI*2); arc(ro-r,h/2-r,0,PI/2); arc(ri+r,h/2-r,PI/2,PI); p.push(p[0].clone()); return new T.LatheGeometry(p,48); }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false});
-  const rings=[], proxies=[], onPeg=[], slotOf=[], busy=[], wig=[], slots=[];
-  for(let i=0;i<N;i++){ const Rr=1.5-i*.17, tg=torus(Rr,TUBE,16,44); tg.rotateX(PI/2); const m=mesh(tg,mat(RAINBOW[i],{shininess:70}),0,0,0,g);
-    const p=new T.Mesh(cyl(Math.max(Rr+TUBE,1.3),Math.max(Rr+TUBE,1.3),.7,20),ghost); p.userData.ring=i; m.add(p);
-    rings.push(m); proxies.push(p); onPeg.push(false); slotOf.push(i); busy.push(0); wig.push(0); slots.push(new V3()); }
-  const endY=i=>BASEY+TUBE+i*STEP;
+  const rings=[], proxies=[], onPeg=[], slotOf=[], busy=[], slots=[];
+  for(let i=0;i<N;i++){ const ro=1.75-i*.2, m=mesh(discGeo(ro,.3,H,.13),mat(RAINBOW[i],{shininess:70,side:T.DoubleSide}),0,0,0,g); m.userData.ring=i; m.visible=false;
+    const p=new T.Mesh(cyl(Math.max(ro,1.3),Math.max(ro,1.3),.8,20),ghost); p.userData.ring=i; m.add(p);
+    rings.push(m); proxies.push(p); onPeg.push(false); slotOf.push(0); busy.push(0); slots.push(new V3()); }
   const starM=mesh(starGeo(),mat(C.yellow,{shininess:90}),0,BASEY+POLE+.5,TZ,g); starM.visible=false;
   const bow=new T.Group(); bow.position.set(0,.2,TZ-2.6); bow.visible=false; g.add(bow);
-  RAINBOW.forEach((c,i)=>{ const a=new T.Mesh(torus(5-i*.33,.175,PI,8,56),new T.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.25})); bow.add(a); });
+  RAINBOW.forEach((c,i)=>{ bow.add(new T.Mesh(torus(5-i*.33,.175,PI,8,56),new T.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.25}))); });
   { const cm=new T.MeshLambertMaterial({color:0xffffff,emissive:0x8a8a8a}); [-1,1].forEach(s=>[[0,0,.2,.9],[.7,.1,.3,.7],[-.7,.05,.3,.7]].forEach(([x,y,z,r])=>{ const m=new T.Mesh(sph(r,14,10),cm); m.position.set(s*4.2+x,.3+y,z); bow.add(m); })); }
-  let placed=0, complete=false, doneAt=0;
-  function shuffle(){ const a=[...Array(N).keys()]; for(let i=N-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } if(a.every((v,i)=>v===i)) a.reverse(); a.forEach((s,i)=>{ slotOf[i]=s; }); }
-  function instant(){ placed=0; complete=false; starM.visible=false; bow.visible=false; shuffle(); for(let i=0;i<N;i++){ onPeg[i]=false; busy[i]=0; wig[i]=0; } }
-  function restart(){ complete=false; placed=0; shuffle(); sfx.boing();
+
+  /* party layer fixed in front of the camera: bunting along the top and fireworks in the sky */
+  scene.add(camera);
+  const FD=12, FH=FD*Math.tan(camera.fov*PI/360), fx=new T.Group(); fx.position.z=-FD; fx.visible=false; camera.add(fx);
+  const gar=new T.Group(); gar.visible=false; fx.add(gar);
+  const flags=[], flagMats=RAINBOW.map(c=>new T.MeshBasicMaterial({color:c,side:T.DoubleSide})), lineM=new T.MeshBasicMaterial({color:C.ink});
+  let asp=1, garAsp=0;
+  function buildGar(){ if(Math.abs(garAsp-asp)<.01) return; garAsp=asp;
+    gar.children.slice().forEach(c=>{ gar.remove(c); c.geometry.dispose(); }); flags.length=0;
+    const hw=FH*asp, X=hw*1.04;
+    [[.99,.68],[.88,.56]].forEach(([yEnd,ySag],gi)=>{ const n=Math.max(7,Math.min(19,Math.round(hw*2/.62)))-gi, f=x=>FH*(ySag+(yEnd-ySag)*(x/X)*(x/X)), pts=[];
+      for(let k=0;k<=24;k++){ const x=-X+2*X*k/24; pts.push(new V3(x,f(x),-.06*gi)); }
+      gar.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),40,.022,5),lineM));
+      const fw=2*X/n*.62, sh=new T.Shape(); sh.moveTo(-fw/2,0); sh.lineTo(fw/2,0); sh.lineTo(0,-fw*1.25); sh.closePath(); const fg=new T.ShapeGeometry(sh);
+      for(let k=0;k<n;k++){ const x=-X+2*X*(k+.5)/n, fl=new T.Mesh(fg,flagMats[(k+gi*3)%6]); fl.position.set(x,f(x)-.015,-.06*gi); fl.rotation.z=Math.atan(2*FH*(yEnd-ySag)*x/(X*X)); gar.add(fl); flags.push(fl); } }); }
+  const sparks=[], sparkGeo=new T.SphereGeometry(.07,6,4); let sI=0;
+  for(let i=0;i<340;i++){ const m=new T.Mesh(sparkGeo,basic(C.yellow)); m.visible=false; fx.add(m); sparks.push({m,v:new V3(),life:0,max:1,g:0,s:1}); }
+  function spark(x,y,vx,vy,vz,col,life,grav,size){ const s=sparks[sI++%sparks.length]; s.m.visible=true; s.m.material=basic(col); s.m.position.set(x,y,0); s.v.set(vx,vy,vz); s.life=s.max=life; s.g=grav; s.s=size; }
+  function firework(){ const hw=FH*asp, x=R(-.8,.8)*hw, y=R(.12,.62)*FH, y0=-FH*.5, col=RAINBOW[(Math.random()*6)|0], col2=Math.random()<.5?0xffffff:RAINBOW[(Math.random()*6)|0];
+    tone(500,.5,'sine',.05,1500);
+    tw(.55,e=>{ spark(x+R(-.03,.03),y0+(y-y0)*e,R(-.2,.2),-.8,0,0xfff2a8,.3,0,.9); },ease.out,()=>{
+      tone(110,.35,'triangle',.22,40); for(let k=0;k<4;k++) tone(R(900,1800),.05,'square',.02,0,.12+k*.07);
+      const big=Math.min(1,hw/2.4); for(let k=0;k<46;k++){ const a=Math.random()*PI*2, u=Math.random()*2-1, q=Math.sqrt(1-u*u), sp=R(2.6,3.8)*big; spark(x,y,Math.cos(a)*q*sp,u*sp,Math.sin(a)*q*sp,k%3?col:col2,R(.9,1.4),-1.5,1.05); } }); }
+  function stepSparks(dt){ for(const s of sparks){ if(s.life<=0) continue; s.life-=dt; if(s.life<=0){ s.m.visible=false; continue; } s.v.multiplyScalar(Math.max(0,1-1.8*dt)); s.v.y+=s.g*dt; s.m.position.addScaledVector(s.v,dt); const k=s.life/s.max; s.m.scale.setScalar(s.s*Math.min(1,k/.3)*(.75+Math.random()*.5)); } }
+  function party(on){ if(on){ buildGar(); fx.visible=true; gar.visible=true; tw(.8,e=>{ gar.position.y=FH*.75*(1-e); },ease.bounce); }
+    else tw(.35,e=>{ gar.position.y=FH*.75*e; },ease.out,()=>{ gar.visible=false; }); }
+
+  let level=2, act=SETS[2], placed=0, complete=false, doneAt=0, lock=0, mistake=false, lastGood=0;
+  const endY=k=>BASEY+H/2+k*H;
+  function layoutSlots(){ const n=act.length, row=asp>=1.2, per=row?n:(n<=3?n:Math.ceil(n/2));
+    for(let k=0;k<n;k++){ const r=(k/per)|0, inRow=r?n-per:per, c=k-r*per; slots[k].set((c-(inRow-1)/2)*(row?2.45:2.4),0,row?2.4:1.7+r*2.4); } }
+  function setLevel(n,anim){ level=n; act=SETS[n]; placed=0; complete=false; mistake=false; lastGood=Tm; lock=Tm+(anim?.8:0); layoutSlots();
+    const perm=[...Array(act.length).keys()]; for(let i=perm.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [perm[i],perm[j]]=[perm[j],perm[i]]; }
+    for(let i=0;i<N;i++){ const m=rings[i], on=act.indexOf(i)>=0, was=m.visible; m.visible=on; onPeg[i]=false; busy[i]=0; if(!on) continue; slotOf[i]=perm[act.indexOf(i)]; if(!anim) continue;
+      const p0=was?m.position.clone():new V3(0,BASEY+POLE+2.5,TZ), s0=was?m.scale.x:.01, to=slots[slotOf[i]].clone(); to.y=.6; busy[i]=Tm+.7+i*.04;
+      tw(.62+i*.04,e=>{ m.position.lerpVectors(p0,to,e); m.position.y+=Math.sin(e*PI)*2; m.scale.setScalar(s0+(LOOSE-s0)*e); m.rotation.set(.7*e,0,0); },ease.inOut); } }
+  function nextLevel(){ timers=[]; sfx.boing(); party(false);
     tw(.3,e=>{ starM.scale.setScalar(Math.max(.001,1-e)); bow.scale.setScalar(Math.max(.001,1-e)); },ease.out,()=>{ starM.visible=false; bow.visible=false; });
-    for(let i=0;i<N;i++){ const m=rings[i], p0=m.position.clone(), to=slots[slotOf[i]].clone(); to.y=.6; onPeg[i]=false; busy[i]=Tm+.65+i*.04;
-      tw(.6+i*.04,e=>{ m.position.lerpVectors(p0,to,e); m.position.y+=Math.sin(e*PI)*2; m.scale.setScalar(1+(LOOSE-1)*e); m.rotation.set(.7*e,0,0); },ease.inOut); } }
-  function celebrate(){ complete=true; doneAt=Tm; sfx.tada(); const top=BASEY+POLE+.5;
+    setLevel(level<N?level+1:2,true); }
+  function celebrate(){ complete=true; doneAt=Tm; sfx.tada(); const top=BASEY+POLE+.5, last=level===N;
     starM.visible=true; starM.scale.setScalar(1); tw(.7,e=>{ starM.position.y=top+5*(1-e); },ease.bounce);
     bow.visible=true; tw(.9,e=>{ bow.scale.setScalar(Math.max(.001,e)); },ease.back);
+    party(true); for(let k=0;k<(last?12:6);k++) after(.25+k*.42,firework);
     burst(new V3(0,4.5,TZ+.5),40,6.5); after(.5,()=>burst(new V3(-2,3,TZ+1),26,5.5)); after(.9,()=>{ burst(new V3(2,3,TZ+1),26,5.5); sfx.tada(); });
-    for(let i=0;i<N;i++) after(.1+i*.09,()=>tw(.45,(e,k)=>{ rings[i].position.y=endY(i)+Math.sin(k*PI)*.35; },ease.lin));
-    after(7,()=>{ if(complete) restart(); }); }
-  function tap(i){ const m=rings[i];
-    if(i!==placed){ wig[i]=.4; sfx.boop(); return; }
-    placed++; onPeg[i]=true; sfx.note(i);
-    const p0=m.position.clone(), s0=m.scale.x, r0=m.rotation.x, top=new V3(0,BASEY+POLE+1,TZ), end=new V3(0,endY(i),TZ);
-    tw(.5,e=>{ m.position.lerpVectors(p0,top,e); m.position.y+=Math.sin(e*PI)*.8; m.scale.setScalar(s0+(1-s0)*e); m.rotation.set(r0*(1-e),0,0); },ease.inOut,()=>{
-      tw(.45,e=>{ m.position.lerpVectors(top,end,e); },ease.bounce); after(.16,()=>{ sfx.plop(); burst(end,6,2.4,RAINBOW[i]); }); });
-    if(placed===N) after(1.15,celebrate);
-  }
-  shuffle();
+    act.forEach((i,k)=>after(.1+k*.09,()=>tw(.45,(e,q)=>{ rings[i].position.y=endY(k)+Math.sin(q*PI)*.35; },ease.lin)));
+    after(last?8:5.5,()=>{ if(complete) nextLevel(); }); }
+  function tap(i){ if(Tm<lock) return; const m=rings[i], k=placed, good=i===act[placed];
+    const p0=m.position.clone(), s0=m.scale.x, r0=m.rotation.x, top=new V3(0,BASEY+POLE+1,TZ), end=new V3(0,endY(k),TZ);
+    const land=()=>{ tw(.45,e=>{ m.position.lerpVectors(top,end,e); },ease.bounce); after(.16,()=>{ sfx.plop(); if(good) burst(end,6,2.4,RAINBOW[i]); }); };
+    sfx.note(k);
+    if(good){ placed++; onPeg[i]=true; mistake=false; lastGood=Tm; if(placed===act.length){ lock=Tm+9; after(1.2,celebrate); } }
+    else { mistake=true; lock=Tm+2.35; busy[i]=Tm+2.4; }
+    tw(.5,e=>{ m.position.lerpVectors(p0,top,e); m.position.y+=Math.sin(e*PI)*.8; m.scale.setScalar(s0+(1-s0)*e); m.rotation.set(r0*(1-e),0,0); },ease.inOut,()=>{ land(); if(good) return;
+      /* wrong disc: it lands, shakes its head, and flies back to the others */
+      after(.5,()=>{ tone(330,.16,'sine',.2,260); tone(247,.24,'sine',.2,196,.17); tw(.6,(e,q)=>{ const a=Math.sin(q*PI*7)*(1-q); m.position.x=end.x+a*.24; m.rotation.z=a*.18; },ease.lin); });
+      after(1.2,()=>{ const to=slots[slotOf[i]].clone(); to.y=.6; tw(.6,e=>{ m.position.lerpVectors(end,to,e); m.position.y+=Math.sin(e*PI)*2.2; m.scale.setScalar(1+(LOOSE-1)*e); m.rotation.set(.7*e,0,0); },ease.inOut); }); }); }
+  setLevel(2,false);
   return { g,
-    frame(a){ const row=a>=1.2; for(let k=0;k<N;k++){ if(row) slots[k].set((k-2.5)*2.35,0,2.4); else slots[k].set((k%3-1)*2.4,0,1.7+((k/3)|0)*2.4); }
-      return row?{c:[0,2.5,0],w:14.4,h:7.9,dir:[0,.5,1],bottom:20}:{c:[0,2.1,0],w:8.8,h:8.8,dir:[0,.5,1],bottom:20}; },
-    enter(){ if(complete||placed===N) instant(); for(let i=0;i<N;i++){ if(onPeg[i]){ rings[i].position.set(0,endY(i),TZ); rings[i].scale.setScalar(1); rings[i].rotation.set(0,0,0); } } },
-    update(dt,t){ for(let i=0;i<N;i++){ if(onPeg[i]||t<busy[i]) continue; const m=rings[i], s=slots[slotOf[i]], nx=i===placed;
-        m.position.set(s.x,.6+AMP*Math.sin(t*2.2+i)*.07+(nx?Math.abs(Math.sin(t*3.6))*.3:0),s.z); m.scale.setScalar(LOOSE*(nx?1+.07*Math.sin(t*7.2):1));
-        wig[i]=Math.max(0,wig[i]-dt); m.rotation.set(.7,0,wig[i]>0?Math.sin(wig[i]*32)*.35*wig[i]/.4:0); }
-      if(starM.visible) starM.rotation.y+=dt*2.2; },
-    down(ev){ if(complete){ if(Tm-doneAt>1.6) restart(); return; } const list=proxies.filter((p,i)=>!onPeg[i]&&Tm>=busy[i]); if(!hit(ev,list)) return; const want=hit.all.find(q=>q.object.userData.ring===placed); tap((want||hit.all[0]).object.userData.ring); },
-    reset(){ if(placed===0&&!complete){ sfx.boop(); return; } timers=[]; restart(); }
+    get state(){ return {level,act,placed,complete,slotOf,onPeg,rings,t:Tm}; },
+    frame(a){ asp=a; layoutSlots(); if(gar.visible) buildGar();
+      return a>=1.2?{c:[0,2.5,0],w:14.8,h:7.9,dir:[0,.5,1],bottom:20}:{c:[0,2.1,0],w:8.8,h:8.8,dir:[0,.5,1],bottom:20}; },
+    enter(){ if(complete||placed===act.length){ starM.visible=false; bow.visible=false; setLevel(level<N?level+1:2,false); }
+      act.forEach((i,k)=>{ if(onPeg[i]){ rings[i].position.set(0,endY(act.indexOf(i)),TZ); rings[i].scale.setScalar(1); rings[i].rotation.set(0,0,0); } }); },
+    exit(){ fx.visible=false; gar.visible=false; for(const s of sparks){ s.life=0; s.m.visible=false; } },
+    update(dt,t){ const hint=!complete&&(mistake||t-lastGood>7);
+      for(const i of act){ if(onPeg[i]||t<busy[i]) continue; const m=rings[i], s=slots[slotOf[i]], nx=hint&&i===act[placed];
+        m.position.set(s.x,.6+AMP*Math.sin(t*2.2+i)*.07+(nx?Math.abs(Math.sin(t*3.6))*.3:0),s.z); m.scale.setScalar(LOOSE*(nx?1+.07*Math.sin(t*7.2):1)); m.rotation.set(.7,0,0); }
+      if(starM.visible) starM.rotation.y+=dt*2.2;
+      if(fx.visible){ stepSparks(dt); if(gar.visible) flags.forEach((f,k)=>{ f.rotation.x=AMP*Math.sin(t*3+k*.9)*.3; }); } },
+    down(ev){ if(complete){ if(Tm-doneAt>1.6) nextLevel(); return; }
+      const ok=i=>!onPeg[i]&&Tm>=busy[i]; let h=hit(ev,act.filter(ok).map(i=>rings[i])); if(!h) h=hit(ev,act.filter(ok).map(i=>proxies[i])); if(h) tap(h.object.userData.ring); },
+    reset(){ if(level===2&&placed===0&&!complete){ sfx.boop(); return; } timers=[]; sfx.boing(); if(complete){ party(false); starM.visible=false; bow.visible=false; } setLevel(2,true); }
   };
 })();
 
@@ -570,7 +613,7 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
 { const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
   mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
   mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Alles weg, opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
-{ const r=sub(tr,'toren'); mkBtn(r,{id:'tReset',icon:'reset',c:'var(--orange)',label:'Opnieuw bouwen',on:()=>toren.reset()}); }
+{ const r=sub(tr,'toren'); mkBtn(r,{id:'tReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>toren.reset()}); }
 { const w=$('#word'), cs=['red','orange','yellow','green','blue','purple','pink']; w.innerHTML=[...w.textContent].map((ch,i)=>'<span style="color:var(--'+cs[i%cs.length]+');animation-delay:'+(-i*.17).toFixed(2)+'s">'+ch+'</span>').join(''); }
 
 /* ---------- input ---------- */
