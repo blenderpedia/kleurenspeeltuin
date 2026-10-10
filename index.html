@@ -252,10 +252,68 @@ function makeCharacter(){
   return {g,head,arms,eyes,state,count,setItem,setAnimal};
 }
 
+/* ---------- party layer fixed in front of the camera: bunting along the top, fireworks in the sky ---------- */
+const party=(()=>{
+  scene.add(camera);
+  const FD=12, FH=FD*Math.tan(camera.fov*PI/360), fx=new T.Group(); fx.position.z=-FD; fx.visible=false; camera.add(fx);
+  const gar=new T.Group(); gar.visible=false; fx.add(gar);
+  const flags=[], flagMats=RAINBOW.map(c=>new T.MeshBasicMaterial({color:c,side:T.DoubleSide})), lineM=new T.MeshBasicMaterial({color:C.ink});
+  let garAsp=0;
+  function buildGar(){ const asp=camera.aspect; if(Math.abs(garAsp-asp)<.01) return; garAsp=asp;
+    gar.children.slice().forEach(c=>{ gar.remove(c); c.geometry.dispose(); }); flags.length=0;
+    const hw=FH*asp, X=hw*1.04;
+    [[.99,.68],[.88,.56]].forEach(([yEnd,ySag],gi)=>{ const n=Math.max(7,Math.min(19,Math.round(hw*2/.62)))-gi, f=x=>FH*(ySag+(yEnd-ySag)*(x/X)*(x/X)), pts=[];
+      for(let k=0;k<=24;k++){ const x=-X+2*X*k/24; pts.push(new V3(x,f(x),-.06*gi)); }
+      gar.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),40,.022,5),lineM));
+      const fw=2*X/n*.62, sh=new T.Shape(); sh.moveTo(-fw/2,0); sh.lineTo(fw/2,0); sh.lineTo(0,-fw*1.25); sh.closePath(); const fg=new T.ShapeGeometry(sh);
+      for(let k=0;k<n;k++){ const x=-X+2*X*(k+.5)/n, fl=new T.Mesh(fg,flagMats[(k+gi*3)%6]); fl.position.set(x,f(x)-.015,-.06*gi); fl.rotation.z=Math.atan(2*FH*(yEnd-ySag)*x/(X*X)); gar.add(fl); flags.push(fl); } }); }
+  const sparks=[], sparkGeo=new T.SphereGeometry(.07,6,4); let sI=0;
+  for(let i=0;i<340;i++){ const m=new T.Mesh(sparkGeo,basic(C.yellow)); m.visible=false; fx.add(m); sparks.push({m,v:new V3(),life:0,max:1,g:0,s:1}); }
+  function spark(x,y,vx,vy,vz,col,life,grav,size){ const s=sparks[sI++%sparks.length]; s.m.visible=true; s.m.material=basic(col); s.m.position.set(x,y,0); s.v.set(vx,vy,vz); s.life=s.max=life; s.g=grav; s.s=size; }
+  function firework(){ const hw=FH*camera.aspect, x=R(-.8,.8)*hw, y=R(.12,.62)*FH, y0=-FH*.5, col=RAINBOW[(Math.random()*6)|0], col2=Math.random()<.5?0xffffff:RAINBOW[(Math.random()*6)|0];
+    tone(500,.5,'sine',.05,1500);
+    tw(.55,e=>{ spark(x+R(-.03,.03),y0+(y-y0)*e,R(-.2,.2),-.8,0,0xfff2a8,.3,0,.9); },ease.out,()=>{
+      tone(110,.35,'triangle',.22,40); for(let k=0;k<4;k++) tone(R(900,1800),.05,'square',.02,0,.12+k*.07);
+      const big=Math.min(1,hw/2.4); for(let k=0;k<46;k++){ const a=Math.random()*PI*2, u=Math.random()*2-1, q=Math.sqrt(1-u*u), sp=R(2.6,3.8)*big; spark(x,y,Math.cos(a)*q*sp,u*sp,Math.sin(a)*q*sp,k%3?col:col2,R(.9,1.4),-1.5,1.05); } }); }
+  return {
+    start(n){ buildGar(); fx.visible=true; gar.visible=true; tw(.8,e=>{ gar.position.y=FH*.75*(1-e); },ease.bounce); for(let k=0;k<n;k++) after(.25+k*.42,firework); },
+    stop(){ if(gar.visible) tw(.35,e=>{ gar.position.y=FH*.75*e; },ease.out,()=>{ gar.visible=false; }); },
+    off(){ fx.visible=false; gar.visible=false; for(const s of sparks){ s.life=0; s.m.visible=false; } },
+    step(dt,t){ if(!fx.visible) return;
+      for(const s of sparks){ if(s.life<=0) continue; s.life-=dt; if(s.life<=0){ s.m.visible=false; continue; } s.v.multiplyScalar(Math.max(0,1-1.8*dt)); s.v.y+=s.g*dt; s.m.position.addScaledVector(s.v,dt); const k=s.life/s.max; s.m.scale.setScalar(s.s*Math.min(1,k/.3)*(.75+Math.random()*.5)); }
+      if(gar.visible){ buildGar(); flags.forEach((f,k)=>{ f.rotation.x=AMP*Math.sin(t*3+k*.9)*.3; }); } }
+  };
+})();
+
+/* ---------- memory cards: eight pictures and one back ---------- */
+const MEM=(()=>{
+  const dot=(x,cx,cy,r,c)=>{ x.fillStyle=hx(c); x.beginPath(); x.arc(cx,cy,r,0,PI*2); x.fill(); };
+  const poly=(x,c,pts)=>{ x.fillStyle=hx(c); x.beginPath(); pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.closePath(); x.fill(); };
+  const pics=[
+    {c:C.yellow,d:x=>{ for(let i=0;i<10;i++){ const a=i/10*PI*2; poly(x,0xf5b800,[[128+Math.cos(a-.2)*70,160+Math.sin(a-.2)*70],[128+Math.cos(a)*114,160+Math.sin(a)*114],[128+Math.cos(a+.2)*70,160+Math.sin(a+.2)*70]]); } dot(x,128,160,66,C.yellow); }},
+    {c:C.red,d:x=>{ x.fillStyle=hx(C.red); x.beginPath(); x.moveTo(128,246); x.bezierCurveTo(4,158,52,52,128,116); x.bezierCurveTo(204,52,252,158,128,246); x.fill(); }},
+    {c:C.blue,d:x=>{ const p=[]; for(let i=0;i<10;i++){ const a=i/10*PI*2-PI/2, q=i%2?46:106; p.push([128+Math.cos(a)*q,166+Math.sin(a)*q]); } poly(x,C.blue,p); }},
+    {c:C.pink,d:x=>{ for(let i=0;i<6;i++){ const a=i/6*PI*2; dot(x,128+Math.cos(a)*58,160+Math.sin(a)*58,40,C.pink); } dot(x,128,160,34,C.yellow); }},
+    {c:C.orange,d:x=>{ poly(x,C.orange,[[176,160],[240,106],[240,214]]); x.fillStyle=hx(C.orange); x.beginPath(); x.ellipse(112,160,80,54,0,0,PI*2); x.fill(); dot(x,76,144,13,0xffffff); dot(x,73,144,6,C.ink); }},
+    {c:C.green,d:x=>{ dot(x,104,182,58,C.green); dot(x,152,182,58,C.green); dot(x,128,196,58,C.green); x.strokeStyle=hx(C.brown); x.lineWidth=12; x.lineCap='round'; x.beginPath(); x.moveTo(128,132); x.lineTo(138,88); x.stroke(); x.fillStyle='#1f9d55'; x.beginPath(); x.ellipse(170,98,30,15,-.5,0,PI*2); x.fill(); }},
+    {c:C.purple,d:x=>{ x.strokeStyle=hx(C.ink); x.lineWidth=5; x.beginPath(); x.moveTo(128,222); x.bezierCurveTo(150,250,106,270,128,304); x.stroke(); x.fillStyle=hx(C.purple); x.beginPath(); x.ellipse(128,130,68,82,0,0,PI*2); x.fill(); poly(x,C.purple,[[128,204],[112,228],[144,228]]); dot(x,104,100,14,0xcdb3ff); }},
+    {c:C.wood,d:x=>{ x.fillStyle=hx(C.wood); x.fillRect(62,150,132,112); poly(x,C.red,[[38,158],[128,64],[218,158]]); x.fillStyle=hx(C.brown); x.fillRect(110,196,38,66); x.fillStyle=hx(C.blue); x.fillRect(158,176,24,24); }}
+  ];
+  const tex=d=>{ const c=document.createElement('canvas'); c.width=256; c.height=320; const x=c.getContext('2d'); x.fillStyle=hx(C.paper); x.fillRect(0,0,256,320); d(x); return new T.CanvasTexture(c); };
+  const picMats=pics.map(p=>new T.MeshBasicMaterial({map:tex(p.d)}));
+  const backMat=new T.MeshBasicMaterial({map:tex(x=>{ x.fillStyle=hx(C.purple); x.fillRect(0,0,256,320);
+    for(let r=0;r<7;r++) for(let c=0;c<6;c++) dot(x,22+c*42+(r%2?21:0),26+r*45,7,(r+c)%2?C.pink:0xb48cff);
+    dot(x,128,160,62,C.purple); const p=[]; for(let i=0;i<10;i++){ const a=i/10*PI*2-PI/2, q=i%2?24:56; p.push([128+Math.cos(a)*q,163+Math.sin(a)*q]); } poly(x,C.yellow,p); })});
+  const cardGeo=roundBox(1.5,1.9,.14,.18,.04), faceGeo=new T.PlaneGeometry(1.34,1.74), cardMat=mat(C.paper);
+  /* a card shows its back; turning it half round (rotation.y = PI) shows the picture */
+  function card(pic){ const cg=new T.Group(), body=mesh(cardGeo,cardMat,0,0,0,cg), bk=new T.Mesh(faceGeo,backMat), fr=new T.Mesh(faceGeo,picMats[pic]); bk.position.z=.072; fr.position.z=-.072; fr.rotation.y=PI; cg.add(bk,fr); return {g:cg,body}; }
+  return {card,count:pics.length,cols:pics.map(p=>p.c)};
+})();
+
 /* ---------- home ---------- */
 const home=(()=>{
   const g=new T.Group(); scene.add(g);
-  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink]];
+  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink],['memory','Memory',C.orange]];
   const plateGeo=roundBox(3.4,3.4,.5,.7,.12), innerGeo=roundBox(2.9,2.9,.12,.5,.04), labels=$('#labels');
   const items=defs.map(([id,label,c])=>{
     const it=new T.Group(); g.add(it);
@@ -269,11 +327,13 @@ const home=(()=>{
   { const t=items[2].toy, bg=roundBox(.82,.82,.82,.1,.05); t.rotation.x=.25; mesh(bg,mat(C.red),-.43,-.8,0,t); mesh(bg,mat(C.blue),.43,-.8,0,t); mesh(cyl(.41,.41,.82,24),mat(C.yellow),0,.02,0,t); mesh(pyramid(.62,.7),mat(C.orange),0,.78,0,t); }
   { const t=items[3].toy; t.rotation.x=.3; mesh(cyl(.95,1,.16,28),mat(C.wood),0,-1.12,0,t); mesh(cyl(.08,.08,2.1,10),mat(C.wood),0,-.1,0,t);
     [C.red,C.orange,C.yellow,C.green,C.blue].forEach((c,i)=>{ const tg=torus(.78-i*.12,.17,PI*2,10,28); tg.rotateX(PI/2); mesh(tg,mat(c),0,-.87+i*.33,0,t); }); mesh(sph(.17,12,10),mat(C.purple),0,.98,0,t); }
+  { const t=items[4].toy; [[-.52,-.12,.16,0],[.52,.06,-.14,PI]].forEach(([x,y,rz,ry],i)=>{ const c=MEM.card(1).g; c.position.set(x,y,i*.12); c.rotation.set(0,ry,rz); t.add(c); }); }
   const tilt=items.map(i=>i.toy.rotation.x), v=new V3();
   function choose(id){ const it=items.find(i=>i.id===id); pop(it.g,.1); audio(); sfx.pop(3); go(id); }
   return { g,
-    frame(a){ const row=a>=1.3, cy=row?3.3:5.6; items.forEach((it,i)=>{ if(row) it.base.set((i-1.5)*3.9,cy,0); else it.base.set((i%2?1:-1)*1.95,cy+(i<2?2.35:-2.35),0); });
-      return row?{c:[0,2.85,0],w:15.4,h:4.7,dir:[0,.1,1],bottom:64}:{c:[0,5.15,0],w:7.6,h:9.4,dir:[0,.1,1],bottom:64}; },
+    frame(a){ const n=items.length, cols=a>=2?n:a>=1.05?3:2, rows=Math.ceil(n/cols), RP=4.7;
+      items.forEach((it,i)=>{ const r=(i/cols)|0, inRow=Math.min(cols,n-r*cols), c=i-r*cols; it.base.set((c-(inRow-1)/2)*3.9,3.3+(rows-1-r)*RP,0); });
+      const top=3.3+(rows-1)*RP+1.7, bot=.7; return {c:[0,(top+bot)/2,0],w:cols*3.9-.3,h:top-bot+.2,dir:[0,.1,1],bottom:64}; },
     update(dt,t){ const W=app.clientWidth,H=app.clientHeight; items.forEach((it,i)=>{ it.g.position.copy(it.base); it.g.position.y+=AMP*Math.sin(t*1.5+i*1.3)*.09; it.g.rotation.z=AMP*Math.sin(t*1.1+i)*.025; it.toy.rotation.y=AMP*Math.sin(t*1.2+i*1.7)*.4; it.toy.rotation.x=tilt[i];
         v.copy(it.base); v.y-=2.2; v.project(camera); it.el.style.transform='translate(-50%,-50%) translate('+((v.x+1)/2*W).toFixed(1)+'px,'+((1-v.y)/2*H).toFixed(1)+'px)'; }); },
     down(ev){ const h=hit(ev,items.map(i=>i.plate)); if(h) choose(h.object.userData.id); }
@@ -481,32 +541,7 @@ const toren=(()=>{
   RAINBOW.forEach((c,i)=>{ bow.add(new T.Mesh(torus(5-i*.33,.175,PI,8,56),new T.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.25}))); });
   { const cm=new T.MeshLambertMaterial({color:0xffffff,emissive:0x8a8a8a}); [-1,1].forEach(s=>[[0,0,.2,.9],[.7,.1,.3,.7],[-.7,.05,.3,.7]].forEach(([x,y,z,r])=>{ const m=new T.Mesh(sph(r,14,10),cm); m.position.set(s*4.2+x,.3+y,z); bow.add(m); })); }
 
-  /* party layer fixed in front of the camera: bunting along the top and fireworks in the sky */
-  scene.add(camera);
-  const FD=12, FH=FD*Math.tan(camera.fov*PI/360), fx=new T.Group(); fx.position.z=-FD; fx.visible=false; camera.add(fx);
-  const gar=new T.Group(); gar.visible=false; fx.add(gar);
-  const flags=[], flagMats=RAINBOW.map(c=>new T.MeshBasicMaterial({color:c,side:T.DoubleSide})), lineM=new T.MeshBasicMaterial({color:C.ink});
-  let asp=1, garAsp=0;
-  function buildGar(){ if(Math.abs(garAsp-asp)<.01) return; garAsp=asp;
-    gar.children.slice().forEach(c=>{ gar.remove(c); c.geometry.dispose(); }); flags.length=0;
-    const hw=FH*asp, X=hw*1.04;
-    [[.99,.68],[.88,.56]].forEach(([yEnd,ySag],gi)=>{ const n=Math.max(7,Math.min(19,Math.round(hw*2/.62)))-gi, f=x=>FH*(ySag+(yEnd-ySag)*(x/X)*(x/X)), pts=[];
-      for(let k=0;k<=24;k++){ const x=-X+2*X*k/24; pts.push(new V3(x,f(x),-.06*gi)); }
-      gar.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),40,.022,5),lineM));
-      const fw=2*X/n*.62, sh=new T.Shape(); sh.moveTo(-fw/2,0); sh.lineTo(fw/2,0); sh.lineTo(0,-fw*1.25); sh.closePath(); const fg=new T.ShapeGeometry(sh);
-      for(let k=0;k<n;k++){ const x=-X+2*X*(k+.5)/n, fl=new T.Mesh(fg,flagMats[(k+gi*3)%6]); fl.position.set(x,f(x)-.015,-.06*gi); fl.rotation.z=Math.atan(2*FH*(yEnd-ySag)*x/(X*X)); gar.add(fl); flags.push(fl); } }); }
-  const sparks=[], sparkGeo=new T.SphereGeometry(.07,6,4); let sI=0;
-  for(let i=0;i<340;i++){ const m=new T.Mesh(sparkGeo,basic(C.yellow)); m.visible=false; fx.add(m); sparks.push({m,v:new V3(),life:0,max:1,g:0,s:1}); }
-  function spark(x,y,vx,vy,vz,col,life,grav,size){ const s=sparks[sI++%sparks.length]; s.m.visible=true; s.m.material=basic(col); s.m.position.set(x,y,0); s.v.set(vx,vy,vz); s.life=s.max=life; s.g=grav; s.s=size; }
-  function firework(){ const hw=FH*asp, x=R(-.8,.8)*hw, y=R(.12,.62)*FH, y0=-FH*.5, col=RAINBOW[(Math.random()*6)|0], col2=Math.random()<.5?0xffffff:RAINBOW[(Math.random()*6)|0];
-    tone(500,.5,'sine',.05,1500);
-    tw(.55,e=>{ spark(x+R(-.03,.03),y0+(y-y0)*e,R(-.2,.2),-.8,0,0xfff2a8,.3,0,.9); },ease.out,()=>{
-      tone(110,.35,'triangle',.22,40); for(let k=0;k<4;k++) tone(R(900,1800),.05,'square',.02,0,.12+k*.07);
-      const big=Math.min(1,hw/2.4); for(let k=0;k<46;k++){ const a=Math.random()*PI*2, u=Math.random()*2-1, q=Math.sqrt(1-u*u), sp=R(2.6,3.8)*big; spark(x,y,Math.cos(a)*q*sp,u*sp,Math.sin(a)*q*sp,k%3?col:col2,R(.9,1.4),-1.5,1.05); } }); }
-  function stepSparks(dt){ for(const s of sparks){ if(s.life<=0) continue; s.life-=dt; if(s.life<=0){ s.m.visible=false; continue; } s.v.multiplyScalar(Math.max(0,1-1.8*dt)); s.v.y+=s.g*dt; s.m.position.addScaledVector(s.v,dt); const k=s.life/s.max; s.m.scale.setScalar(s.s*Math.min(1,k/.3)*(.75+Math.random()*.5)); } }
-  function party(on){ if(on){ buildGar(); fx.visible=true; gar.visible=true; tw(.8,e=>{ gar.position.y=FH*.75*(1-e); },ease.bounce); }
-    else tw(.35,e=>{ gar.position.y=FH*.75*e; },ease.out,()=>{ gar.visible=false; }); }
-
+  let asp=1;
   let level=2, act=SETS[2], placed=0, complete=false, doneAt=0, lock=0, mistake=false, lastGood=0;
   const endY=k=>BASEY+H/2+k*H;
   function layoutSlots(){ const n=act.length, row=asp>=1.2, per=row?n:(n<=3?n:Math.ceil(n/2));
@@ -516,13 +551,13 @@ const toren=(()=>{
     for(let i=0;i<N;i++){ const m=rings[i], on=act.indexOf(i)>=0, was=m.visible; m.visible=on; onPeg[i]=false; busy[i]=0; if(!on) continue; slotOf[i]=perm[act.indexOf(i)]; if(!anim) continue;
       const p0=was?m.position.clone():new V3(0,BASEY+POLE+2.5,TZ), s0=was?m.scale.x:.01, to=slots[slotOf[i]].clone(); to.y=.6; busy[i]=Tm+.7+i*.04;
       tw(.62+i*.04,e=>{ m.position.lerpVectors(p0,to,e); m.position.y+=Math.sin(e*PI)*2; m.scale.setScalar(s0+(LOOSE-s0)*e); m.rotation.set(.7*e,0,0); },ease.inOut); } }
-  function nextLevel(){ timers=[]; sfx.boing(); party(false);
+  function nextLevel(){ timers=[]; sfx.boing(); party.stop();
     tw(.3,e=>{ starM.scale.setScalar(Math.max(.001,1-e)); bow.scale.setScalar(Math.max(.001,1-e)); },ease.out,()=>{ starM.visible=false; bow.visible=false; });
     setLevel(level<N?level+1:2,true); }
   function celebrate(){ complete=true; doneAt=Tm; sfx.tada(); const top=BASEY+POLE+.5, last=level===N;
     starM.visible=true; starM.scale.setScalar(1); tw(.7,e=>{ starM.position.y=top+5*(1-e); },ease.bounce);
     bow.visible=true; tw(.9,e=>{ bow.scale.setScalar(Math.max(.001,e)); },ease.back);
-    party(true); for(let k=0;k<(last?12:6);k++) after(.25+k*.42,firework);
+    party.start(last?12:6);
     burst(new V3(0,4.5,TZ+.5),40,6.5); after(.5,()=>burst(new V3(-2,3,TZ+1),26,5.5)); after(.9,()=>{ burst(new V3(2,3,TZ+1),26,5.5); sfx.tada(); });
     act.forEach((i,k)=>after(.1+k*.09,()=>tw(.45,(e,q)=>{ rings[i].position.y=endY(k)+Math.sin(q*PI)*.35; },ease.lin)));
     after(last?8:5.5,()=>{ if(complete) nextLevel(); }); }
@@ -539,24 +574,65 @@ const toren=(()=>{
   setLevel(2,false);
   return { g,
     get state(){ return {level,act,placed,complete,slotOf,onPeg,rings,t:Tm}; },
-    frame(a){ asp=a; layoutSlots(); if(gar.visible) buildGar();
+    frame(a){ asp=a; layoutSlots();
       return a>=1.2?{c:[0,2.5,0],w:14.8,h:7.9,dir:[0,.5,1],bottom:20}:{c:[0,2.1,0],w:8.8,h:8.8,dir:[0,.5,1],bottom:20}; },
     enter(){ if(complete||placed===act.length){ starM.visible=false; bow.visible=false; setLevel(level<N?level+1:2,false); }
       act.forEach((i,k)=>{ if(onPeg[i]){ rings[i].position.set(0,endY(act.indexOf(i)),TZ); rings[i].scale.setScalar(1); rings[i].rotation.set(0,0,0); } }); },
-    exit(){ fx.visible=false; gar.visible=false; for(const s of sparks){ s.life=0; s.m.visible=false; } },
+    exit(){ party.off(); },
     update(dt,t){ const hint=!complete&&(mistake||t-lastGood>7);
       for(const i of act){ if(onPeg[i]||t<busy[i]) continue; const m=rings[i], s=slots[slotOf[i]], nx=hint&&i===act[placed];
         m.position.set(s.x,.6+AMP*Math.sin(t*2.2+i)*.07+(nx?Math.abs(Math.sin(t*3.6))*.3:0),s.z); m.scale.setScalar(LOOSE*(nx?1+.07*Math.sin(t*7.2):1)); m.rotation.set(.7,0,0); }
-      if(starM.visible) starM.rotation.y+=dt*2.2;
-      if(fx.visible){ stepSparks(dt); if(gar.visible) flags.forEach((f,k)=>{ f.rotation.x=AMP*Math.sin(t*3+k*.9)*.3; }); } },
+      if(starM.visible) starM.rotation.y+=dt*2.2; },
     down(ev){ if(complete){ if(Tm-doneAt>1.6) nextLevel(); return; }
       const ok=i=>!onPeg[i]&&Tm>=busy[i]; let h=hit(ev,act.filter(ok).map(i=>rings[i])); if(!h) h=hit(ev,act.filter(ok).map(i=>proxies[i])); if(h) tap(h.object.userData.ring); },
-    reset(){ if(level===2&&placed===0&&!complete){ sfx.boop(); return; } timers=[]; sfx.boing(); if(complete){ party(false); starM.visible=false; bow.visible=false; } setLevel(2,true); }
+    reset(){ if(level===2&&placed===0&&!complete){ sfx.boop(); return; } timers=[]; sfx.boing(); if(complete){ party.stop(); starM.visible=false; bow.visible=false; } setLevel(2,true); }
+  };
+})();
+
+/* ---------- memory (rondes met 4, 6, 8, 12, 14 en 16 kaarten) ---------- */
+const memory=(()=>{
+  const g=new T.Group(); scene.add(g);
+  const ROUNDS=[4,6,8,12,14,16], CW=1.75, CH=2.15;
+  let cards=[], open=[], round=0, left=0, won=false, wonAt=0, lock=0, asp=1, cols=2, rows=2, touched=false;
+  const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  function layout(){ const n=cards.length, A=asp*1.12; let best=null;
+    for(let c=2;c<=n;c++){ const r=Math.ceil(n/c), score=Math.min(A/(c*CW),1/(r*CH))-(c*r-n)*.002; if(!best||score>best.score) best={c,r,score}; }
+    cols=best.c; rows=best.r;
+    cards.forEach((cd,k)=>{ const r=(k/cols)|0, inRow=Math.min(cols,n-r*cols), c=k-r*cols; cd.home.set((c-(inRow-1)/2)*CW,.5+CH/2+(rows-1-r)*CH,0); cd.g.position.copy(cd.home); }); }
+  function deal(n,anim,noCam){ cards.forEach(c=>g.remove(c.g)); cards=[]; open=[]; won=false; touched=false; left=n; lock=Tm+(anim?.5+n*.04:0);
+    const ids=shuffle([...Array(MEM.count).keys()]).slice(0,n/2);
+    shuffle(ids.concat(ids)).forEach(pic=>{ const c=MEM.card(pic); c.pic=pic; c.up=false; c.done=false; c.home=new V3(); c.body.userData.card=c; g.add(c.g); cards.push(c); });
+    layout(); if(!noCam&&cur==='memory') applyCamera();
+    if(anim){ cards.forEach(c=>c.g.scale.setScalar(.001)); const tot=.35+n*.04; sfx.boing();
+      tw(tot,(e,q)=>cards.forEach((c,k)=>{ const u=Math.max(0,Math.min(1,(q*tot-k*.04)/.35)); c.g.scale.setScalar(Math.max(.001,ease.back(u))); }),ease.lin); } }
+  const turn=(c,up)=>{ c.up=up; tw(.32,e=>{ c.g.rotation.y=up?PI*e:PI*(1-e); },ease.inOut); };
+  function next(){ timers=[]; party.stop(); round=(round+1)%ROUNDS.length; deal(ROUNDS[round],true); }
+  function win(){ won=true; wonAt=Tm; sfx.tada(); const last=round===ROUNDS.length-1, mid=.5+rows*CH/2;
+    party.start(last?12:6); burst(new V3(0,mid,1),40,6.5); after(.5,()=>burst(new V3(-2,mid,1),26,5.5)); after(.9,()=>{ burst(new V3(2,mid,1),26,5.5); sfx.tada(); });
+    tw(1.8,(e,q)=>cards.forEach((c,k)=>{ const u=Math.max(0,Math.min(1,(q*1.8-k*.07)/.5)); c.g.position.y=c.home.y+Math.sin(u*PI)*.32; }),ease.lin);
+    after(last?8:5.5,()=>{ if(won) next(); }); }
+  function pickCard(c){ touched=true; turn(c,true); pop(c.g,.07); sfx.pop(c.pic); open.push(c); if(open.length<2) return;
+    const a=open[0], b=open[1]; open=[];
+    if(a.pic===b.pic){ a.done=b.done=true; left-=2; lock=Tm+.4; const lastPair=left===0; if(lastPair) lock=Tm+9;
+      after(.4,()=>{ sfx.note(4); tone(NOTE[7],.35,'triangle',.22,0,.12); [a,b].forEach(c2=>{ pop(c2.g,.16); burst(new V3(c2.home.x,c2.home.y,.4),8,3,MEM.cols[c2.pic]); }); if(lastPair) after(.6,win); }); }
+    else { lock=Tm+1.55; a.up=b.up=false;
+      after(1.05,()=>{ tone(330,.16,'sine',.2,260); tone(247,.24,'sine',.2,196,.17); [a,b].forEach(c2=>tw(.5,(e,q)=>{ c2.g.rotation.y=PI*(1-ease.inOut(Math.max(0,(q-.3)/.7))); c2.g.rotation.z=Math.sin(q*PI*5)*.09*(1-q); },ease.lin)); }); } }
+  deal(ROUNDS[0],false,true);
+  return { g,
+    get state(){ return {round,cards,left,won,cols,rows,t:Tm}; },
+    frame(a){ asp=a; layout(); return {c:[0,.5+rows*CH/2,0],w:cols*CW+.3,h:rows*CH+.3,dir:[0,.06,1],bottom:20}; },
+    enter(){ if(won||left===0){ round=(round+1)%ROUNDS.length; deal(ROUNDS[round],false,true); }
+      open=[]; lock=0; cards.forEach(c=>{ if(!c.done){ c.up=false; c.g.rotation.set(0,0,0); } else c.g.rotation.set(0,PI,0); c.g.scale.setScalar(1); c.g.position.copy(c.home); }); },
+    exit(){ party.off(); },
+    update(dt,t){ if(!won) cards.forEach((c,k)=>{ if(!c.done) c.g.position.y=c.home.y+AMP*Math.sin(t*1.6+k*.8)*.03; }); },
+    down(ev){ if(won){ if(Tm-wonAt>1.6) next(); return; } if(Tm<lock) return;
+      const h=hit(ev,cards.filter(c=>!c.up&&!c.done).map(c=>c.body)); if(h) pickCard(h.object.userData.card); },
+    reset(){ if(round===0&&!touched&&!won){ sfx.boop(); return; } timers=[]; party.stop(); round=0; deal(ROUNDS[0],true); }
   };
 })();
 
 /* ---------- camera + mode switching ---------- */
-const modes={home,kleuren,aankleden,blokken,toren};
+const modes={home,kleuren,aankleden,blokken,toren,memory};
 let cur='home', switching=false, camAngle=0;
 const camT=new V3(), camO=new V3(0,0,10), tmpO=new V3();
 function setCam(){ tmpO.copy(camO).applyAxisAngle(YAX,camAngle); camera.position.copy(camT).add(tmpO); camera.lookAt(camT); camera.updateMatrixWorld(); }
@@ -613,6 +689,7 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
 { const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
   mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
   mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Alles weg, opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
+{ const r=sub(tr,'memory'); mkBtn(r,{id:'mReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>memory.reset()}); }
 { const r=sub(tr,'toren'); mkBtn(r,{id:'tReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>toren.reset()}); }
 { const w=$('#word'), cs=['red','orange','yellow','green','blue','purple','pink']; w.innerHTML=[...w.textContent].map((ch,i)=>'<span style="color:var(--'+cs[i%cs.length]+');animation-delay:'+(-i*.17).toFixed(2)+'s">'+ch+'</span>').join(''); }
 
@@ -630,7 +707,7 @@ let lastT=performance.now();
 function loop(now){ const dt=Math.min(.05,Math.max(0,(now-lastT)/1000)); lastT=now; Tm+=dt;
   stepAnim(dt); const m=modes[cur]; if(m.update) m.update(dt,Tm);
   sunG.rotation.z+=dt*.15*AMP; for(const c of clouds){ c.g.position.x+=c.v*dt*AMP; if(c.g.position.x>24) c.g.position.x=-24; }
-  stepConf(dt); setCam(); renderer.render(scene,camera); requestAnimationFrame(loop); }
+  stepConf(dt); party.step(dt,Tm); setCam(); renderer.render(scene,camera); requestAnimationFrame(loop); }
 function start(data){ const want=(data&&data.mode)||location.hash.slice(1); swap(modes[want]?want:'home'); resize(); requestAnimationFrame(loop); }
 try{ const hot=window.claude&&window.claude.hot; if(hot&&hot.snapshot) hot.snapshot(()=>({mode:cur})); }catch(e){}
 const hot=window.claude&&window.claude.hot;
