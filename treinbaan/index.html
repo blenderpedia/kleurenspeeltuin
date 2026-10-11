@@ -11,7 +11,7 @@
 <title>Treinbaan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap">
 <style>
-/* Layout: one full-screen 3D play mat; chunky round candy buttons sit in the top corners and along the bottom edge. */
+/* Layout: one full-screen 3D play field (four times the screen, you scroll over it); chunky round candy buttons sit in the top corners and along the bottom edge. */
 :root{
   --sky-top:#58c6ff; --sky-low:#dcf8ff; --grass:#74d95c;
   --ink:#2a2157; --paper:#fffdf6; --shade:rgba(42,33,87,.28);
@@ -44,10 +44,12 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .sw svg{width:66%;height:66%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .btn.big{width:calc(var(--btn)*1.25);height:calc(var(--btn)*1.25)}
 .btn.ready{animation:klaar .9s ease-in-out infinite}
+.btn.bin{animation:klaar .9s ease-in-out infinite;pointer-events:none}
+.btn.bin.hot{animation:none;transform:scale(1.4);border-color:var(--ink)}
 @keyframes klaar{50%{transform:scale(1.18)}}
 
 #fail{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:24px;text-align:center;font:700 20px/1.4 var(--display);background:var(--paper);color:var(--ink)}
-@media (prefers-reduced-motion:reduce){.btn.ready{animation:none}.btn,.sw{transition:none}}
+@media (prefers-reduced-motion:reduce){.btn.ready,.btn.bin{animation:none}.btn,.sw{transition:none}}
 </style>
 </head>
 <body>
@@ -138,25 +140,26 @@ const camera=new T.PerspectiveCamera(35,1,.1,300);
 scene.add(new T.HemisphereLight(0xffffff,0xdcf3d2,.66));
 const sunL=new T.DirectionalLight(0xffffff,.5); sunL.position.set(7,14,9); sunL.castShadow=true;
 sunL.shadow.mapSize.set(1024,1024); sunL.shadow.bias=-.0006; sunL.shadow.normalBias=.03; sunL.shadow.radius=3;
-{ const s=sunL.shadow.camera; s.left=-10; s.right=10; s.top=10; s.bottom=-10; s.near=1; s.far=45; }
-scene.add(sunL);
-const ground=new T.Mesh(new T.SphereGeometry(90,64,32),new T.MeshLambertMaterial({color:C.grass})); ground.position.y=-90; ground.receiveShadow=true; scene.add(ground);
+{ const s=sunL.shadow.camera; s.left=s.bottom=-17; s.right=s.top=17; s.near=1; s.far=48; }
+scene.add(sunL); scene.add(sunL.target);
+const ground=new T.Mesh(new T.SphereGeometry(400,96,48),new T.MeshLambertMaterial({color:C.grass})); ground.position.y=-400; ground.receiveShadow=true; scene.add(ground);
 
-const decor=new T.Group(); scene.add(decor);
-const sunG=new T.Group(); sunG.position.set(-5,13,-24); decor.add(sunG);
+/* the sky (sun and clouds) travels along when the picture scrolls; the meadow around the play field stays where it is */
+const decor=new T.Group(); scene.add(decor); const sky=new T.Group(); scene.add(sky);
+const sunG=new T.Group(); sunG.position.set(-5,13,-24); sky.add(sunG);
 { const sm=new T.MeshBasicMaterial({color:0xffe14a}); sunG.add(new T.Mesh(sph(1.7,24,16),sm));
   for(let i=0;i<10;i++){ const a=i/10*PI*2, r=new T.Mesh(cone(.34,.9,8),sm); r.position.set(Math.cos(a)*2.5,Math.sin(a)*2.5,0); r.rotation.z=a-PI/2; sunG.add(r); } }
 const clouds=[];
 { const cm=new T.MeshLambertMaterial({color:0xffffff,emissive:0x8a8a8a});
   [[-9,9.5,-16,.2],[6,11.5,-20,.14],[13,8,-18,.24],[-15,12.5,-24,.17],[1,14.5,-26,.11]].forEach(([x,y,z,v])=>{ const g=new T.Group(); g.position.set(x,y,z);
     [[0,0,0,1.2],[1.2,-.1,0,.9],[-1.2,-.15,0,.85],[.4,.55,-.2,.8]].forEach(([a,b,c,r])=>{ const m=new T.Mesh(sph(r,14,10),cm); m.position.set(a,b,c); g.add(m); });
-    decor.add(g); clouds.push({g,v}); }); }
-{ const trunk=mat(C.brown), leaf=[mat(0x3dbb5e),mat(0x58cf52),mat(0x2faf78)];
-  [[-8,-7,1],[8.5,-9,1.25],[-12.5,-13,1.4],[12.5,-15,1.1],[-4.5,-14,.9]].forEach(([x,z,s],i)=>{ const g=new T.Group(); g.position.set(x,-(x*x+z*z)/180,z); g.scale.setScalar(s);
+    sky.add(g); clouds.push({g,v}); }); }
+{ const trunk=mat(C.brown), leaf=[mat(0x3dbb5e),mat(0x58cf52),mat(0x2faf78)], hill=(x,z)=>-(x*x+z*z)/800;
+  [[-27,-13,1.6],[28,-17,1.8],[-24,-23,1.5],[9,-25,1.7],[26,7,1.4],[-28,9,1.5],[-8,-22,1.3],[19,-24,1.2]].forEach(([x,z,s],i)=>{ const g=new T.Group(); g.position.set(x,hill(x,z)-.2,z); g.scale.setScalar(s);
     mesh(cyl(.22,.3,1.6,10),trunk,0,.8,0,g); mesh(sph(1.15,16,12),leaf[i%3],0,2.3,0,g); decor.add(g); });
   let seed=7; const rs=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
   const fl=RAINBOW.concat([C.pink,C.paper]).map(c=>new T.MeshLambertMaterial({color:c}));
-  for(let i=0;i<34;i++){ const a=PI*(.08+rs()*.84)+PI, r=9.5+rs()*12, x=Math.cos(a)*r, z=Math.sin(a)*r+1; const m=new T.Mesh(sph(.16,8,6),fl[i%fl.length]); m.position.set(x,-(x*x+z*z)/180+.12,z); decor.add(m); } }
+  for(let i=0;i<90;i++){ const x=(rs()-.5)*68, z=rs()*52-30; if(Math.abs(x)<21.5&&Math.abs(z)<16.2) continue; const m=new T.Mesh(sph(.16,8,6),fl[i%fl.length]); m.position.set(x,hill(x,z)-.05,z); decor.add(m); } }
 
 /* ---------- confetti ---------- */
 const conf=[], confGeo=box(.17,.17,.04), basicCache={};
@@ -170,6 +173,9 @@ function stepConf(dt){ for(const c of conf){ if(c.life<=0) continue; c.life-=dt;
 /* ---------- picking ---------- */
 const ray=new T.Raycaster(), ndc=new T.Vector2();
 function hit(ev,list,rec){ const r=canvas.getBoundingClientRect(); ndc.set((ev.clientX-r.left)/r.width*2-1,-((ev.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ndc,camera); const h=ray.intersectObjects(list,!!rec); hit.all=h; return h[0]||null; }
+
+/* while something is in the hand the button top right turns into a bin; the buttons further down fill these in */
+let binUI=()=>{}, overBin=()=>false;
 
 /* ---------- building blocks ---------- */
 const BLOK=(()=>{
@@ -301,20 +307,32 @@ const SPOOR=(()=>{
   return {RR,TH,HW,RISE,BL,TYPE,rise,piece,loco,goods,coach,car,sensor,crane,numMat,lampCol};
 })();
 
+/* ---------- the toy forest: wooden trees on a little foot ---------- */
+const BOS=(()=>{ const M=new T.MeshPhongMaterial({vertexColors:true,shininess:18,specular:0x111111}), greens=[0x2f9e5b,0x3dbb5e,0x58cf52,0x2faf78], WOOD=0xe2ab66, cache={};
+  /* a whole tree is one mesh (the colours sit in the corners), so a forest costs little to draw. Kind 1 is a fir (three cones), kind 0 a leafy tree (a big and a small ball) */
+  function build(kind,ci){ const P=[], Nn=[], Cc=[], col=new T.Color(), put=(q,c,x,y,z,sy)=>{ const n=q.toNonIndexed(); if(sy) n.scale(1,sy,1); n.translate(x,y,z); const a=n.attributes.position.array, b=n.attributes.normal.array; col.setHex(c); for(let i=0;i<a.length;i+=3){ P.push(a[i],a[i+1],a[i+2]); Nn.push(b[i],b[i+1],b[i+2]); Cc.push(col.r,col.g,col.b); } }, gr=greens[ci];
+    put(cyl(.36,.4,.1,16),WOOD,0,.05,0);
+    if(kind){ put(cyl(.1,.13,.5,8),C.brown,0,.35,0); put(cone(.68,.8,14),gr,0,.95,0); put(cone(.54,.7,14),gr,0,1.4,0); put(cone(.38,.62,14),gr,0,1.83,0); }
+    else { put(cyl(.11,.14,.95,8),C.brown,0,.57,0); put(sph(.66,16,12),gr,0,1.45,0,1.08); put(sph(.42,12,9),greens[(ci+1)%4],.34,1.15,.22); }
+    const o=new T.BufferGeometry(); o.setAttribute('position',new T.Float32BufferAttribute(P,3)); o.setAttribute('normal',new T.Float32BufferAttribute(Nn,3)); o.setAttribute('color',new T.Float32BufferAttribute(Cc,3)); return o; }
+  function tree(kind,ci){ const k=kind*4+ci%4; return mesh(cache[k]||(cache[k]=build(kind,ci%4)),M); }
+  return {tree}; })();
+
 /* ---------- trein (houten treinbaan: rails slepen en vastklikken, blokken erbij bouwen, de trein kan botsen en ontsporen) ---------- */
 const trein=(()=>{
   const g=new T.Group(); scene.add(g);
   const TH=SPOOR.TH, RISE=SPOOR.RISE, TYPE=SPOOR.TYPE, PH=BLOK.PH, V=BLOK.V;
-  const BX=9, BZ=6, MX=10.1, MZ=7.4, MAXP=60, MAXB=60, TOPMAX=9, VCAP=3.6, AMAX=70, LAG=.6, HEAP=3, H60=1/60, CS=[1,0,-1,0], SN=[0,1,0,-1];
+  const BX=19, BZ=14, MX=20.2, MZ=14.8, MAXP=150, MAXB=60, TOPMAX=9, VCAP=3.6, AMAX=70, LAG=.6, HEAP=3, H60=1/60, CS=[1,0,-1,0], SN=[0,1,0,-1];
   const MAXLOC=3, MAXWAG=6, MAXCAR=4, MAXSENS=4, MAXCRANE=2, SECS=[5,10,15];
   const JIB=2.46, RMIN=.75, RMAX=2.7, MINI=.36, PICK=['kubus','cilinder','dak','boog'];   /* crane: height of the trolley, how near and how far it reaches; blocks ride in a goods wagon at a third of their size */
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
-  const matM=(()=>{ const q=roundBox(MX*2,MZ*2,1.1,.6,.08); q.rotateX(-PI/2); return mesh(q,mat(C.paper),0,-.55,0,g); })();
-  { const dm=new T.MeshLambertMaterial({color:0xbfe6ff}), dg=cyl(.13,.13,.02,16); for(let x=-BX;x<=BX;x+=2) for(let z=-BZ;z<=BZ;z+=2){ const d=new T.Mesh(dg,dm); d.position.set(x,.011,z); g.add(d); } }
+  const matM=(()=>{ const q=roundBox(MX*2,MZ*2,1.1,.6,.08); q.rotateX(-PI/2); return mesh(q,mat(0xb2e48a,{shininess:6,specular:0x0a0a0a}),0,-.55,0,g); })();
+  { const dm=new T.MeshLambertMaterial({color:0xe6f7cc}), im=new T.InstancedMesh(cyl(.13,.13,.02,12),dm,(BX+1)*(BZ+1)), o=new T.Object3D(); let i=0;
+    for(let x=-BX;x<=BX;x+=2) for(let z=-BZ;z<=BZ;z+=2){ o.position.set(x,.011,z); o.updateMatrix(); im.setMatrixAt(i++,o.matrix); } im.frustumCulled=false; im.receiveShadow=true; g.add(im); }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0;
+  let pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]], oP=[[0,0],[-1.3,0],[1.3,0],[-.9,.3],[.9,-.3],[-.9,-.3],[.9,.3],[-.45,0],[.45,0]], oT=[[.78,0],[-.78,0],[.78,.7],[-.78,.7],[.78,-.7],[-.78,-.7]];
@@ -335,7 +353,9 @@ const trein=(()=>{
   /* two pieces that are joined may of course touch around their joint (J), but nowhere else */
   function clash(s,t,J){ for(let i=0;i<s.length;i+=3){ if(nearJ(J,s[i],s[i+2])) continue; for(let j=0;j<t.length;j+=3){ const dx=s[i]-t[j], dz=s[i+2]-t[j+2]; if(dx*dx+dz*dz<.49&&Math.abs(s[i+1]-t[j+1])<.75&&!nearJ(J,t[j],t[j+2])) return true; } } return false; }
   function free(o,skip){ const t=TYPE[o.type], e=endsOf(o); if(t.flat&&o.lv!==0) return false; if(!e.every(q=>Math.abs(q.x)<=BX&&Math.abs(q.z)<=BZ&&q.lv>=0&&q.lv<=1)) return false; const s=sampleOf(o);
-    for(const p of pieces){ if(p===skip||Math.abs(p.x-o.x)+Math.abs(p.z-o.z)>12) continue; const J=[]; for(const a of e) for(const b of p.ends) if(joins(a,b)) J.push(a.x,a.z); if(clash(s,p.sm,J)) return false; } return true; }
+    for(const p of pieces){ if(p===skip||Math.abs(p.x-o.x)+Math.abs(p.z-o.z)>12) continue; const J=[]; for(const a of e) for(const b of p.ends) if(joins(a,b)) J.push(a.x,a.z); if(clash(s,p.sm,J)) return false; }
+    for(const t of trees){ if(!t.alive||Math.abs(t.x-o.x)+Math.abs(t.z-o.z)>9) continue; for(let i=0;i<s.length;i+=3){ const dx=s[i]-t.x, dz=s[i+2]-t.z; if(dx*dx+dz*dz<.72) return false; } }   /* no track through a tree */
+    return true; }
   const alone=o=>!endsOf(o).some(e=>pieces.some(p=>p.ends.some(f=>f.x===e.x&&f.z===e.z)));
   function aimAt(p,o,lift){ p.tx=o.x; p.ty=o.lv*RISE+lift; p.tz=o.z; p.tq=o.q; const m=mOf(o), s=p.g.scale, s0=p.g.userData.s0; s.z=Math.abs(s.z)*m; if(s0) s0.z=Math.abs(s0.z)*m; p.pier.visible=o.lv>0&&(p.type==='recht'||p.type==='bocht'); }
   function pathOf(p){ const o=[]; p.segs.forEach((sg,si)=>{ const n=sg.n>9?24:12; for(let i=0;i<=n;i++){ wpt(p,si,i/n,cv); o.push({si,u:i/n,x:cv.x,y:cv.y,z:cv.z}); } }); return o; }
@@ -371,6 +391,14 @@ const trein=(()=>{
     const gr=new PH.Body({mass:0}); gr.addShape(new PH.Plane()); gr.quaternion.setFromAxisAngle(V(1,0,0),-PI/2); gr.position.y=-1.1; const mb=new PH.Body({mass:0}); mb.addShape(new PH.Box(V(MX,.55,MZ))); mb.position.set(0,-.55,0);
     [gr,mb].forEach(b=>{ b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); }); world.addEventListener('preStep',drive); }
 
+  /* the forest: clumps of trees around an open middle, the same every time */
+  function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci); tg.position.set(x,0,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={x,z,sc,g:tg,alive:true,b:null};
+    if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.2*sc,sc,.2*sc))); b.position.set(x,sc,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); t.b=b; } trees.push(t); }
+  { let seed=11; const rs=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+    for(let cx=-16.25;cx<17;cx+=6.5) for(let cz=-11;cz<12;cz+=5.5){ if(rs()<.18) continue; const ox=cx+(rs()-.5)*2.4, oz=cz+(rs()-.5)*2, n=4+((rs()*5)|0), kind=rs()<.55?1:0;
+      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||trees.some(t=>Math.hypot(t.x-x,t.z-z)<1.2)) continue;
+        addTree(x,z,rs()<.8?kind:1-kind,(rs()*4)|0,.72+rs()*.24); i++; } } }
+
   /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
     for(let i=0;i<E.length;i++) for(let j=i+1;j<E.length;j++){ const a=E[i], b=E[j]; if(a.p!==b.p&&!a.p.n[a.k]&&!b.p.n[b.k]&&joins(a.e,b.e)){ a.p.n[a.k]={p:b.p,k:b.k}; b.p.n[b.k]={p:a.p,k:a.k}; } }
@@ -398,9 +426,16 @@ const trein=(()=>{
   function setDriven(v){ v.drv=true; v.warp=true; if(!v.b) return; const b=v.b; b.fixedRotation=true; b.updateMassProperties(); b.collisionFilterGroup=DR; b.collisionFilterMask=BK|FR; if(!v.inW){ world.addBody(b); v.inW=true; } b.wakeUp(); }
   function lift(v){ v.drv=false; if(v.inW){ world.removeBody(v.b); v.inW=false; } }
   /* a free place along the front edge of the mat for something new (or something that lost its track) */
-  function spot(self){ const n=wide?15:11; for(let r=0;r<3;r++) for(let k=0;k<n;k++){ const o=((k+1)>>1)*(k&1?-1:1)*1.3, e=.5+r*1.25, sx=wide?o:MX-e, sz=wide?MZ-e:-o;
-      if(vehs.every(w=>w===self||w.c||Math.hypot(w.g.position.x-sx,w.g.position.z-sz)>1.15)&&props.every(s=>s===self||Math.hypot(s.x-sx,s.z-sz)>1.05)&&cranes.every(s=>s===self||Math.hypot(s.x-sx,s.z-sz)>1.25)) return [sx,sz]; } return wide?[0,MZ-.5]:[MX-.5,0]; }
-  function stage(v){ const s=spot(v); setFree(v,s[0],s[1],wide?0:PI/2); }
+  /* where on the ground a point of the screen looks */
+  function ground(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; const t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
+  function clearAt(x,z,self){ if(Math.abs(x)>MX-.6||Math.abs(z)>MZ-.6) return false; for(const w of vehs) if(w!==self&&!w.c&&Math.hypot(w.g.position.x-x,w.g.position.z-z)<1.15) return false;
+    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of cranes) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.25) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false;
+    for(const r of blocks){ const q=r.b.position; if(Math.hypot(q.x-x,q.z-z)<1) return false; } for(const p of pieces){ if(Math.abs(p.x-x)+Math.abs(p.z-z)>8) continue; for(const q of p.path) if((q.x-x)*(q.x-x)+(q.z-z)*(q.z-z)<.8) return false; } return true; }
+  /* the strip of ground just above the buttons: its depth and how far it reaches left and right */
+  function lowEdge(){ const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
+  /* a free place low in the picture for something new (or something that lost its track) */
+  function spot(self){ const e=lowEdge(), xc=(e.x0+e.x1)/2, n=Math.max(3,Math.floor((e.x1-e.x0)/1.3)); for(let r=0;r<10;r++) for(let k=0;k<n;k++){ const sx=xc+((k+1)>>1)*(k&1?-1:1)*1.3, sz=e.z-.2-r*1.25; if(clearAt(sx,sz,self)) return [sx,sz]; } return [clampN(xc,MX-1),e.z]; }
+  function stage(v){ const s=spot(v); setFree(v,s[0],s[1],0); }
 
   /* a train (cons) is a row of vehicles, each with its own place on the track; the first one leads, the others follow at a fixed distance */
   const motor=c=>c.net!=='rail'||c.veh[0].loco;
@@ -469,8 +504,9 @@ const trein=(()=>{
 
   /* the dots a piece of this net may start on */
   function eachDot(net,fn){ const a=net==='road'?BX-1:BX, b=net==='road'?BZ-1:BZ; for(let x=-a;x<=a;x+=2) for(let z=-b;z<=b;z+=2) fn(x,z); }
-  function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } const q=wide?0:1, t=TYPE[type]; let best=null, bc=1e9;
-    for(let pass=0;pass<2&&!best;pass++) eachDot(t.net,(x,z)=>{ const o={type,x,z,q,lv:0,m:1}; mid(o,a1); const cost=wide?(BZ-a1.z)*3+Math.abs(a1.x):(BX-a1.x)*3+Math.abs(a1.z); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } });
+  function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } const q=0, t=TYPE[type], e=lowEdge(), xc=(e.x0+e.x1)/2, hw=(e.x1-e.x0)/2-1.2, zt=panZ-vd/2+1.5; let best=null, bc=1e9;
+    /* first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
+    for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o={type,x,z,q,lv:0,m:1}; mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } });
     if(!best){ sfx.boing(); return; }
     const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q,lv:0,m:1,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=q*PI/2; popIn(m.g,.3); sfx.pop(pieces.length%8); rebuild(); settle(); }
   function addTrain(sort){ const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
@@ -495,7 +531,7 @@ const trein=(()=>{
 
   /* ----- the crane: it lifts blocks that lie on the rails within its reach and puts them in a goods wagon that comes by ----- */
   function craneBody(k,on){ if(!world) return; if(k.b){ world.removeBody(k.b); k.b=null; } if(!on) return; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.42,.12,.42)),V(0,.12,0)); b.addShape(new PH.Box(V(.13,.98,.13)),V(0,1.2,0)); b.position.set(k.x,0,k.z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); k.b=b; wakeAll(); }
-  function addCrane(){ if(cranes.length>=MAXCRANE){ sfx.boing(); return; } const m=SPOOR.crane(), q=spot(null), k={kind:'k',x:q[0],z:q[1],y:0,g:m.g,top:m.top,trol:m.trol,cable:m.cable,hook:m.hook,st:'idle',th:wide?PI/2:PI,r:1.25,len:.55,home:wide?PI/2:PI,job:null,load:null,tc:null,wag:null,scan:0,b:null};
+  function addCrane(){ if(cranes.length>=MAXCRANE){ sfx.boing(); return; } const m=SPOOR.crane(), q=spot(null), k={kind:'k',x:q[0],z:q[1],y:0,g:m.g,top:m.top,trol:m.trol,cable:m.cable,hook:m.hook,st:'idle',th:PI/2,r:1.25,len:.55,home:PI/2,job:null,load:null,tc:null,wag:null,scan:0,b:null};
     m.g.userData.rec=k; m.g.position.set(k.x,0,k.z); g.add(m.g); cranes.push(k); craneBody(k,true); bind(); k.th=k.home; popIn(m.g,.3); sfx.pop(7); }
   const hookAt=(k,out)=>out.set(k.x+Math.cos(k.th)*k.r,k.y+JIB-k.len,k.z-Math.sin(k.th)*k.r);
   /* put down whatever the crane is busy with (it is being moved or taken away) */
@@ -561,7 +597,7 @@ const trein=(()=>{
   function aimBlock(ev){ const r=held.rec, h=hit(ev,floor(r),true); let x,z;
     const o=ray.ray.origin, d=ray.ray.direction; if(d.y<-.001){ const t=-o.y/d.y; F.set(o.x+d.x*t,0,o.z+d.z*t); }
     if(h){ x=h.point.x; z=h.point.z; if(h.object.userData.blk&&h.face){ nrm.copy(h.face.normal).transformDirection(h.object.matrixWorld); if(Math.abs(nrm.y)<.5){ nrm.y=0; nrm.normalize(); x-=nrm.x*.45; z-=nrm.z*.45; } } } else { x=F.x; z=F.z; }
-    held.out=Math.abs(F.x)>MX+.3||Math.abs(F.z)>MZ+.3; if(held.out){ tgt.set(F.x,1,F.z); ring.visible=false; return; }
+    held.out=overBin(ev.clientX,ev.clientY); if(held.out){ tgt.set(F.x,1.2,F.z); ring.visible=false; return; }
     x=clampN(x,MX-.5); z=clampN(z,MZ-.5); let rot=held.rot; if(r.sh==='plat'){ const q=platSpot(x,z,r); x=q.x; z=q.z; rot=held.rot=q.rot; heldQ.setFromAxisAngle(YAX,rot?PI/2:0); }
     else if(r.sh==='tunnel'){ const q=tunnelSpot(x,z,rot); x=clampN(q.x,MX-1); z=clampN(q.z,MZ-1); rot=held.rot=q.rot; heldQ.setFromAxisAngle(YAX,rot?PI/2:0); }
     const s=surface(x,z,r,r.sh,rot); if(s.sup&&r.sh!=='plat'&&r.sh!=='tunnel'){ const p=s.sup.b.position; if(Math.hypot(x-p.x,z-p.z)<.3){ x=p.x; z=p.z; } }
@@ -581,21 +617,21 @@ const trein=(()=>{
     else { world.removeBody(r.b); wakeAll(); te.setFromQuaternion(r.m.quaternion,'YXZ'); const rot=Math.round(te.y/(PI/2))&1; heldQ.setFromAxisAngle(YAX,Math.round(te.y/(PI/2))*PI/2); tgt.copy(r.m.position); held={kind:'b',rec:r,rot:!!rot,out:false}; }
     sfx.pop(5); }
   /* a piece in the hand jumps onto the nearest open end the finger points at; a bend or a switch picks the side the finger is on */
-  function aim(ev){ if(held.kind==='b'){ aimBlock(ev); return; } hit(ev,[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return; const t=-o.y/d.y; F.set(o.x+d.x*t,0,o.z+d.z*t);
+  function aim(ev){ if(held.kind==='b'){ aimBlock(ev); return; } hit(ev,[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return; const t=-o.y/d.y, bin=overBin(ev.clientX,ev.clientY); F.set(o.x+d.x*t,0,o.z+d.z*t);
     if(held.kind==='p'){ const p=held.rec, ty=TYPE[p.type], ms=ty.mirror?[1,-1]:[1]; let best=null, bd=1.5;
-      for(const X of open) for(let e=0;e<ty.ends.length;e++){ const E=ty.ends[e]; if(E.net!==X.e.net||(ty.sym&&(e&1))) continue;
+      if(!bin) for(const X of open) for(let e=0;e<ty.ends.length;e++){ const E=ty.ends[e]; if(E.net!==X.e.net||(ty.sym&&(e&1))) continue;
         for(const m of ms){ const q=(X.e.q+2-(m>0?E.oq:4-E.oq))&3, lz=E.z*m, c={type:p.type,q,m,x:X.e.x-(E.x*CS[q]+lz*SN[q]),z:X.e.z-(-E.x*SN[q]+lz*CS[q]),lv:X.e.lv-E.l}; if(c.lv<0||c.lv>1) continue;
           mid(c,a1); a1.y+=TH; let dd=Math.sqrt(ray.ray.distanceSqToPoint(a1)); if(p.type==='brug') dd-=.5; if(held.cand&&same(held.cand,c)) dd-=.5; if(dd<bd&&free(c,p)){ bd=dd; best=c; } } }
       if(best){ if(!held.cand||!same(held.cand,best)) klik(); held.cand=best; held.q=best.q; held.m=best.m; aimAt(p,best,0); }
       else { held.cand=null; const q=held.q, m=held.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); aimAt(p,{x:F.x-a1.x,z:F.z-a1.z,q,lv:0,m},.45); } }
-    else if(held.kind==='k'){ const k=held.rec, b=beside(F.x,F.z,1.4,2); if(b&&Math.abs(b.x)<MX-.45&&Math.abs(b.z)<MZ-.45){ if(!held.snap) klik(); held.snap=true; k.x=b.x; k.z=b.z; k.y=0; k.home=Math.atan2(k.z-b.wp.z,b.wp.x-k.x); } else { held.snap=false; k.x=F.x; k.z=F.z; k.y=.4; } }
-    else if(held.kind==='s'){ const s=held.rec, b=beside(F.x,F.z,1.02,1.6); if(b&&Math.abs(b.x)<MX-.3&&Math.abs(b.z)<MZ-.3){ if(!held.snap) klik(); held.snap=true; s.x=b.x; s.z=b.z; s.yaw=b.yaw; s.y=0; } else { held.snap=false; s.x=F.x; s.z=F.z; s.y=.4; } }
+    else if(held.kind==='k'){ const k=held.rec, b=bin?null:beside(F.x,F.z,1.4,2); if(b&&Math.abs(b.x)<MX-.45&&Math.abs(b.z)<MZ-.45){ if(!held.snap) klik(); held.snap=true; k.x=b.x; k.z=b.z; k.y=0; k.home=Math.atan2(k.z-b.wp.z,b.wp.x-k.x); } else { held.snap=false; k.x=F.x; k.z=F.z; k.y=.4; } }
+    else if(held.kind==='s'){ const s=held.rec, b=bin?null:beside(F.x,F.z,1.02,1.6); if(b&&Math.abs(b.x)<MX-.3&&Math.abs(b.z)<MZ-.3){ if(!held.snap) klik(); held.snap=true; s.x=b.x; s.z=b.z; s.yaw=b.yaw; s.y=0; } else { held.snap=false; s.x=F.x; s.z=F.z; s.y=.4; } }
     else { const v=held.rec, net=v.K.net; let best=null, bs=null, bd=1;
       for(const p of pieces){ if(!p.live) continue; for(const s of p.path){ if(p.segs[s.si].net!==net) continue; cv.set(s.x,s.y+TH+.3,s.z); const dd=ray.ray.distanceSqToPoint(cv); if(dd<bd){ bd=dd; best=p; bs=s; } } }
-      if(best){ wpt(best,bs.si,Math.min(1,bs.u+.05),a1); wpt(best,bs.si,Math.max(0,bs.u-.05),a2); const pos={p:best,si:bs.si,u:bs.u,d:Math.cos(held.yaw-Math.atan2(a2.z-a1.z,a1.x-a2.x))>=0?1:-1};
+      if(best&&!bin){ wpt(best,bs.si,Math.min(1,bs.u+.05),a1); wpt(best,bs.si,Math.max(0,bs.u-.05),a2); const pos={p:best,si:bs.si,u:bs.u,d:Math.cos(held.yaw-Math.atan2(a2.z-a1.z,a1.x-a2.x))>=0?1:-1};
         fit(pos,null,v.K,0); v.pos=pos; placeOn(v,null); if(!held.cand) klik(); held.cand=pos; }
       else { held.cand=null; v.tp.set(F.x,.5+v.K.vh,F.z); v.yaw=held.yaw; v.pitch=0; } } }
-  function release(){ const h=held; held=null; if(!h) return; const out=Math.abs(F.x)>MX+.3||Math.abs(F.z)>MZ+.3;
+  function release(px,py){ const h=held; held=null; if(!h) return; const out=px!=null&&overBin(px,py);
     if(h.kind==='b'){ const r=h.rec; ring.visible=false; if(h.out){ removeBlock(r,false); sfx.boop(); return; }
       r.m.position.set(tgt.x,tgt.y-.1,tgt.z); r.m.quaternion.copy(heldQ); r.b.position.set(tgt.x,tgt.y-.1,tgt.z); r.b.quaternion.set(heldQ.x,heldQ.y,heldQ.z,heldQ.w); r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); world.addBody(r.b); wakeAll(); sfx.plop(); return; }
     if(h.kind==='k'){ const k=h.rec; if(out&&!h.snap){ g.remove(k.g); cranes=cranes.filter(x=>x!==k); sfx.boop(); return; }
@@ -604,7 +640,7 @@ const trein=(()=>{
       s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=0; propBody(s,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
     if(h.kind==='p'){ const p=h.rec; let o=h.cand;
       if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); sfx.boop(); rebuild(); settle(); return; }
-      if(!o){ const q=h.q, m=h.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); const ox=F.x-a1.x, oz=F.z-a1.z; let bd=1e9;
+      if(!o){ const q=h.q, m=h.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); const ox=clampN(F.x,MX)-a1.x, oz=clampN(F.z,MZ)-a1.z; let bd=1e9;
         eachDot(TYPE[p.type].net,(x,z)=>{ const c={type:p.type,x,z,q,lv:0,m}, dd=(x-ox)*(x-ox)+(z-oz)*(z-oz); if(dd<bd&&free(c,p)){ bd=dd; o=c; } }); }
       if(o){ p.x=o.x; p.z=o.z; p.q=o.q; p.lv=o.lv; p.m=o.m; }
       fix(p); if(h.cand) klik(); else sfx.plop(); rebuild(); settle(); }
@@ -621,16 +657,20 @@ const trein=(()=>{
     get state(){ return {pieces,vehs,cons,open,blocks,props,cranes,held,wide,tab,shape,tall:tallA,world}; },
     setTab(t){ tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     setShape(s){ shape=s; sfx.tap(); },
-    /* the picture always holds the whole mat; it backs off a little when a tower grows tall, and on a low, wide screen the mat may use the strip between the corner buttons */
-    frame(a){ wide=a>=1; const bottom=bar(); if(!wide) return {c:[.1,.3+tallA/2,0],w:15.7,h:20.6+tallA*.52,dir:[.6,1,0],bottom};
-      const W=app.clientWidth||1, H=app.clientHeight||1, b=Math.max(46,Math.min(76,Math.min(W,H)*.125)), top=b+26, U=Math.max(.4*H,H-top-(bottom||b+36)), gain=Math.max(0,Math.min(1,(a-1.5)/.6))*(top-12), h=(12.7+tallA*.67)*U/(U+gain), w=21.3;
-      const th=Math.tan(camera.fov*PI/360), ppu=H/(2*th*Math.max(h/2/(th*U/H),w/2/(th*a*.94))), sh=gain/2/ppu;
-      return {c:[0,.3+tallA/2-.669*sh,.1+.743*sh],w,h,dir:[0,1,.9],bottom}; },
-    /* the mat is bigger than the meadow's shadow area and reaches the nearest trees: widen the one, hide the others while this game is on */
-    enter(){ const s=sunL.shadow.camera; s.left=s.bottom=-15; s.right=s.top=15; s.updateProjectionMatrix(); decor.children.forEach(o=>{ if(o.isGroup&&o!==sunG&&Math.abs(o.position.x)<MX+2&&Math.abs(o.position.z)<MZ+2.5&&o.position.y<3) o.visible=false; }); },
-    exit(){ const s=sunL.shadow.camera; s.left=s.bottom=-10; s.right=s.top=10; s.updateProjectionMatrix(); decor.children.forEach(o=>{ o.visible=true; });
-      if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='k'){ F.set(0,0,0); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
+    barH:bar,
+    /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
+    frame(W,H,top,bottom,th){ wide=true; botPx=bottom; ppuV=Math.max(28,Math.min(64,Math.sqrt(W*H)/18))/(1+tallA*.05); vw=W/ppuV; vd=Math.max(.4*H,H-top-bottom)/ppuV/.743;
+      panX=clampN(panX,Math.max(0,MX+1-vw/2)); panZ=clampN(panZ,Math.max(0,MZ+1.2-vd/2)); return {c:[panX,.3+tallA/2,panZ],d:H/(2*th*ppuV),dir:[0,1,.9]}; },
+    get pan(){ return [panX,panZ]; },
+    panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
+    wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
+    enter(){},
+    exit(){ if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='k'){ F.set(panX,0,panZ); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
     update(dt){ frameN++; let moving=false;
+      /* something in the hand near the edge of the screen: the picture scrolls along; the button top right is a bin meanwhile */
+      const bs=held&&ptr?(overBin(ptr.cx,ptr.cy)?2:1):0; if(bs!==binSt){ binSt=bs; binUI(bs>0,bs>1); }
+      if(bs===1&&ptr.mode===1){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
+        if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
       for(const c of cons.slice()){ if(c.crash){ derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
         if(motor(c)){ if(c.net==='rail') sense(c); if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(!c.hold&&c.lag<LAG&&advance(c,dt)) moving=true; }
@@ -654,11 +694,12 @@ const trein=(()=>{
     down(ev){ if(ptr) return; const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),tab==='blok'?[]:cranes.map(s=>s.g),pieces.map(p=>p.g),[matM]),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='s'||kind==='k')&&tab==='blok'){ rec=null; kind='mat'; }
-      ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,mode:0}; },
-    move(ev){ if(!ptr||ev.pointerId!==ptr.id) return;
-      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='k'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:2; if(ptr.mode===1) grab(ptr.rec); }
-      if(ptr.mode===1) aim(ev); else if(world) push(ev); },
-    up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(p.mode===1){ ptr=null; release(); return; }
+      ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
+    /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
+    move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
+      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='k'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
+      if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
+    up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
       if(!p.mode){ if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(tab==='blok') tapBlock(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='k'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
@@ -667,12 +708,12 @@ const trein=(()=>{
 /* ---------- camera ---------- */
 const cur='trein'; let camAngle=0;
 const camT=new V3(), camO=new V3(0,0,10), tmpO=new V3();
-function setCam(){ tmpO.copy(camO).applyAxisAngle(YAX,camAngle); camera.position.copy(camT).add(tmpO); camera.lookAt(camT); camera.updateMatrixWorld(); }
+function setCam(){ tmpO.copy(camO).applyAxisAngle(YAX,camAngle); camera.position.copy(camT).add(tmpO); camera.lookAt(camT); camera.updateMatrixWorld();
+  /* sky and sunlight travel along; the light moves in half steps so the shadows do not shimmer */
+  sky.position.set(camT.x,0,camT.z); const sx=Math.round(camT.x*2)/2, sz=Math.round(camT.z*2)/2; sunL.position.set(sx+7,14,sz+9); sunL.target.position.set(sx,0,sz); sunL.target.updateMatrixWorld(); }
 function applyCamera(){
-  const W=app.clientWidth||1,H=app.clientHeight||1,a=W/H; camera.aspect=a; camera.updateProjectionMatrix();
-  const f=trein.frame(a), b=Math.max(46,Math.min(76,Math.min(W,H)*.125)), top=b+26, bottom=f.bottom!=null?f.bottom:b+36;
-  const usable=Math.max(.4,(H-top-bottom)/H), th=Math.tan(camera.fov*PI/360);
-  const d=Math.max(f.h/2/(th*usable),f.w/2/(th*a*.94));
+  const W=app.clientWidth||1,H=app.clientHeight||1; camera.aspect=W/H; camera.updateProjectionMatrix();
+  const b=Math.max(46,Math.min(76,Math.min(W,H)*.125)), top=b+26, bh=trein.barH(), bottom=bh!=null?bh:b+36, th=Math.tan(camera.fov*PI/360), f=trein.frame(W,H,top,bottom,th), d=f.d;
   const dir=new V3(f.dir[0],f.dir[1],f.dir[2]).normalize(), right=new V3().crossVectors(YAX,dir).normalize(), up=new V3().crossVectors(dir,right);
   camT.set(f.c[0],f.c[1],f.c[2]).addScaledVector(up,(top-bottom)/2*(2*d*th/H));
   camO.copy(dir).multiplyScalar(d); setCam();
@@ -686,14 +727,23 @@ const ICON={
   kubus:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>',
   cilinder:'<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11"/>',
   dak:'<path d="M3 19 12 5l9 14z"/>',
-  boog:'<path d="M4 20V5h16v15h-4.5v-5a3.5 3.5 0 0 0-7 0v5z"/>'
+  boog:'<path d="M4 20V5h16v15h-4.5v-5a3.5 3.5 0 0 0-7 0v5z"/>',
+  bin:'<path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13M10 11v5.500M14 11v5.500"/>',
+  full:'<path d="M4 9.500V4h5.500M14.500 4H20v5.500M20 14.500V20h-5.500M9.500 20H4v-5.500"/>',
+  small:'<path d="M9.500 4v5.500H4M20 9.500h-5.500V4M14.500 20v-5.500H20M4 14.500h5.500V20"/>'
 };
 const ik=hx(C.ink);
 function mkBtn(parent,o){ const b=document.createElement('button'); b.type='button'; b.id=o.id; b.className=o.cls||'btn'; if(o.c) b.style.setProperty('--c',o.c); if(o.i) b.style.setProperty('--i',o.i); b.setAttribute('aria-label',o.label); b.title=o.label; if(o.svg||o.icon) b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(o.svg||ICON[o.icon])+'</svg>'; b.addEventListener('click',()=>{ audio(); o.on(b); }); parent.appendChild(b); return b; }
 function choose(list,b){ list.forEach(x=>x.classList.toggle('on',x===b)); }
 const tl=$('#tl'), tr=$('#tr'), bot=$('#bot'); let fitBar=()=>{};
 mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid aan of uit',on:b=>{ muted=!muted; try{ localStorage.setItem('treinbaan-stil',muted?'1':'0'); }catch(e){} b.querySelector('svg').innerHTML=ICON[muted?'mute':'sound']; sfx.tap(); }});
-{ mkBtn(tr,{id:'trReset',icon:'reset',c:'var(--orange)',label:'Alles weg, opnieuw beginnen',on:()=>trein.reset()});
+{ /* full screen, where the browser can do that (an iPhone cannot) */
+  const el=document.documentElement, go=el.requestFullscreen||el.webkitRequestFullscreen, stop=document.exitFullscreen||document.webkitExitFullscreen, isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+  if(go&&stop){ const fb=mkBtn(tl,{id:'bFull',icon:'full',c:'var(--blue)',label:'Volledig scherm aan of uit',on:()=>{ sfx.tap(); try{ const r=isFull()?stop.call(document):go.call(el); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }});
+    ['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,()=>{ fb.querySelector('svg').innerHTML=ICON[isFull()?'small':'full']; })); } }
+{ const rb=mkBtn(tr,{id:'trReset',icon:'reset',c:'var(--orange)',label:'Alles weg, opnieuw beginnen',on:()=>trein.reset()});
+  binUI=(on,hot)=>{ rb.classList.toggle('bin',on); rb.classList.toggle('hot',on&&hot); rb.style.setProperty('--c',on?'var(--red)':'var(--orange)'); rb.querySelector('svg').innerHTML=ICON[on?'bin':'reset']; };
+  overBin=(x,y)=>{ const r=rb.getBoundingClientRect(), m=18; return x>r.left-m&&x<r.right+m&&y>r.top-m&&y<r.bottom+m; };
   /* three tabs: rails and trains, road and cars, building blocks; on a narrow screen the tabs sit on their own row above the buttons */
   const p=document.createElement('div'), tabs=document.createElement('div'), gR=document.createElement('div'), gW=document.createElement('div'), gB=document.createElement('div'), tb=[], bs=[]; p.id='treinBar'; p.className='grp'; p.style.columnGap='18px'; bot.appendChild(p);
   [tabs,gR,gW,gB].forEach(d=>{ d.className='grp'; d.style.flex='none'; p.appendChild(d); }); gR.style.flex='0 1 auto'; gW.hidden=gB.hidden=true;
@@ -730,6 +780,8 @@ canvas.addEventListener('pointerdown',ev=>{ audio(); downs.add(ev.pointerId); tr
 canvas.addEventListener('pointermove',ev=>{ if(downs.has(ev.pointerId)) trein.move(ev); });
 ['pointerup','pointercancel'].forEach(n=>canvas.addEventListener(n,ev=>{ downs.delete(ev.pointerId); trein.up(ev); }));
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{ e.preventDefault(); const k=e.deltaMode===1?30:1; trein.wheel((e.shiftKey?e.deltaY:e.deltaX)*k,(e.shiftKey?0:e.deltaY)*k); },{passive:false});
+window.addEventListener('keydown',e=>{ const d={ArrowLeft:[-2,0],ArrowRight:[2,0],ArrowUp:[0,-2],ArrowDown:[0,2]}[e.key]; if(d){ e.preventDefault(); trein.panBy(d[0],d[1]); } });
 
 /* ---------- loop ---------- */
 function resize(){ fitBar(); renderer.setSize(app.clientWidth||1,app.clientHeight||1,false); applyCamera(); }
