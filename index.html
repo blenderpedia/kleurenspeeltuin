@@ -48,11 +48,14 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .btn.face{background:var(--paper)}
 .btn.face svg{width:80%;height:80%;stroke:none}
 .btn.on,.sw.on{border-color:var(--ink);transform:translateY(-6px) scale(1.14)}
+.btn.big{width:calc(var(--btn)*1.25);height:calc(var(--btn)*1.25)}
+.btn.ready{animation:klaar .9s ease-in-out infinite}
+@keyframes klaar{50%{transform:scale(1.18)}}
 
 #veil{position:absolute;inset:0;background:var(--paper);opacity:0;pointer-events:none;transition:opacity .18s}
 #veil.show{opacity:1}
 #fail{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:24px;text-align:center;font:700 20px/1.4 var(--display);background:var(--paper);color:var(--ink)}
-@media (prefers-reduced-motion:reduce){#word span{animation:none}.btn,.sw,#veil{transition:none}}
+@media (prefers-reduced-motion:reduce){#word span,.btn.ready{animation:none}.btn,.sw,#veil{transition:none}}
 </style>
 </head>
 <body>
@@ -333,7 +336,7 @@ const VORM=(()=>{
 /* ---------- home ---------- */
 const home=(()=>{
   const g=new T.Group(); scene.add(g);
-  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink],['memory','Memory',C.orange],['vormen','Vormen',C.purple],['toverstaf','Toverstaf',C.red]];
+  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink],['memory','Memory',C.orange],['vormen','Vormen',C.purple],['toverstaf','Toverstaf',C.red],['broodje','Broodje',0x2fc9c0]];
   const plateGeo=roundBox(3.4,3.4,.5,.7,.12), innerGeo=roundBox(2.9,2.9,.12,.5,.04), labels=$('#labels');
   const items=defs.map(([id,label,c])=>{
     const it=new T.Group(); g.add(it);
@@ -351,6 +354,9 @@ const home=(()=>{
   { const t=items[5].toy; [['cirkel',-.62,.4],['vierkant',.62,.4],['driehoek',0,-.66]].forEach(([k,x,y])=>{ const c=VORM.piece(k).g; c.position.set(x,y,0); c.scale.setScalar(.86); t.add(c); }); }
   { const t=items[6].toy, wd=new T.Group(); wd.rotation.z=.6; wd.position.set(-.25,.35,0); t.add(wd); mesh(starGeo(.55,.24,.16),mat(C.yellow,{shininess:90}),0,0,0,wd); mesh(cyl(.07,.07,1.5,10),mat(C.purple),0,-1,0,wd); mesh(cyl(.08,.08,.24,10),mat(C.paper),0,-.42,0,wd);
     [[.75,.6,.1],[.95,-.1,.07],[.3,-.75,.08],[-.9,.9,.07]].forEach(q=>mesh(sph(q[2],8,6),mat(C.yellow),q[0],q[1],.1,t)); }
+  { const t=items[7].toy; t.rotation.x=.9; const bs=new T.Shape(), q=[[-.85,-1],[.85,-1],[1,-.85],[1,.25],[1.2,.9],[.55,1.05],[0,1.15],[-.55,1.05],[-1.2,.9],[-1,.25],[-1,-.85]]; q.forEach((p,i)=>i?bs.lineTo(p[0],p[1]):bs.moveTo(p[0],p[1])); bs.closePath();
+    const bg=new T.ExtrudeGeometry(bs,{depth:.22,bevelEnabled:true,bevelThickness:.04,bevelSize:.04,bevelSegments:2}); bg.rotateX(-PI/2); mesh(bg,mat(0xc98a4b),0,-.2,.1,t);
+    const kg=roundBox(1.5,1.5,.08,.14,.02); kg.rotateX(-PI/2); mesh(kg,mat(0xffc93d),0,.1,.1,t); [[-.4,-.2],[.4,-.2],[0,.5]].forEach(p=>{ mesh(cyl(.3,.3,.07,20),mat(0xe8392e),p[0],.2,.1+p[1],t); mesh(cyl(.22,.22,.08,20),mat(0xff7a66),p[0],.2,.1+p[1],t); }); }
   const tilt=items.map(i=>i.toy.rotation.x), v=new V3();
   function choose(id){ const it=items.find(i=>i.id===id); pop(it.g,.1); audio(); sfx.pop(3); go(id); }
   return { g,
@@ -971,8 +977,120 @@ const toverstaf=(()=>{
   };
 })();
 
+/* ---------- broodje (smeer en beleg wat het kindje vraagt, klaar = opeten) ---------- */
+const broodje=(()=>{
+  const g=new T.Group(); scene.add(g);
+  const WALL=0xffe6c8, unit=sph(1,18,12), MC={}, M=c=>MC[c]||(MC[c]=mat(c)), ink=basic(C.ink);
+  const P=(geo,c,x,y,z,par,s,r)=>{ const o=mesh(geo,typeof c==='number'?M(c):c,x,y,z,par); if(s!=null){ if(s.length) o.scale.set(s[0],s[1],s[2]); else o.scale.setScalar(s); } if(r) o.rotation.set(r[0],r[1],r[2]); return o; };
+  const G=(par,x,y,z)=>{ const o=new T.Group(); o.position.set(x||0,y||0,z||0); par.add(o); return o; };
+  const run=(dur,fn)=>tw(dur,(e,q)=>fn(q),ease.lin), seg=(q,a,b)=>Math.max(0,Math.min(1,(q-a)/(b-a)));
+  const disc=(r,h,c,par,x,y,z)=>P(cyl(r,r,h,24),c,x||0,(y||0)+h/2,z||0,par);
+  const breadShape=s=>{ const b=new T.Shape(); b.moveTo(-.85*s,-1*s); b.lineTo(.85*s,-1*s); b.quadraticCurveTo(s,-1*s,s,-.85*s); b.lineTo(s,.25*s); b.bezierCurveTo(1.35*s,.5*s,1.2*s,1.1*s,.55*s,1.05*s); b.bezierCurveTo(.3*s,1.2*s,-.3*s,1.2*s,-.55*s,1.05*s); b.bezierCurveTo(-1.2*s,1.1*s,-1.35*s,.5*s,-s,.25*s); b.lineTo(-s,-.85*s); b.quadraticCurveTo(-s,-1*s,-.85*s,-1*s); return b; };
+  const flat=(shape,d)=>{ const q=new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:false,curveSegments:10}); q.rotateX(-PI/2); return q; };
+  const SPREAD={choco:0x5a341c,jam:0xd92c4a,smeerworst:0xdf8f73}, KEYS=['choco','jam','smeerworst','kaas','vlees','tomaat','komkommer'];
+  const NAMES={choco:'Chocoladepasta',jam:'Jam',smeerworst:'Smeerworst',kaas:'Kaas',vlees:'Vlees',tomaat:'Tomaat',komkommer:'Komkommer'};
+  const spreadGeo=flat(breadShape(.86),.035), crustGeo=flat(breadShape(1),.22), crumbGeo=flat(breadShape(.9),.02);
+  const kaasGeo=(()=>{ const q=roundBox(1.6,1.6,.05,.14,.015); q.rotateX(-PI/2); return q; })();
+  const tomSlice=(par,x,z,r)=>{ const s=G(par,x,0,z); disc(r,.05,0xe8392e,s); disc(r*.76,.056,0xff7a66,s); for(let i=0;i<4;i++){ const a=i/4*PI*2+.4; disc(r*.11,.06,0xffe07a,s,Math.cos(a)*r*.42,0,Math.sin(a)*r*.42); } return s; };
+  const cucSlice=(par,x,z,r)=>{ const s=G(par,x,0,z); disc(r,.05,0x2f8f3f,s); disc(r*.82,.056,0xc9eba5,s); disc(r*.3,.06,0xe4f6cb,s); return s; };
+  /* what stands on the table (and inside the thought bubble) */
+  function model(k){ const m=new T.Group();
+    if(k==='choco'||k==='jam'){ const c=SPREAD[k]; disc(.42,.62,c,m); disc(.44,.26,C.paper,m,0,.17,0); P(unit,c,0,.3,.43,m,[.13,.1,.03]); disc(.46,.14,k==='choco'?0xffffff:C.yellow,m,0,.62,0); }
+    else if(k==='smeerworst'){ P(box(1.3,.08,.8),0xc98a4b,0,.04,0,m); const c=SPREAD[k], q=cyl(.24,.24,.8,16); q.rotateZ(PI/2); P(q,c,0,.34,0,m); [-1,1].forEach(s=>{ P(unit,c,s*.4,.34,0,m,.24); P(unit,0x9aa3ad,s*.65,.34,0,m,.07); }); const b=cyl(.248,.248,.34,16); b.rotateZ(PI/2); P(b,C.yellow,0,.34,0,m); }
+    else if(k==='kaas'){ disc(.82,.05,C.paper,m); [0,1,2].forEach(i=>{ const s=P(box(1,.05,1),0xffc93d,i*.04-.04,.08+i*.055,0,m,null,[0,i*.25-.2,0]); if(i===2) [[-.25,-.2,.1],[.2,.15,.13],[.22,-.3,.07]].forEach(h=>disc(h[2],.056,0xf0a81e,m,i*.04-.04+h[0],.08+i*.055-.025,h[1])); }); }
+    else if(k==='vlees'){ disc(.82,.05,C.paper,m); [0,1,2].forEach(i=>{ disc(.52,.05,0xf4a0a8,m,i*.1-.1,.05+i*.055,i*.06-.06); if(i===2) disc(.42,.056,0xf9bcc1,m,.1,.105,.06); }); }
+    else if(k==='tomaat'){ disc(.82,.05,C.paper,m); P(unit,0xe8392e,-.22,.42,-.05,m,[.4,.36,.4]); P(cone(.14,.1,6),0x2f8f3f,-.22,.8,-.05,m); const s=tomSlice(m,.4,.25,.3); s.position.y=.3; s.rotation.set(1.1,0,.2); }
+    else { disc(.82,.05,C.paper,m); const q=cyl(.2,.2,.8,14); q.rotateZ(PI/2); P(q,0x2f8f3f,-.05,.25,-.2,m,null,[0,.4,0]); [-1,1].forEach(s=>P(unit,0x2f8f3f,-.05+s*.37,.25,-.2-s*.155,m,.2)); [[.25,.3],[-.3,.38]].forEach(p=>{ const s=cucSlice(m,p[0],p[1],.2); s.position.y=.06; }); }
+    return m; }
+  /* what lies on the bread */
+  function layer(k){ const o=new T.Group();
+    if(SPREAD[k]) mesh(spreadGeo,M(SPREAD[k]),0,0,0,o);
+    else if(k==='kaas'){ mesh(kaasGeo,M(0xffc93d),0,.025,0,o); [[-.4,-.3,.16],[.35,.25,.2],[.4,-.45,.11],[-.3,.45,.13]].forEach(h=>disc(h[2],.055,0xf0a81e,o,h[0],0,h[1])); }
+    else if(k==='vlees'){ disc(.9,.045,0xf4a0a8,o); disc(.76,.05,0xf9bcc1,o); }
+    else if(k==='tomaat') [[-.45,.3],[.45,.3],[0,-.42]].forEach(p=>tomSlice(o,p[0],p[1],.38));
+    else [[-.42,-.4],[.42,-.4],[-.42,.4],[.42,.4]].forEach(p=>cucSlice(o,p[0],p[1],.33));
+    return o; }
+
+  /* the room: a big table, a window, a picture, and a toddler in her chair */
+  mesh(box(44,.5,22),M(0xe9b97a),0,-.25,8.9,g);
+  { const pm=new T.Mesh(new T.PlaneGeometry(4.6,3.9),new T.MeshLambertMaterial({map:canvasTex(x=>{ for(let i=0;i<8;i++) for(let j=0;j<8;j++){ x.fillStyle=(i+j)%2?'#ff9aa0':'#fffdf6'; x.fillRect(i*32,j*32,32,32); } })})); pm.rotation.x=-PI/2; pm.position.set(0,.012,1); pm.receiveShadow=true; g.add(pm);
+    const wn=G(g,-5.4,5.3,-5.8); P(box(3.2,2.8,.2),0xffffff,0,0,0,wn); const pane=new T.Mesh(box(2.8,2.4,.22),basic(0x9fdcff)); wn.add(pane); const sn=new T.Mesh(unit,basic(0xffe14a)); sn.scale.setScalar(.45); sn.position.set(.7,.5,.14); wn.add(sn); P(box(.12,2.4,.26),0xffffff,0,0,0,wn); P(box(2.8,.12,.26),0xffffff,0,0,0,wn);
+    const fr=G(g,5.6,5.6,-5.8); P(box(2,2,.16),C.yellow,0,0,0,fr); const inn=new T.Mesh(box(1.6,1.6,.18),basic(0xffffff)); fr.add(inn); const ht=new T.Mesh(new T.ShapeGeometry(VORM.mk(T.Shape,'hart',1.1)),basic(C.red)); ht.position.z=.1; fr.add(ht); }
+  const kid=G(g,0,0,-3.3), SK=0xf7cba6, HAIR=0x7a4a21, SHIRT=0x4fc3c9;
+  P(box(2.7,3.6,.3),C.blue,0,1,-.95,kid); P(unit,SHIRT,0,.5,0,kid,[.95,1.2,.72]); P(unit,0xffffff,0,.95,.5,kid,[.5,.5,.2]); P(unit,C.red,0,.95,.69,kid,[.14,.13,.04]);
+  const head=G(kid,0,1.55,0); P(unit,SK,0,.85,0,head,.95);
+  P(new T.SphereGeometry(1,22,14,0,PI*2,0,PI*.56),HAIR,0,.88,-.05,head,null,[-.42,0,0]);
+  [-1,1].forEach(s=>{ P(unit,HAIR,s*1.08,1.28,-.15,head,.3); P(unit,C.pink,s*.9,1.42,-.08,head,[.15,.11,.11]); P(unit,ink,s*.32,.9,.87,head,.11); const hl=new T.Mesh(unit,basic(0xffffff)); hl.position.set(s*.32+.04,.95,.965); hl.scale.setScalar(.035); head.add(hl); P(unit,0xff9db0,s*.58,.6,.72,head,[.17,.12,.06]); });
+  P(unit,0xeeb48e,0,.72,.94,head,.07);
+  const smile=new T.Mesh(torus(.2,.04,PI,6,16),ink); smile.position.set(0,.56,.9); smile.rotation.z=PI; head.add(smile);
+  const mouth=P(unit,0x9c2f3d,0,.46,.9,head,.001);
+  kid.scale.setScalar(1.2);
+  const arms=[-1,1].map(s=>{ const a=G(kid,s*.85,1.2,.1); a.rotation.x=-.75; P(cyl(.17,.17,1.3,10),SHIRT,0,-.65,0,a); P(unit,SK,0,-1.38,0,a,.22); return a; });
+  const bub=G(g,2.7,4.9,-3.6); bub.rotation.x=-.3; { const bm=new T.MeshLambertMaterial({color:0xffffff,emissive:0x8a8a8a}); const add=(x,y,s,sx)=>{ const m=new T.Mesh(unit,bm); m.position.set(x,y,0); m.scale.set(s*(sx||1),s,s*.45); bub.add(m); }; add(0,0,1.05,1.25); add(-1.15,-1,.26); add(-1.55,-1.4,.15); }
+  const wishG=G(bub,0,0,.55);
+  const heartGeo=(()=>{ const q=new T.ExtrudeGeometry(VORM.mk(T.Shape,'hart',1.1),{depth:.14,bevelEnabled:true,bevelThickness:.05,bevelSize:.05,bevelSegments:2}); q.center(); return q; })();
+  const plate=G(g,0,0,1); disc(1.7,.06,0xffffff,plate); { const rim=new T.Mesh(torus(1.66,.07,PI*2,8,40),M(0xdfe6ee)); rim.rotation.x=PI/2; rim.position.y=.07; plate.add(rim); }
+  const bread=G(plate,0,.07,0); mesh(crustGeo,M(0xc98a4b),0,0,0,bread); mesh(crumbGeo,M(0xf7dfb0),0,.205,0,bread); const stack=G(bread,0,.235,0);
+  const knife=G(g,2.4,.06,1.6); knife.rotation.y=-.5; P(box(1.05,.03,.2),0xc9d2dc,-.75,0,0,knife); P(box(.6,.08,.22),C.blue,.1,0,0,knife);
+  const KREST=new V3(2.4,.06,1.6);
+  const items={}; KEYS.forEach(k=>{ const m=model(k); m.userData.k=k; const gh=new T.Mesh(unit,new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); gh.scale.setScalar(.9); gh.position.y=.35; m.add(gh); g.add(m); items[k]={g:m}; });
+
+  let asp=1, wish=[], wi=0, shown=-1, wishAt=0, layers=[], done=0, lock=0, eatT0=0, eatEnd=0, cheered=false, react=null, lastOne='', ready=null;
+  const ONES=KEYS, TWOS=[['kaas','tomaat'],['vlees','komkommer'],['smeerworst','komkommer'],['kaas','vlees'],['kaas','komkommer'],['vlees','tomaat']], THREES=[['kaas','vlees','tomaat'],['kaas','tomaat','komkommer'],['vlees','tomaat','komkommer'],['kaas','vlees','komkommer'],['smeerworst','tomaat','komkommer']];
+  const pickOf=a=>a[(Math.random()*a.length)|0];
+  function layout(){ const land=asp>=1.2, pos=land?[[-3.4,-.3],[-5.1,.7],[-3.4,1.7],[3.4,-.3],[5.1,-.3],[3.4,1.7],[5.1,1.7]]:[[-1.9,5.2],[0,5.2],[1.9,5.2],[-2.85,3.4],[-.95,3.4],[.95,3.4],[2.85,3.4]];
+    KEYS.forEach((k,i)=>items[k].g.position.set(pos[i][0],0,pos[i][1])); KREST.set(land?2.2:2.1,.06,land?2.2:1.9); }
+  function showWish(){ shown=wi; wishG.children.slice().forEach(c=>wishG.remove(c));
+    if(wi<wish.length){ const m=model(wish[wi]); m.scale.setScalar(.95); m.position.y=-.42; m.rotation.x=.45; wishG.add(m); } else { const h=new T.Mesh(heartGeo,M(C.red)); wishG.add(h); }
+    popIn(wishG,.35); sfx.pop(wi+3); }
+  function newSandwich(anim){ stack.children.slice().forEach(c=>stack.remove(c)); layers=[]; wi=0; shown=-1; wishAt=Tm+(anim?.5:0); eatEnd=0; cheered=false;
+    const n=done<3?1:done<7?2:3; let w; do{ w=n===1||Math.random()<.2?[pickOf(ONES)]:n===2?pickOf(TWOS):pickOf(Math.random()<.35?TWOS:THREES); }while(w.join()===lastOne); lastOne=w.join(); wish=w.slice();
+    plate.position.set(0,0,1); bread.position.set(0,.07,0); bread.rotation.set(0,0,0); bread.scale.setScalar(1); if(anim) popIn(bread,.4); }
+  const say=(type,delay,dur)=>{ react={type,t0:Tm+(delay||0),dur}; };
+  const yes=d=>{ say('yes',d,.9); tone(523,.14,'triangle',.18,660,d); tone(784,.22,'triangle',.18,0,d+.14); };
+  const no=d=>{ say('no',d,1.3); tone(330,.18,'sine',.22,262,d); tone(247,.28,'sine',.22,196,d+.22); };
+  function tap(k){ if(Tm<lock||eatEnd) return; const good=wi<wish.length&&k===wish[wi], src=items[k].g, o=layer(k), y=layers.length*.05, dur=good?1.25:2.7; pop(src,.1); sfx.tap();
+    o.position.y=y; stack.add(o); lock=Tm+dur; if(good){ layers.push(k); wi++; wishAt=Tm+1; yes(.75); } else no(.8);
+    const from=new V3(src.position.x-plate.position.x,.5,src.position.z-plate.position.z), to=new V3(0,y,0);
+    if(SPREAD[k]){ const jar=new V3(src.position.x,.95,src.position.z), bp=new V3(0,.5+y,1); o.scale.set(.001,1,.001);
+      run(dur,q=>{ const a=good?seg(q,0,.22):seg(q,0,.12), b=good?seg(q,.22,.4):seg(q,.12,.22), s=good?seg(q,.4,.85):seg(q,.22,.42), e=good?seg(q,.85,1):seg(q,.9,1), w=good?0:seg(q,.72,.9);
+        if(e>0) knife.position.lerpVectors(bp,KREST,ease.inOut(e)); else if(b>0) knife.position.lerpVectors(jar,bp,ease.inOut(b)); else knife.position.lerpVectors(KREST,jar,ease.inOut(a));
+        if(s>0&&e===0){ knife.position.x=Math.sin(s*PI*5)*.7; knife.position.z=1+(s-.5)*1.2; } knife.rotation.set(0,e>0?-.5*e:-.5*(1-a)+.0,(a<1||e>0)?0:.25);
+        const k2=Math.max(.001,ease.out(s)*(1-w)); o.scale.set(k2,1,k2); if(q>=1&&!good) stack.remove(o); }); }
+    else run(dur,q=>{ const u=ease.inOut(good?seg(q,0,.5):seg(q,0,.24)), v=good?0:ease.inOut(seg(q,.72,.96));
+        if(v>0){ o.position.lerpVectors(to,from,v); o.position.y+=Math.sin(v*PI)*1.2; o.scale.setScalar(Math.max(.001,1-v*.9)); } else { o.position.lerpVectors(from,to,u); o.position.y+=Math.sin(u*PI)*1.4; o.scale.setScalar(.35+.65*u); o.rotation.y=(1-u)*2; }
+        if(q>=1&&!good) stack.remove(o); });
+    if(good) after(good&&!SPREAD[k]?.62:.9,()=>{ sfx.plop(); burst(new V3(0,.6,1),6,2.2,C.yellow); }); }
+  function klaar(){ if(eatEnd||Tm<lock) return; audio(); if(wi<wish.length){ no(0); pop(bub,.12); return; }
+    eatT0=Tm; eatEnd=Tm+4.8; lock=eatEnd; sfx.tap(); for(let i=0;i<9;i++) tone(170+((i%3)*18),.08,'square',.06,110,1.55+i*.27); [0,2,4,7].forEach((n,i)=>tone(NOTE[n]*2,.3,'triangle',.18,0,4+i*.1)); }
+  newSandwich(false);
+  return { g,
+    get state(){ return {wish,wi,layers,done,eatEnd,lock,items,stackN:stack.children.length,t:Tm}; },
+    frame(a){ asp=a; layout(); return a>=1.2?{c:[0,1.75,0],w:12.6,h:7.4,dir:[0,.7,1],bottom:null}:{c:[0,1.5,1.1],w:8,h:9.6,dir:[0,.7,1],bottom:null}; },
+    enter(){ ground.visible=false; decor.visible=false; scene.background=new T.Color(WALL); react=null; lock=0; knife.position.copy(KREST); knife.rotation.set(0,-.5,0); if(eatEnd){ done++; newSandwich(false); } },
+    exit(){ ground.visible=true; decor.visible=true; scene.background=null; },
+    update(dt,t){ if(shown!==wi&&Tm>=wishAt&&!eatEnd) showWish();
+      const rdy=wi>=wish.length&&!eatEnd; if(rdy!==ready){ ready=rdy; const kb=document.getElementById('bKlaar'); if(kb) kb.classList.toggle('ready',rdy); }
+      /* the child: idle, yes, no, chewing, cheering */
+      let rx=AMP*Math.sin(t*1.1)*.03, ry=AMP*Math.sin(t*.7)*.06, rzz=AMP*Math.sin(t*.9)*.03, mo=0, armUp=0, bob=0;
+      if(react){ const q=(Tm-react.t0)/react.dur; if(q>=1) react=null; else if(q>=0){ const k=Math.sin(q*PI); if(react.type==='yes') rx+=Math.sin(q*PI*4)*.28*k; else if(react.type==='no'){ ry=Math.sin(q*PI*6)*.5*k; mo=.5*k; } } }
+      if(eatEnd){ const q=Math.min(1,(Tm-eatT0)/4.8), a=ease.inOut(seg(q,0,.18)), b=ease.inOut(seg(q,.18,.3)), c=seg(q,.3,.82), d=ease.inOut(seg(q,.84,1));
+        plate.position.z=1-2.5*a+2.5*d; bread.position.set(0,.07+2.3*b,-.75*b); bread.rotation.x=.9*b; const bites=Math.min(3,Math.floor(c*3+.001)); bread.scale.setScalar(q>=.82?.001:(1-.45*b)*(1-bites/3*.92));
+        if(c>0&&c<1){ mo=.55+.45*Math.sin(c*PI*18); bob=Math.abs(Math.sin(c*PI*9))*.05; rx+=.12; } if(q>=.84){ armUp=Math.sin(seg(q,.84,1)*PI); if(!cheered){ cheered=true; burst(new V3(0,4,-2.4),30,5.5); } }
+        if(q>=1){ done++; newSandwich(true); yes(.1); } }
+      head.rotation.set(rx,ry,rzz); head.position.y=1.55+bob; mouth.scale.set(Math.max(.001,.2*mo),Math.max(.001,.24*mo),.08); smile.visible=mo<.15;
+      arms.forEach((a,i)=>{ a.rotation.x=-.75-1.9*armUp; a.rotation.z=(i?-1:1)*.35*armUp; });
+      bub.position.y=4.9+AMP*Math.sin(t*1.7)*.07; wishG.rotation.y=AMP*Math.sin(t*1.2)*.5;
+      },
+    down(ev){ const h=hit(ev,KEYS.map(k=>items[k].g).concat([kid]),true); if(!h) return; let o=h.object, k=null; while(o&&!k){ k=o.userData.k||(o===kid?'kid':null); o=o.parent; }
+      if(k==='kid'){ if(!react&&!eatEnd){ say('yes',0,.8); [4,7].forEach((n,i)=>tone(NOTE[n]*2,.16,'triangle',.14,0,i*.1)); } } else if(k) tap(k); },
+    klaar, names:NAMES,
+    reset(){ if(eatEnd) return; if(done===0&&!layers.length){ sfx.boop(); return; } sfx.boing(); done=0; newSandwich(true); }
+  };
+})();
+
 /* ---------- camera + mode switching ---------- */
-const modes={home,kleuren,aankleden,blokken,toren,memory,vormen,toverstaf};
+const modes={home,kleuren,aankleden,blokken,toren,memory,vormen,toverstaf,broodje};
 let cur='home', switching=false, camAngle=0;
 const camT=new V3(), camO=new V3(0,0,10), tmpO=new V3();
 function setCam(){ tmpO.copy(camO).applyAxisAngle(YAX,camAngle); camera.position.copy(camT).add(tmpO); camera.lookAt(camT); camera.updateMatrixWorld(); }
@@ -1007,6 +1125,7 @@ const ICON={
   cilinder:'<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11"/>',
   dak:'<path d="M3 19 12 5l9 14z"/>',
   boog:'<path d="M4 20V5h16v15h-4.5v-5a3.5 3.5 0 0 0-7 0v5z"/>',
+  check:'<path d="M5 12.5 10 17.5 19.5 7"/>',
   boem:'<path d="m12 2 2.2 5.5L20 5l-2.5 5.8L22 13l-5 1.5 1 6-5-3.5L9 21l-.5-5.5L3 14l4.5-3L5 5l5 2.5z"/>'
 };
 const ik=hx(C.ink), FACE={
@@ -1029,6 +1148,8 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
 { const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
   mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
   mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Alles weg, opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
+{ const r=sub(tr,'broodje'); mkBtn(r,{id:'brReset',icon:'reset',c:'var(--orange)',label:'Opnieuw beginnen',on:()=>broodje.reset()});
+  const p=sub(bot,'broodje'); mkBtn(p,{id:'bKlaar',icon:'check',c:'var(--green)',label:'Klaar',on:()=>broodje.klaar()}).classList.add('big'); }
 { const r=sub(tr,'toverstaf'); mkBtn(r,{id:'wNext',icon:'next',c:'var(--green)',label:'Volgende wereld',on:()=>toverstaf.next()}); }
 { const r=sub(tr,'vormen'); mkBtn(r,{id:'vReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>vormen.reset()}); }
 { const r=sub(tr,'memory'); mkBtn(r,{id:'mReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>memory.reset()}); }
