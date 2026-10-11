@@ -1127,26 +1127,43 @@ const nagels=(()=>{
   const nails=[], fingers=[];
   [[-1.27,3.1,2.3,.1,.4],[-.42,3.15,2.6,.03,.41],[.42,3.1,2.35,-.04,.4],[1.27,2.95,1.8,-.13,.34],[-1.72,1.3,1.75,.85,.45]].forEach(([x,y,len,rz,r],i)=>{
     const f=G(hand,x,y,0); f.rotation.z=rz; P(cyl(r,r,len,16),SK,0,len/2,0,f); P(unit,SK,0,len,0,f,r); P(unit,SK,0,0,0,f,r); fingers.push(f);
-    const ng=G(f,0,len-.24,r*.86), base=mesh(unit,mat(BARE,{shininess:120,specular:0x777777}),0,0,0,ng); base.scale.set(r*.82,r*1.12,.1);
+    const cv=document.createElement('canvas'); cv.width=64; cv.height=96; const ctx=cv.getContext('2d'), tex=new T.CanvasTexture(cv); tex.wrapS=T.RepeatWrapping; tex.repeat.set(2,1); ctx.fillStyle=hx(BARE); ctx.fillRect(0,0,64,96);
+    const ng=G(f,0,len-.24,r*.86), base=mesh(unit,mat(0xffffff,{map:tex,shininess:120,specular:0x777777}),0,0,0,ng); base.scale.set(r*.82,r*1.12,.1);
     const over=new T.Mesh(unit,glitM.goud); over.scale.set(r*.84,r*1.14,.115); over.visible=false; ng.add(over);
     const stick=G(ng,0,0,.13); stick.scale.setScalar(r/.4*.74);
     const gh=new T.Mesh(unit,ghost); gh.scale.setScalar(.56); gh.userData.nail=i; ng.add(gh);
-    nails.push({g:ng,base,over,stick,gh,col:null,glit:null,pic:null}); });
+    nails.push({g:ng,base,over,stick,gh,ctx,tex,rx:r*.82,ry:r*1.12,grid:new Uint8Array(48),pcol:null,col:null,glit:null,pic:null}); });
   /* the little brush (or a cotton ball for wiping) that dabs the nail */
   const brush=G(g,3.4,2.4,2.2), tipM=mat(C.red,{shininess:100}); brush.rotation.z=-.7;
   P(cyl(.13,.13,.9,12),0x2a2157,0,.75,0,brush); P(cyl(.03,.03,.32,6),0x9aa3ad,0,.2,0,brush); const tip=P(cone(.09,.34,10),tipM,0,-.1,0,brush,null,[PI,0,0]); const cotton=P(unit,0xffffff,0,-.05,0,brush,.22); cotton.visible=false;
   const REST=new V3(3.4,2.4,2.2), btgt=new V3().copy(REST); let stroke=0, backAt=0;
   let tool={t:'kleur',v:C.red,i:0}, last=-1, partied=false;
   const wpos=new V3();
-  function clear(n){ n.col=n.glit=n.pic=null; n.base.material.color.setHex(BARE); n.over.visible=false; n.stick.children.slice().forEach(c=>n.stick.remove(c)); }
+  const coat=(n,c)=>{ n.ctx.fillStyle=hx(c); n.ctx.fillRect(0,0,64,96); n.tex.needsUpdate=true; };
+  function clear(n){ n.col=n.pcol=n.glit=n.pic=null; n.grid.fill(0); coat(n,BARE); n.over.visible=false; n.stick.children.slice().forEach(c=>n.stick.remove(c)); }
+  const party=()=>{ if(!partied&&nails.every(q=>q.col!=null)){ partied=true; sfx.tada(); burst(new V3(-.3,4.5,1.5),36,6); tw(1.4,(e,q)=>{ hand.rotation.z=Math.sin(q*PI*5)*.1*(1-q); },ease.lin); } };
+  /* brushing: every touch leaves a blob of polish; once about 40% of the nail is covered the coat is finished for you */
+  let swish=0;
+  function paintAt(n,fx,fy){ if(n.pcol!==tool.v){ n.pcol=tool.v; n.col=null; n.grid.fill(0); }
+    if(n.col===tool.v) return; const x=n.ctx; x.fillStyle=hx(tool.v); x.beginPath(); x.ellipse(fx*64,fy*96,17,21,0,0,PI*2); x.fill(); n.tex.needsUpdate=true;
+    let sum=0; for(let gy=0;gy<8;gy++) for(let gx=0;gx<6;gx++){ const dx=((gx+.5)/6-fx)/(17/64), dy=((gy+.5)/8-fy)/(21/96), k=gy*6+gx; if(dx*dx+dy*dy<1) n.grid[k]=1; sum+=n.grid[k]; }
+    if(Tm-swish>.09){ swish=Tm; tone(R(700,950),.07,'triangle',.05,480); }
+    if(sum>=19){ n.col=tool.v; coat(n,tool.v); n.g.getWorldPosition(wpos); burst(wpos,6,2.2,tool.v); sfx.pop(tool.i); pop(n.g,.2); party(); } }
   function apply(i){ const n=nails[i]; n.g.getWorldPosition(wpos);
-    if(tool.t==='kleur'){ n.col=tool.v; n.base.material.color.setHex(tool.v); burst(wpos,5,2,tool.v); sfx.pop(tool.i); }
-    else if(tool.t==='glitter'){ n.glit=tool.v; n.over.material=glitM[tool.v]; n.over.visible=true; burst(wpos,7,2.4,tool.v==='goud'?0xffe45a:0xffffff); [0,1,2].forEach(q=>tone(1800+q*350,.09,'sine',.07,0,q*.05)); }
+    if(tool.t==='glitter'){ n.glit=tool.v; n.over.material=glitM[tool.v]; n.over.visible=true; burst(wpos,7,2.4,tool.v==='goud'?0xffe45a:0xffffff); [0,1,2].forEach(q=>tone(1800+q*350,.09,'sine',.07,0,q*.05)); }
     else if(tool.t==='plaatje'){ n.stick.children.slice().forEach(c=>n.stick.remove(c)); n.stick.add(sticker(tool.v)); n.pic=tool.v; popIn(n.stick,.3); sfx.note(NAILPIC.findIndex(q=>q[0]===tool.v)+4); burst(wpos,4,1.8,C.yellow); }
     else { clear(n); partied=false; sfx.boop(); }
-    pop(n.g,.18); if(tool.t!=='plaatje'){ btgt.set(wpos.x+.17,wpos.y+.21,wpos.z+.4); stroke=1; backAt=Tm+.9; }
-    if(!partied&&nails.every(q=>q.col!=null)){ partied=true; sfx.tada(); burst(new V3(-.3,4.5,1.5),36,6); tw(1.4,(e,q)=>{ hand.rotation.z=Math.sin(q*PI*5)*.1*(1-q); },ease.lin); } }
-  function cast(ev,isTap){ const h=hit(ev,nails.map(n=>n.gh)); if(!h){ last=-1; return; } const i=h.object.userData.nail; if(!isTap&&i===last) return; last=i; apply(i); }
+    pop(n.g,.18); }
+  const inv=new T.Matrix4(), ro=new V3(), rd=new V3(), lp=new V3();
+  /* where the finger points, measured in the flat space of a nail (or of the whole hand) */
+  const onPlane=(obj,z)=>{ obj.updateWorldMatrix(true,false); inv.copy(obj.matrixWorld).invert(); ro.copy(ray.ray.origin).applyMatrix4(inv); rd.copy(ray.ray.direction).transformDirection(inv); if(Math.abs(rd.z)<1e-4) return null; const t=(z-ro.z)/rd.z; return lp.set(ro.x+rd.x*t,ro.y+rd.y*t,z); };
+  function cast(ev,isTap){ const h=hit(ev,nails.map(n=>n.gh)); backAt=Tm+.7;
+    if(!h){ last=-1; const q=onPlane(hand,.5); if(q&&tool.t!=='plaatje'){ hand.localToWorld(q); btgt.set(q.x+.17,q.y+.21,q.z+.15); } return; }
+    const i=h.object.userData.nail, n=nails[i], q=onPlane(n.g,.1); if(!q) return;
+    const fx=Math.acos(Math.max(-1,Math.min(1,-q.x/n.rx)))/PI, fy=Math.acos(Math.max(-1,Math.min(1,q.y/n.ry)))/PI;
+    n.g.localToWorld(q); btgt.set(q.x+.17,q.y+.21,q.z+.12); stroke=Math.max(stroke,.5);
+    if(tool.t==='kleur'){ paintAt(n,fx,fy); return; }
+    if(!isTap&&i===last) return; last=i; apply(i); stroke=1; }
   return { g,
     get state(){ return {nails,tool,t:Tm}; },
     frame(a){ return a>=1.2?{c:[-.55,3.75,-.6],w:6,h:6.4,dir:[0,.45,1],bottom:null,sw:true,rows:2}:{c:[-.55,3.25,-.6],w:5.8,h:7.4,dir:[0,.45,1],bottom:null,sw:true,rows:2}; },
