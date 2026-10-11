@@ -59,6 +59,23 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .btn.bin.hot{animation:none;transform:scale(1.4);border-color:var(--ink)}
 @keyframes klaar{50%{transform:scale(1.18)}}
 
+/* the start screen: two big cards to choose how to play */
+#start{position:absolute;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(88,198,255,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);overflow:auto}
+#start .in{display:grid;justify-items:center;gap:clamp(12px,3.4vmin,26px);max-width:100%}
+#start h1{margin:0;font:800 clamp(34px,10vmin,68px)/1 var(--display);color:var(--paper);text-shadow:0 5px 0 var(--shade);letter-spacing:.01em}
+.modes{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(12px,3.4vmin,26px)}
+.mode{display:grid;justify-items:center;align-content:start;gap:4px;width:clamp(138px,40vmin,236px);padding:clamp(12px,3vmin,22px) 12px clamp(14px,3.4vmin,24px);border:5px solid var(--paper);border-radius:30px;background:var(--paper);color:var(--ink);font-family:var(--display);cursor:pointer;box-shadow:0 8px 0 var(--shade);transition:transform .12s,box-shadow .12s,border-color .12s;touch-action:manipulation}
+.mode:hover{border-color:var(--yellow)}
+.mode:active{transform:translateY(5px) scale(.97);box-shadow:0 3px 0 var(--shade)}
+.mode:focus-visible,.go:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.mode svg{width:clamp(74px,22vmin,128px);height:auto}
+.mode b{font:800 clamp(22px,6vmin,34px)/1.1 var(--display)}
+.mode span{font:700 clamp(13px,3.3vmin,17px)/1.25 var(--display);text-align:center;opacity:.8;max-width:11em}
+.go{padding:.5em 1.3em;border:4px solid var(--paper);border-radius:999px;background:var(--orange);color:var(--paper);font:800 clamp(18px,4.6vmin,24px)/1 var(--display);cursor:pointer;box-shadow:0 6px 0 var(--shade);touch-action:manipulation}
+.go:active{transform:translateY(4px);box-shadow:0 2px 0 var(--shade)}
+/* creative: no stock, no prices, no buildings */
+body.vrij #hud,body.vrij .cost,body.vrij #tab-huis{display:none}
+@media (prefers-reduced-motion:reduce){.mode,.go{transition:none}}
 #fail{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:24px;text-align:center;font:700 20px/1.4 var(--display);background:var(--paper);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.btn.ready,.btn.bin{animation:none}.btn,.sw{transition:none}}
 </style>
@@ -70,6 +87,14 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
     <div class="hud" id="hud" role="status" aria-label="Voorraad bij de fabriek: hout en steen"><span id="hudH"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.500 12 5l9 4.500v7L12 21l-9-4.500z" fill="#a8683a"/><path d="M3 9.500 12 14l9-4.500L12 5z" fill="#c98a55"/><path d="M12 14v7" stroke="#7a4a26" stroke-width="1.200"/></svg><b>20</b></span><span id="hudS"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.500 12 5l9 4.500v7L12 21l-9-4.500z" fill="#8791a6"/><path d="M3 9.500 12 14l9-4.500L12 5z" fill="#b4bccb"/><path d="M12 14v7" stroke="#5f6980" stroke-width="1.200"/></svg><b>0</b></span></div>
     <div class="grp" id="tr"></div></div>
   <div class="bar bottom" id="bot"></div>
+  <div id="start"><div class="in">
+    <h1>Treinbaan</h1>
+    <div class="modes">
+      <button type="button" class="mode" id="start-vrij"><svg viewBox="0 0 64 48" aria-hidden="true"><rect x="5" y="25" width="19" height="19" rx="3" fill="#ff4d5a"/><rect x="25" y="25" width="19" height="19" rx="3" fill="#2f9bff"/><rect x="15" y="5" width="19" height="19" rx="3" fill="#ffd22e"/><path d="M46 44V30a8 8 0 0 1 16 0v14h-5V31a3 3 0 0 0-6 0v13z" fill="#9b63ff"/><path d="m47 6 2 4.500 4.800.500-3.600 3.300 1 4.700-4.200-2.400-4.200 2.400 1-4.700-3.600-3.300 4.800-.500z" fill="#ff9a1f"/></svg><b>Creatief</b><span>Lege wereld, alles gratis</span></button>
+      <button type="button" class="mode" id="start-camp"><svg viewBox="0 0 64 48" aria-hidden="true"><path d="M16 4 5 20h5L3 31h10v8h6v-8h10l-7-11h5z" fill="#2f9e5b"/><rect x="13" y="38" width="6" height="6" fill="#a8683a"/><path d="M35 28 44 23.500l9 4.500v9L44 41.500 35 37z" fill="#a8683a"/><path d="M35 28l9 4.500 9-4.500-9-4.500z" fill="#c98a55"/><path d="M47 13 54 9.500l7 3.500v7L54 23.500 47 20z" fill="#8791a6"/><path d="M47 13l7 3.500 7-3.500-7-3.500z" fill="#b4bccb"/><rect x="3" y="43" width="58" height="3" rx="1.500" fill="#f2c078"/></svg><b>Campagne</b><span>Hak hout en steen en verdien je rails</span></button>
+    </div>
+    <button type="button" class="go" id="start-door" hidden>Verder spelen</button>
+  </div></div>
   <p id="fail" hidden>Dit spel heeft 3D nodig. Open het in een nieuwere browser.</p>
 </div>
 
@@ -403,7 +428,7 @@ const trein=(()=>{
   { const dm=new T.MeshLambertMaterial({color:0xe6f7cc}), im=new T.InstancedMesh(cyl(.13,.13,.02,12),dm,(BX+1)*(BZ+1)), o=new T.Object3D(); let i=0;
     for(let x=-BX;x<=BX;x+=2) for(let z=-BZ;z<=BZ;z+=2){ o.position.set(x,hAt(x,z)+.011,z); o.updateMatrix(); im.setMatrixAt(i++,o.matrix); } im.frustumCulled=false; im.receiveShadow=true; g.add(im); }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]], oP=[[0,0],[-1.3,0],[1.3,0],[-.9,.3],[.9,-.3],[-.9,-.3],[.9,.3],[-.45,0],[.45,0]], oT=[[.78,0],[-.78,0],[.78,.7],[-.78,.7],[.78,-.7],[-.78,-.7]];
@@ -587,8 +612,8 @@ const trein=(()=>{
   /* the dots a piece of this net may start on */
   function eachDot(net,fn){ const a=net==='road'?BX-1:BX, b=net==='road'?BZ-1:BZ; for(let x=-a;x<=a;x+=2) for(let z=-b;z<=b;z+=2) fn(x,z); }
   /* the stock at the factory: paying for a piece, getting it back from the bin, a block that is stacked */
-  const canPay=type=>{ const c=COST[type]; for(const k in c) if(stock[k]<c[k]) return false; return true; };
-  function pay(type,sign){ const c=COST[type]; for(const k in c) stock[k]-=c[k]*sign; restack(); stockUI(stock); }
+  const canPay=type=>{ if(mode!=='camp') return true; const c=COST[type]; for(const k in c) if(stock[k]<c[k]) return false; return true; };   /* in the creative game everything is free */
+  function pay(type,sign){ if(mode!=='camp') return; const c=COST[type]; for(const k in c) stock[k]-=c[k]*sign; restack(); stockUI(stock); }
   function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } if(!canPay(type)){ sfx.boing(); stockUI(stock,null,true); return; } const q=0, t=TYPE[type], e=lowEdge(), xc=(e.x0+e.x1)/2, hw=(e.x1-e.x0)/2-1.2, zt=panZ-vd/2+1.5; let best=null, bc=1e9;
     /* first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
     for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o=rest({type,x,z,q,lv:0,m:1}); mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } });
@@ -811,13 +836,16 @@ const trein=(()=>{
       if(h.cand&&h.cand.p.live){ mount(v,h.cand); if(v.loco&&v.c) toot(); else if(v.sort==='auto'&&v.c) honk(); else sfx.plop(); }
       else if(out){ g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
       else { setFree(v,clampN(F.x,MX-.5),clampN(F.z,MZ-.4),h.yaw); sfx.plop(); } } }
-  /* everything away, and the forest stands again */
-  function reset(){ if(!pieces.length&&!vehs.length&&!blocks.length&&!props.length&&!cranes.length&&!mills.length&&trees.every(t=>t.alive)&&rocks.every(r=>r.left===ROCK)&&stock.hout===START.hout&&stock.steen===START.steen){ sfx.boop(); return; } if(held&&held.kind==='b') world.addBody(held.rec.b); cranes.forEach(k=>{ craneStop(k); craneBody(k,false); g.remove(k.g); });
-    mills.slice().forEach(removeMill); for(const t of trees){ t.res=null; if(t.alive) continue; t.alive=true; t.g.rotation.set(0,t.yaw,0); t.g.scale.setScalar(t.sc); t.g.userData.s0=null; g.add(t.g); popIn(t.g,.4); if(t.b&&world) world.addBody(t.b); }
+  /* the forest and the rocks: all of them back (campaign), or none at all (creative) */
+  function nature(on){ for(const t of trees){ t.res=null; if(t.alive===on) continue; t.alive=on; if(on){ t.g.rotation.set(0,t.yaw,0); t.g.scale.setScalar(t.sc); t.g.userData.s0=null; g.add(t.g); popIn(t.g,.4); if(t.b&&world) world.addBody(t.b); } else { g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } }
+    for(const r of rocks){ r.res=null; const has=r.left>0; if(on){ if(r.left===ROCK) continue; r.left=ROCK; rockSize(r); if(!has){ g.add(r.g); if(r.b&&world) world.addBody(r.b); } popIn(r.g,.4); } else if(has){ r.left=0; g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } } }
+  /* everything that was put down goes away */
+  function wipe(){ if(held&&held.kind==='b') world.addBody(held.rec.b); cranes.forEach(k=>{ craneStop(k); craneBody(k,false); g.remove(k.g); }); mills.slice().forEach(removeMill);
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); });
-    for(const r of rocks){ r.res=null; if(r.left===ROCK) continue; const gone=!r.left; r.left=ROCK; rockSize(r); if(gone){ g.add(r.g); if(r.b&&world) world.addBody(r.b); } popIn(r.g,.4); }
-    stock.hout=START.hout; stock.steen=START.steen; stockDirty=true;
-    pieces=[]; vehs=[]; cons=[]; props=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); sfx.boing(); }
+    stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
+  /* start again: everything away, and in the campaign the forest and the rocks stand again */
+  function reset(){ const camp=mode==='camp'; if(!pieces.length&&!vehs.length&&!blocks.length&&!props.length&&!cranes.length&&!mills.length&&(!camp||(trees.every(t=>t.alive)&&rocks.every(r=>r.left===ROCK)&&stock.hout===START.hout&&stock.steen===START.steen))){ sfx.boop(); return; }
+    wipe(); nature(camp); sfx.boing(); }
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   return { g, add, addTrain, addSensor, addCrane, addMill, reset, COST,
@@ -829,6 +857,9 @@ const trein=(()=>{
     frame(W,H,top,bottom,th){ wide=true; botPx=bottom; ppuV=Math.max(28,Math.min(64,Math.sqrt(W*H)/18))/(1+tallA*.05); vw=W/ppuV; vd=Math.max(.4*H,H-top-bottom)/ppuV/.743;
       panX=clampN(panX,Math.max(0,MX+1-vw/2)); panZ=clampN(panZ,Math.max(0,MZ+1.2-vd/2)); return {c:[panX,.3+tallA/2,panZ],d:H/(2*th*ppuV),dir:[0,1,.9]}; },
     get pan(){ return [panX,panZ]; },
+    get mode(){ return mode; },
+    /* choose how to play ('camp' or 'vrij'): a fresh world either way */
+    setMode(m){ mode=m==='vrij'?'vrij':'camp'; wipe(); nature(mode==='camp'); panX=panZ=0; applyCamera(); },
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
@@ -899,6 +930,7 @@ const ICON={
   dak:'<path d="M3 19 12 5l9 14z"/>',
   boog:'<path d="M4 20V5h16v15h-4.5v-5a3.5 3.5 0 0 0-7 0v5z"/>',
   bin:'<path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13M10 11v5.500M14 11v5.500"/>',
+  menu:'<rect x="4" y="4" width="6.500" height="6.500" rx="1.500"/><rect x="13.500" y="4" width="6.500" height="6.500" rx="1.500"/><rect x="4" y="13.500" width="6.500" height="6.500" rx="1.500"/><rect x="13.500" y="13.500" width="6.500" height="6.500" rx="1.500"/>',
   full:'<path d="M4 9.500V4h5.500M14.500 4H20v5.500M20 14.500V20h-5.500M9.500 20H4v-5.500"/>',
   small:'<path d="M9.500 4v5.500H4M20 9.500h-5.500V4M14.500 20v-5.500H20M4 14.500h5.500V20"/>'
 };
@@ -909,7 +941,7 @@ const tl=$('#tl'), tr=$('#tr'), bot=$('#bot'); let fitBar=()=>{};
 /* the price of a piece sits on its button: brown for wood, grey for stone; the button fades when the stock is too small */
 const priced=[];
 function price(b,k){ const c=trein.COST[k]; Object.keys(c).forEach((kind,i)=>{ const e=document.createElement('span'); e.className='cost'+(kind==='steen'?' st':'')+(i?' two':''); e.textContent=c[kind]; b.appendChild(e); }); priced.push([b,c]); b.title+=' ('+Object.keys(c).map(kind=>c[kind]+' '+kind).join(' en ')+')'; return b; }
-priceUI=st=>{ for(const [b,c] of priced) b.classList.toggle('poor',Object.keys(c).some(k=>st[k]<c[k])); };
+priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classList.toggle('poor',!free&&Object.keys(c).some(k=>st[k]<c[k])); };
 mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid aan of uit',on:b=>{ muted=!muted; try{ localStorage.setItem('treinbaan-stil',muted?'1':'0'); }catch(e){} b.querySelector('svg').innerHTML=ICON[muted?'mute':'sound']; sfx.tap(); }});
 { /* full screen, where the browser can do that (an iPhone cannot) */
   const el=document.documentElement, go=el.requestFullscreen||el.webkitRequestFullscreen, stop=document.exitFullscreen||document.webkitExitFullscreen, isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
@@ -936,6 +968,11 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
     grp.style.maxWidth=''; tabs.style.flexBasis=''; let v=base; size(v); while(!row()&&v>48){ v-=2; size(v); }
     if(!row()){ v=Math.min(base,56); size(v); if(kids.length*(v+8)+24<=p.clientWidth) tabs.style.flexBasis='100%'; else grp.style.maxWidth=(Math.ceil(kids.length/2)*(v+8)+24)+'px'; } };
   const tabTo=(t,b)=>{ gR.hidden=t!=='rails'; gW.hidden=t!=='weg'; gH.hidden=t!=='huis'; gB.hidden=t!=='blok'; choose(tb,b); fitBar(); trein.setTab(t); };
+  /* the start screen: creative or campaign. It comes first, and the menu button top left brings it back */
+  const startEl=$('#start'), door=$('#start-door'); let started=false;
+  const play=m=>{ audio(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); startEl.hidden=true; tabTo('rails',tb[0]); sfx.tada(); };
+  $('#start-vrij').addEventListener('click',()=>play('vrij')); $('#start-camp').addEventListener('click',()=>play('camp')); door.addEventListener('click',()=>{ audio(); startEl.hidden=true; sfx.tap(); });
+  mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Terug naar het begin: creatief of campagne kiezen',on:()=>{ sfx.tap(); door.hidden=!started; startEl.hidden=false; (started?door:$('#start-camp')).focus(); }});
   tb.push(mkBtn(tabs,{id:'tab-rails',cls:'sw',svg:ST.recht,c:'#f2c078',i:'var(--ink)',label:'Rails en treinen',on:b=>tabTo('rails',b)}),mkBtn(tabs,{id:'tab-weg',cls:'sw',svg:ST.weg,c:'#687189',label:'Weg en auto\'s',on:b=>tabTo('weg',b)}),mkBtn(tabs,{id:'tab-huis',cls:'sw',svg:'<path d="M3.500 11 12 4l8.500 7M5.500 9.500V20h13V9.500"/><path d="M10 20v-5.500h4V20"/>',c:'var(--brown)',label:'Gebouwen',on:b=>tabTo('huis',b)}),mkBtn(tabs,{id:'tab-blok',cls:'sw',icon:'kubus',c:'var(--red)',label:'Bouwblokken',on:b=>tabTo('blok',b)})); tb[0].classList.add('on');
   [['recht','Recht stuk'],['bocht','Bocht'],['brug','Brug omhoog of omlaag'],['wissel','Wissel: tik erop om hem om te zetten']].forEach(([k,l])=>price(mkBtn(gR,{id:'spoor-'+k,svg:ST[k],c:'#f2c078',i:'var(--ink)',label:l,on:()=>trein.add(k)}),k));
   const wh='<circle cx="8" cy="18" r="2.600" fill="'+ik+'"/><circle cx="16" cy="18" r="2.600" fill="'+ik+'"/>';
