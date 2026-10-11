@@ -1026,7 +1026,7 @@ const broodje=(()=>{
   const mouth=P(unit,0x9c2f3d,0,.46,.9,head,.001);
   kid.scale.setScalar(1.2);
   const arms=[-1,1].map(s=>{ const a=G(kid,s*.85,1.2,.1); a.rotation.x=-.75; P(cyl(.17,.17,1.3,10),SHIRT,0,-.65,0,a); P(unit,SK,0,-1.38,0,a,.22); return a; });
-  const bub=G(g,2.7,4.9,-3.6); bub.rotation.x=-.3; { const bm=new T.MeshLambertMaterial({color:0xffffff,emissive:0x8a8a8a}); const add=(x,y,s,sx)=>{ const m=new T.Mesh(unit,bm); m.position.set(x,y,0); m.scale.set(s*(sx||1),s,s*.45); bub.add(m); }; add(0,0,1.05,1.25); add(-1.15,-1,.26); add(-1.55,-1.4,.15); }
+  const bub=G(g,2.7,4.9,-3.6); bub.rotation.x=-.3; { const bm=new T.MeshLambertMaterial({color:0xcfe9ff,emissive:0x6f7f8c}); const add=(x,y,s,sx)=>{ const m=new T.Mesh(unit,bm); m.position.set(x,y,0); m.scale.set(s*(sx||1),s,s*.45); bub.add(m); }; add(0,0,1.05,1.25); add(-1.15,-1,.26); add(-1.55,-1.4,.15); }
   const wishG=G(bub,0,0,.55);
   const heartGeo=(()=>{ const q=new T.ExtrudeGeometry(VORM.mk(T.Shape,'hart',1.1),{depth:.14,bevelEnabled:true,bevelThickness:.05,bevelSize:.05,bevelSegments:2}); q.center(); return q; })();
   const plate=G(g,0,0,1); disc(1.7,.06,0xffffff,plate); { const rim=new T.Mesh(torus(1.66,.07,PI*2,8,40),M(0xdfe6ee)); rim.rotation.x=PI/2; rim.position.y=.07; plate.add(rim); }
@@ -1035,22 +1035,28 @@ const broodje=(()=>{
   const KREST=new V3(2.4,.06,1.6);
   const items={}; KEYS.forEach(k=>{ const m=model(k); m.userData.k=k; const gh=new T.Mesh(unit,new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); gh.scale.setScalar(.9); gh.position.y=.35; m.add(gh); g.add(m); items[k]={g:m}; });
 
-  let asp=1, wish=[], wi=0, shown=-1, wishAt=0, layers=[], done=0, lock=0, eatT0=0, eatEnd=0, cheered=false, react=null, lastOne='', ready=null;
-  const ONES=KEYS, TWOS=[['kaas','tomaat'],['vlees','komkommer'],['smeerworst','komkommer'],['kaas','vlees'],['kaas','komkommer'],['vlees','tomaat']], THREES=[['kaas','vlees','tomaat'],['kaas','tomaat','komkommer'],['vlees','tomaat','komkommer'],['kaas','vlees','komkommer'],['smeerworst','tomaat','komkommer']];
-  const pickOf=a=>a[(Math.random()*a.length)|0];
+  let asp=1, wish=[], got=[], left=0, shown='', wishAt=0, layers=[], done=0, lock=0, eatT0=0, eatEnd=0, cheered=false, react=null, lastOne='', ready=null, bubY=4.9;
+  const SAVORY=['smeerworst','kaas','vlees','tomaat','komkommer'];
+  const pickOf=a=>a[(Math.random()*a.length)|0], some=n=>{ const a=SAVORY.slice(), o=[]; while(o.length<n) o.push(a.splice((Math.random()*a.length)|0,1)[0]); return o; };
+  const tick=()=>{ const c=new T.Group(), d=new T.Mesh(cyl(.3,.3,.08,20),M(C.green)); d.rotation.x=PI/2; c.add(d); [[.07,.01,.3,-.6],[-.1,-.07,.17,.8]].forEach(q=>{ const b=new T.Mesh(box(.08,q[2],.05),basic(0xffffff)); b.position.set(q[0],q[1],.06); b.rotation.z=q[3]; c.add(b); }); return c; };
   function layout(){ const land=asp>=1.2, pos=land?[[-3.4,-.3],[-5.1,.7],[-3.4,1.7],[3.4,-.3],[5.1,-.3],[3.4,1.7],[5.1,1.7]]:[[-1.9,5.2],[0,5.2],[1.9,5.2],[-2.85,3.4],[-.95,3.4],[.95,3.4],[2.85,3.4]];
     KEYS.forEach((k,i)=>items[k].g.position.set(pos[i][0],0,pos[i][1])); KREST.set(land?2.2:2.1,.06,land?2.2:1.9); }
-  function showWish(){ shown=wi; wishG.children.slice().forEach(c=>wishG.remove(c));
-    if(wi<wish.length){ const m=model(wish[wi]); m.scale.setScalar(.95); m.position.y=-.42; m.rotation.x=.45; wishG.add(m); } else { const h=new T.Mesh(heartGeo,M(C.red)); wishG.add(h); }
-    popIn(wishG,.35); sfx.pop(wi+3); }
-  function newSandwich(anim){ stack.children.slice().forEach(c=>stack.remove(c)); layers=[]; wi=0; shown=-1; wishAt=Tm+(anim?.5:0); eatEnd=0; cheered=false;
-    const n=done<3?1:done<7?2:3; let w; do{ w=n===1||Math.random()<.2?[pickOf(ONES)]:n===2?pickOf(TWOS):pickOf(Math.random()<.35?TWOS:THREES); }while(w.join()===lastOne); lastOne=w.join(); wish=w.slice();
+  /* the bubble shows the whole wish at once; what is already on the bread gets a green tick */
+  function placeBub(){ const n=Math.max(1,wish.length); bub.children[0].scale.x=1.05*[1.25,1.75,2.15][n-1];
+    if(n===1){ bub.position.x=2.7; bubY=4.9; } else if(asp>=1.2){ bub.position.x=3.5+(n-2)*.4; bubY=4.7; } else { bub.position.x=n===3?1.2:1.6; bubY=5.8; } }
+  function showWish(){ shown=got.join(); wishG.children.slice().forEach(c=>wishG.remove(c)); const n=wish.length, sc=[.95,.78,.66][n-1], dx=[0,1.3,1.12][n-1]; placeBub();
+    if(left===0){ wishG.add(new T.Mesh(heartGeo,M(C.red))); }
+    else wish.forEach((k,i)=>{ const x=(i-(n-1)/2)*dx; if(got[i]){ const c=tick(); c.position.set(x,0,.1); c.scale.setScalar(sc*1.3); wishG.add(c); } else { const m=model(k); m.scale.setScalar(sc); m.position.set(x,-.42*sc,0); m.rotation.x=.45; wishG.add(m); } });
+    popIn(wishG,.35); sfx.pop(wish.length-left+3); }
+  function newSandwich(anim){ stack.children.slice().forEach(c=>stack.remove(c)); layers=[]; shown=''; wishAt=Tm+(anim?.5:0); eatEnd=0; cheered=false;
+    /* 1 thing on the first sandwich, 2 on the next two, then mostly 3; a sweet one on its own now and then */
+    const n=done<1?1:done<3?2:3; let w; do{ w=n===1||Math.random()<.15?[pickOf(KEYS)]:some(n===3&&Math.random()<.25?2:n); }while(w.slice().sort().join()===lastOne); lastOne=w.slice().sort().join(); wish=w; got=w.map(()=>false); left=w.length;
     plate.position.set(0,0,1); bread.position.set(0,.07,0); bread.rotation.set(0,0,0); bread.scale.setScalar(1); if(anim) popIn(bread,.4); }
   const say=(type,delay,dur)=>{ react={type,t0:Tm+(delay||0),dur}; };
   const yes=d=>{ say('yes',d,.9); tone(523,.14,'triangle',.18,660,d); tone(784,.22,'triangle',.18,0,d+.14); };
   const no=d=>{ say('no',d,1.3); tone(330,.18,'sine',.22,262,d); tone(247,.28,'sine',.22,196,d+.22); };
-  function tap(k){ if(Tm<lock||eatEnd) return; const good=wi<wish.length&&k===wish[wi], src=items[k].g, o=layer(k), y=layers.length*.05, dur=good?1.25:2.7; pop(src,.1); sfx.tap();
-    o.position.y=y; stack.add(o); lock=Tm+dur; if(good){ layers.push(k); wi++; wishAt=Tm+1; yes(.75); } else no(.8);
+  function tap(k){ if(Tm<lock||eatEnd) return; const idx=wish.findIndex((q,i)=>q===k&&!got[i]), good=idx>=0, src=items[k].g, o=layer(k), y=SPREAD[k]?0:.045+layers.filter(q=>!SPREAD[q]).length*.05, dur=good?1.25:2.7; pop(src,.1); sfx.tap();
+    o.position.y=y; stack.add(o); lock=Tm+dur; if(good){ layers.push(k); got[idx]=true; left--; wishAt=Tm+1; yes(.75); } else no(.8);
     const from=new V3(src.position.x-plate.position.x,.5,src.position.z-plate.position.z), to=new V3(0,y,0);
     if(SPREAD[k]){ const jar=new V3(src.position.x,.95,src.position.z), bp=new V3(0,.5+y,1); o.scale.set(.001,1,.001);
       run(dur,q=>{ const a=good?seg(q,0,.22):seg(q,0,.12), b=good?seg(q,.22,.4):seg(q,.12,.22), s=good?seg(q,.4,.85):seg(q,.22,.42), e=good?seg(q,.85,1):seg(q,.9,1), w=good?0:seg(q,.72,.9);
@@ -1061,16 +1067,16 @@ const broodje=(()=>{
         if(v>0){ o.position.lerpVectors(to,from,v); o.position.y+=Math.sin(v*PI)*1.2; o.scale.setScalar(Math.max(.001,1-v*.9)); } else { o.position.lerpVectors(from,to,u); o.position.y+=Math.sin(u*PI)*1.4; o.scale.setScalar(.35+.65*u); o.rotation.y=(1-u)*2; }
         if(q>=1&&!good) stack.remove(o); });
     if(good) after(good&&!SPREAD[k]?.62:.9,()=>{ sfx.plop(); burst(new V3(0,.6,1),6,2.2,C.yellow); }); }
-  function klaar(){ if(eatEnd||Tm<lock) return; audio(); if(wi<wish.length){ no(0); pop(bub,.12); return; }
+  function klaar(){ if(eatEnd||Tm<lock) return; audio(); if(left>0){ no(0); pop(bub,.12); return; }
     eatT0=Tm; eatEnd=Tm+4.8; lock=eatEnd; sfx.tap(); for(let i=0;i<9;i++) tone(170+((i%3)*18),.08,'square',.06,110,1.55+i*.27); [0,2,4,7].forEach((n,i)=>tone(NOTE[n]*2,.3,'triangle',.18,0,4+i*.1)); }
   newSandwich(false);
   return { g,
-    get state(){ return {wish,wi,layers,done,eatEnd,lock,items,stackN:stack.children.length,t:Tm}; },
-    frame(a){ asp=a; layout(); return a>=1.2?{c:[0,1.75,0],w:12.6,h:7.4,dir:[0,.7,1],bottom:null}:{c:[0,1.5,1.1],w:8,h:9.6,dir:[0,.7,1],bottom:null}; },
+    get state(){ return {wish,wi:wish.length-left,layers,done,eatEnd,lock,items,stackN:stack.children.length,t:Tm}; },
+    frame(a){ asp=a; layout(); placeBub(); return a>=1.2?{c:[0,1.75,0],w:12.6,h:7.4,dir:[0,.7,1],bottom:null}:{c:[0,1.85,1.1],w:8,h:9.6,dir:[0,.7,1],bottom:null}; },
     enter(){ ground.visible=false; decor.visible=false; scene.background=new T.Color(WALL); react=null; lock=0; knife.position.copy(KREST); knife.rotation.set(0,-.5,0); if(eatEnd){ done++; newSandwich(false); } },
     exit(){ ground.visible=true; decor.visible=true; scene.background=null; },
-    update(dt,t){ if(shown!==wi&&Tm>=wishAt&&!eatEnd) showWish();
-      const rdy=wi>=wish.length&&!eatEnd; if(rdy!==ready){ ready=rdy; const kb=document.getElementById('bKlaar'); if(kb) kb.classList.toggle('ready',rdy); }
+    update(dt,t){ if(shown!==got.join()&&Tm>=wishAt&&!eatEnd) showWish();
+      const rdy=left===0&&!eatEnd; if(rdy!==ready){ ready=rdy; const kb=document.getElementById('bKlaar'); if(kb) kb.classList.toggle('ready',rdy); }
       /* the child: idle, yes, no, chewing, cheering */
       let rx=AMP*Math.sin(t*1.1)*.03, ry=AMP*Math.sin(t*.7)*.06, rzz=AMP*Math.sin(t*.9)*.03, mo=0, armUp=0, bob=0;
       if(react){ const q=(Tm-react.t0)/react.dur; if(q>=1) react=null; else if(q>=0){ const k=Math.sin(q*PI); if(react.type==='yes') rx+=Math.sin(q*PI*4)*.28*k; else if(react.type==='no'){ ry=Math.sin(q*PI*6)*.5*k; mo=.5*k; } } }
@@ -1080,7 +1086,7 @@ const broodje=(()=>{
         if(q>=1){ done++; newSandwich(true); yes(.1); } }
       head.rotation.set(rx,ry,rzz); head.position.y=1.55+bob; mouth.scale.set(Math.max(.001,.2*mo),Math.max(.001,.24*mo),.08); smile.visible=mo<.15;
       arms.forEach((a,i)=>{ a.rotation.x=-.75-1.9*armUp; a.rotation.z=(i?-1:1)*.35*armUp; });
-      bub.position.y=4.9+AMP*Math.sin(t*1.7)*.07; wishG.rotation.y=AMP*Math.sin(t*1.2)*.5;
+      bub.position.y=bubY+AMP*Math.sin(t*1.7)*.07; wishG.rotation.y=AMP*Math.sin(t*1.2)*.5;
       },
     down(ev){ const h=hit(ev,KEYS.map(k=>items[k].g).concat([kid]),true); if(!h) return; let o=h.object, k=null; while(o&&!k){ k=o.userData.k||(o===kid?'kid':null); o=o.parent; }
       if(k==='kid'){ if(!react&&!eatEnd){ say('yes',0,.8); [4,7].forEach((n,i)=>tone(NOTE[n]*2,.16,'triangle',.14,0,i*.1)); } } else if(k) tap(k); },
