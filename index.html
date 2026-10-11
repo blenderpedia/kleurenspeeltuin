@@ -338,7 +338,7 @@ const VORM=(()=>{
 /* ---------- home ---------- */
 const home=(()=>{
   const g=new T.Group(); scene.add(g);
-  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink],['memory','Memory',C.orange],['vormen','Vormen',C.purple],['toverstaf','Toverstaf',C.red],['broodje','Broodje',0x2fc9c0],['nagels','Nagels',0x9be564]];
+  const defs=[['kleuren','Kleuren',C.yellow],['aankleden','Aankleden',C.blue],['blokken','Blokken',C.green],['toren','Regenboogtoren',C.pink],['memory','Memory',C.orange],['vormen','Vormen',C.purple],['toverstaf','Toverstaf',C.red],['broodje','Broodje',0x2fc9c0],['nagels','Nagels',0x9be564],['tanden','Tanden',0x4f6fe0]];
   const plateGeo=roundBox(3.4,3.4,.5,.7,.12), innerGeo=roundBox(2.9,2.9,.12,.5,.04), labels=$('#labels');
   const items=defs.map(([id,label,c])=>{
     const it=new T.Group(); g.add(it);
@@ -360,6 +360,8 @@ const home=(()=>{
     const bg=new T.ExtrudeGeometry(bs,{depth:.22,bevelEnabled:true,bevelThickness:.04,bevelSize:.04,bevelSegments:2}); bg.rotateX(-PI/2); mesh(bg,mat(0xc98a4b),0,-.2,.1,t);
     const kg=roundBox(1.5,1.5,.08,.14,.02); kg.rotateX(-PI/2); mesh(kg,mat(0xffc93d),0,.1,.1,t); [[-.4,-.2],[.4,-.2],[0,.5]].forEach(p=>{ mesh(cyl(.3,.3,.07,20),mat(0xe8392e),p[0],.2,.1+p[1],t); mesh(cyl(.22,.22,.08,20),mat(0xff7a66),p[0],.2,.1+p[1],t); }); }
   { const t=items[8].toy; t.rotation.z=-.2; mesh(roundBox(1.3,1.5,.8,.4,.1),mat(C.pink,{shininess:110,specular:0x777777}),0,-.45,0,t); mesh(cyl(.26,.3,1.05,14),mat(C.ink),0,.82,0,t); const hs=new T.Mesh(new T.ShapeGeometry(VORM.mk(T.Shape,'hart',.6)),basic(0xffffff)); hs.position.set(0,-.45,.42); t.add(hs); }
+  { const t=items[9].toy, wm=mat(0xffffff,{shininess:90,specular:0x555555}); mesh(roundBox(1.25,1.2,.7,.4,.1),wm,-.2,.25,0,t); [-1,1].forEach(q=>mesh(sph(.34,14,10),wm,-.2+q*.32,-.5,0,t)); mesh(sph(.07,8,6),basic(C.ink),-.42,.35,.38,t); mesh(sph(.07,8,6),basic(C.ink),.02,.35,.38,t);
+    const bg=new T.Group(); bg.position.set(.55,-.75,.5); bg.rotation.z=.9; t.add(bg); mesh(roundBox(.26,1.9,.16,.1,.03),mat(0x2fc9c0),0,0,0,bg); mesh(box(.32,.5,.22),mat(0xbfe6ff),0,1.05,.08,bg); }
   const tilt=items.map(i=>i.toy.rotation.x), v=new V3();
   function choose(id){ const it=items.find(i=>i.id===id); pop(it.g,.1); audio(); sfx.pop(3); go(id); }
   return { g,
@@ -1178,8 +1180,85 @@ const nagels=(()=>{
   };
 })();
 
+/* ---------- tanden (eerst tandpasta, dan alle etensresten en gele tanden wegpoetsen) ---------- */
+const tanden=(()=>{
+  const g=new T.Group(); scene.add(g);
+  const WALL=0xcdeef4, SK=0xf7cba6, HAIR=0x7a4a21, unit=sph(1,20,14), MC={}, M=c=>MC[c]||(MC[c]=mat(c)), ink=basic(C.ink), ZP=.95;
+  const P=(geo,c,x,y,z,par,s,r)=>{ const o=mesh(geo,typeof c==='number'?M(c):c,x,y,z,par); if(s!=null){ if(s.length) o.scale.set(s[0],s[1],s[2]); else o.scale.setScalar(s); } if(r) o.rotation.set(r[0],r[1],r[2]); return o; };
+  const G=(par,x,y,z)=>{ const o=new T.Group(); o.position.set(x||0,y||0,z||0); par.add(o); return o; };
+  const LEVELS=[{bits:3,plaque:0,cap:16},{bits:5,plaque:2,cap:16},{bits:7,plaque:4,cap:8},{bits:9,plaque:8,cap:8},{bits:12,plaque:12,cap:7}];
+  /* a big friendly face with the mouth wide open */
+  P(unit,SK,0,3.4,-1.4,g,[4.7,4.95,1.4]); P(unit,HAIR,0,8.15,-1.6,g,[4.45,1.75,1.5]);
+  [-1,1].forEach(s=>{ P(unit,HAIR,s*4.7,6.3,-1.7,g,1.15); P(unit,C.pink,s*3.9,7,-1.2,g,[.5,.36,.36]); P(unit,0xff9db0,s*3.45,3.7,-.5,g,[.75,.55,.2]); });
+  P(unit,0xeeb48e,0,5.08,-.05,g,[.3,.22,.18]);
+  const eyes=[-1,1].map(s=>{ const e=G(g,s*1.7,5.95,-.32); P(unit,0xffffff,0,0,0,e,[.5,.54,.22]); const pu=new T.Mesh(unit,ink); pu.scale.set(.24,.26,.1); pu.position.z=.18; e.add(pu); const hl=new T.Mesh(unit,basic(0xffffff)); hl.scale.setScalar(.09); hl.position.set(.1,.12,.36); pu.add(hl); hl.scale.setScalar(.3); return {e,pu}; });
+  { const lip=rrShape(6.95,4.45,2); lip.holes.push(rrShape(6.25,3.75,1.65)); const q=new T.ExtrudeGeometry(lip,{depth:.3,bevelEnabled:true,bevelThickness:.06,bevelSize:.06,bevelSegments:2,curveSegments:12}); mesh(q,M(0xe8607a),0,2.6,-.12,g);
+    const cav=new T.Mesh(new T.ShapeGeometry(rrShape(6.4,3.9,1.7),12),basic(0x7a1f2b)); cav.position.set(0,2.6,.02); g.add(cav);
+    P(unit,0xff8fa8,0,1.5,.16,g,[1.95,.85,.22]); P(roundBox(5.95,.55,.3,.25,.06),0xff9db0,0,4.17,.2,g); P(roundBox(5.95,.55,.3,.25,.06),0xff9db0,0,1.03,.2,g); }
+  const toothGeo=roundBox(.86,1.04,.42,.24,.08), CLEAN=new T.Color(0xffffff), YEL=new T.Color(0xf0d766), twGeo=starGeo(.15,.06,.03), twM=basic(0xffffff);
+  const teeth=[]; for(let r=0;r<2;r++) for(let i=0;i<6;i++){ const x=(i-2.5)*.95, y=r?1.6:3.56, k=(i===2||i===3)?1.06:(i===0||i===5)?.94:1, m=mesh(toothGeo,mat(0xffffff,{shininess:90,specular:0x555555}),x,y,.36,g); m.scale.set(1,k,1);
+    const tw=new T.Mesh(twGeo,twM); tw.position.set(x+.24,y+.3,.66); tw.scale.setScalar(.001); g.add(tw); teeth.push({m,tw,x,y,dirty:0}); }
+  const FOOD=[0x4caf50,0x6b3f1d,0xff9a1f,0x8e44ad,0xd92c4a];
+  let bits=[];
+  /* toothpaste tube and the brush */
+  const tube=G(g,-2.9,-.75,ZP-.2); tube.rotation.z=-.5; { P(roundBox(1,2,.5,.3,.08),0xffffff,0,0,0,tube); P(box(1.02,.5,.52),C.blue,0,.1,0,tube); P(box(1.02,.16,.53),C.red,0,-.35,0,tube); P(cyl(.2,.34,.4,14),0xffffff,0,1.15,0,tube); P(cyl(.22,.22,.22,14),C.red,0,1.42,0,tube);
+    const gh=new T.Mesh(unit,new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); gh.scale.setScalar(1.35); tube.add(gh); }
+  const brush=G(g,2.6,-.8,ZP), TEAL=0x2fc9c0; brush.rotation.z=-.1;
+  P(roundBox(1.3,.36,.24,.16,.05),0xffffff,0,0,0,brush); P(box(1.1,.28,.22),0xbfe6ff,0,.3,0,brush); P(roundBox(3.4,.3,.22,.14,.05),TEAL,2.25,-.06,0,brush,null,[0,0,-.05]);
+  const pasteG=G(brush,0,.5,0); { const cols=[0xffffff,C.red,0xffffff,C.blue,0xffffff]; cols.forEach((c,i)=>P(unit,c,-.36+i*.18,0,0,pasteG,[.14,.13,.12])); } pasteG.scale.setScalar(.001);
+  const REST=new V3(2.6,-.8,ZP), btgt=new V3().copy(REST); let tubeY=-.75;
+  function layout(a){ if(a>=1.2){ tube.position.x=-4.85; tubeY=.55; REST.set(4.2,.2,ZP); } else { tube.position.x=-2.6; tubeY=-1.25; REST.set(2.3,-1.35,ZP); } }
+  /* foam bubbles */
+  const foam=[]; { const fm=new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9}); for(let i=0;i<60;i++){ const m=new T.Mesh(unit,fm); m.visible=false; g.add(m); foam.push({m,life:0,s:.1}); } } let fI=0;
+  const puff=(x,y)=>{ const f=foam[fI++%foam.length]; f.m.visible=true; f.m.position.set(x+R(-.45,.45),y+R(-.3,.3),ZP+.15+R(0,.2)); f.life=R(.6,1.1); f.s=R(.07,.17); };
+
+  let level=0, paste=0, drag=null, won=false, wonAt=0, partied=false, lastNo=-9, lastTick=0, hintT=0, squeeze=0, happy=0, touched=false;
+  const pv=new V3(), lastP=new V3();
+  const dirtLeft=()=>bits.length+teeth.filter(t=>t.dirty>0).length;
+  function setLevel(L,anim){ level=L; won=false; partied=false; paste=0; touched=false; drag=null; bits.forEach(b=>g.remove(b.g)); bits=[]; const d=LEVELS[L];
+    const order=[...Array(12).keys()]; for(let i=11;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
+    teeth.forEach((t,i)=>{ t.dirty=order.indexOf(i)<d.plaque?1:0; t.m.material.color.copy(CLEAN).lerp(YEL,t.dirty); t.tw.scale.setScalar(.001); });
+    for(let k=0;k<d.bits;k++){ const t=teeth[order[(k+5)%12]], between=L>=2&&Math.random()<.3, bg=G(g,t.x+(between?(Math.random()<.5?-.47:.47):R(-.2,.2)),t.y+R(-.26,.26),.6), c=FOOD[k%FOOD.length], n=2+((Math.random()*2)|0);
+      for(let q=0;q<n;q++) P(unit,c,R(-.14,.14),R(-.12,.12),0,bg,[R(.19,.26),R(.15,.21),.1]); const hp=.9+L*.15; bits.push({g:bg,x:bg.position.x,y:bg.position.y,hp,hp0:hp}); if(anim) popIn(bg,.35); }
+    pasteG.scale.setScalar(.001); btgt.copy(REST); if(anim) sfx.boing(); }
+  function addPaste(){ if(paste>.6) return; paste=1; squeeze=1; touched=true; tone(300,.28,'sine',.16,900); tone(1200,.1,'triangle',.1,0,.24); tw(.35,e=>pasteG.scale.setScalar(Math.max(.001,ease.back(e))),ease.lin); burst(brush.getWorldPosition(new V3()),5,1.8,0xffffff); }
+  function win(){ won=true; wonAt=Tm; drag=null; btgt.copy(REST); }
+  /* brushing: only works with toothpaste; food needs a real scrub, yellow teeth need the brush to go over them */
+  const noz=new V3();
+  function scrub(p,dist){ tube.localToWorld(noz.set(0,1.4,0)); if(paste<.5&&Math.hypot(p.x-noz.x,p.y+.3-noz.y)<.75){ addPaste(); return; }
+    const hitB=bits.filter(b=>Math.hypot(p.x-b.x,p.y+.3-b.y)<.75), hitT=teeth.filter(t=>t.dirty>0&&Math.abs(p.x-t.x)<.62&&Math.abs(p.y+.3-t.y)<.72); if(!hitB.length&&!hitT.length) return;
+    if(paste<=0){ if(Tm-lastNo>1.7){ lastNo=Tm; hintT=1.2; tone(330,.16,'sine',.2,262); tone(247,.24,'sine',.2,196,.2); } hitB.forEach(b=>{ b.g.rotation.z=Math.sin(Tm*30)*.3; }); return; }
+    touched=true; happy=.4; paste=Math.max(0,paste-dist/LEVELS[level].cap); if(paste<=0){ tw(.3,e=>pasteG.scale.setScalar(Math.max(.001,1-e)),ease.lin); hintT=1.2; tone(300,.2,'sine',.14,220); } else pasteG.scale.setScalar(.45+.55*paste);
+    if(Tm-lastTick>.07){ lastTick=Tm; tone(R(2200,3400),.035,'square',.018); puff(p.x,p.y+.3); if(dist>.25) puff(p.x,p.y+.3); }
+    hitB.forEach(b=>{ b.hp-=dist; b.g.rotation.z=Math.sin(Tm*40)*.25; if(b.hp<=0){ g.remove(b.g); bits=bits.filter(q=>q!==b); sfx.pop(bits.length%8); burst(new V3(b.x,b.y,.9),6,2.2,0xffffff); } else b.g.scale.setScalar(.45+.55*b.hp/b.hp0); });
+    hitT.forEach(t=>{ t.dirty=Math.max(0,t.dirty-dist*.6); t.m.material.color.copy(CLEAN).lerp(YEL,t.dirty); if(t.dirty===0){ tone(1568,.16,'sine',.1,2093); burst(new V3(t.x,t.y,.9),5,2,0xffe45a); pop(t.m,.12); } });
+    if(dirtLeft()===0) win(); }
+  function planePoint(){ const o=ray.ray.origin, d=ray.ray.direction, t=(ZP-o.z)/d.z; return pv.set(o.x+d.x*t,o.y+d.y*t,ZP); }
+  setLevel(0,false);
+  return { g,
+    get state(){ return {level,paste,bits,teeth,won,tube,t:Tm}; },
+    frame(a){ layout(a); return a>=1.2?{c:[.4,3.05,0],w:11.6,h:7.6,dir:[0,.05,1],bottom:20}:{c:[0,2.7,0],w:7.7,h:9.4,dir:[0,.05,1],bottom:20}; },
+    enter(){ ground.visible=false; decor.visible=false; scene.background=new T.Color(WALL); drag=null; brush.position.copy(REST); btgt.copy(REST); if(won) setLevel((level+1)%LEVELS.length,false); },
+    exit(){ ground.visible=true; decor.visible=true; scene.background=null; party.off(); foam.forEach(f=>{ f.life=0; f.m.visible=false; }); },
+    update(dt,t){ if(won){ if(!partied&&Tm>=wonAt+.35){ partied=true; sfx.tada(); party.start(level===LEVELS.length-1?12:6); burst(new V3(0,2.8,1.2),36,6); teeth.forEach((q,i)=>tw(.5,(e,k)=>{ q.m.scale.x=1+.12*Math.sin(Math.max(0,Math.min(1,k*2-i*.06))*PI); },ease.lin)); } if(Tm>wonAt+6.5){ party.stop(); setLevel((level+1)%LEVELS.length,true); } }
+      if(!drag) btgt.copy(REST); brush.position.lerp(btgt,1-Math.exp(-dt*(drag?30:9))); brush.rotation.z=-.1+(drag?Math.sin(t*22)*.03:0);
+      squeeze=Math.max(0,squeeze-dt*2.5); hintT=Math.max(0,hintT-dt); const need=paste<=0&&!won, bounce=need?Math.abs(Math.sin(t*4))*.18:0;
+      tube.position.y=tubeY+bounce+hintT*.25*Math.abs(Math.sin(t*18)); tube.scale.set(1+squeeze*.12+(need?.06*Math.sin(t*8):0),1-squeeze*.14,1);
+      happy=Math.max(0,happy-dt); const sq=won?.35:1-.45*Math.min(1,happy*3);
+      eyes.forEach(o=>{ o.e.scale.y=sq; o.pu.position.x=Math.max(-.17,Math.min(.17,(brush.position.x-o.e.position.x)*.05)); o.pu.position.y=Math.max(-.17,Math.min(.12,(brush.position.y-o.e.position.y)*.04)); });
+      teeth.forEach((q,i)=>{ const k=q.dirty===0?Math.max(0,Math.sin(t*2.4+i*1.7))*(won?1.5:.9):0; q.tw.scale.setScalar(Math.max(.001,k)); q.tw.rotation.z=t+i; });
+      for(const f of foam){ if(f.life<=0) continue; f.life-=dt; if(f.life<=0){ f.m.visible=false; continue; } f.m.position.y+=dt*.5; f.m.scale.setScalar(f.s*Math.min(1,f.life*3)); } },
+    down(ev){ if(won){ if(Tm-wonAt>1.6){ party.stop(); setLevel((level+1)%LEVELS.length,true); } return; }
+      const h=hit(ev,[tube],true), p=planePoint(); if(h){ addPaste(); pop(tube,.1); return; }
+      drag={id:ev.pointerId}; lastP.copy(p); btgt.set(p.x,p.y,ZP); scrub(p,.2); },
+    move(ev){ if(!drag||ev.pointerId!==drag.id||won) return; hit(ev,[]); const p=planePoint(), d=Math.min(.8,Math.hypot(p.x-lastP.x,p.y-lastP.y)); lastP.copy(p); btgt.set(p.x,p.y,ZP); if(d>.005) scrub(p,d); },
+    up(ev){ if(drag&&(!ev||ev.pointerId===drag.id)) drag=null; },
+    reset(){ if(level===0&&!touched&&!won){ sfx.boop(); return; } party.stop(); setLevel(0,true); }
+  };
+})();
+
 /* ---------- camera + mode switching ---------- */
-const modes={home,kleuren,aankleden,blokken,toren,memory,vormen,toverstaf,broodje,nagels};
+const modes={home,kleuren,aankleden,blokken,toren,memory,vormen,toverstaf,broodje,nagels,tanden};
 let cur='home', switching=false, camAngle=0;
 const camT=new V3(), camO=new V3(0,0,10), tmpO=new V3();
 function setCam(){ tmpO.copy(camO).applyAxisAngle(YAX,camAngle); camera.position.copy(camT).add(tmpO); camera.lookAt(camT); camera.updateMatrixWorld(); }
@@ -1237,6 +1316,7 @@ mkBtn(tl,{id:'bSound',icon:muted?'mute':'sound',c:'var(--purple)',label:'Geluid 
 { const p=sub(bot,'blokken'), bs=[]; [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog']].forEach(([k,c,l])=>{ bs.push(mkBtn(p,{id:'vorm-'+k,icon:k,c,label:l,on:b=>{ blokken.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on');
   mkBtn(p,{id:'omgooien',icon:'boem',c:'var(--yellow)',i:'var(--ink)',label:'Omgooien',on:()=>blokken.knock()});
   mkBtn(p,{id:'bReset',icon:'reset',c:'var(--paper)',i:'var(--ink)',label:'Alles weg, opnieuw beginnen',on:()=>blokken.reset()}).style.marginLeft='10px'; }
+{ const r=sub(tr,'tanden'); mkBtn(r,{id:'tdReset',icon:'reset',c:'var(--orange)',label:'Opnieuw vanaf het begin',on:()=>tanden.reset()}); }
 { const r=sub(tr,'nagels'); mkBtn(r,{id:'nReset',icon:'reset',c:'var(--orange)',label:'Alle nagellak eraf',on:()=>nagels.reset()});
   const col=sub(bot,'nagels'), r1=document.createElement('div'), r2=document.createElement('div'), all=[]; col.classList.add('col'); r1.className=r2.className='grp'; col.append(r1,r2);
   const pick=(o,b,snd)=>{ nagels.tool(o); choose(all,b); if(snd) snd(); else sfx.tap(); };
