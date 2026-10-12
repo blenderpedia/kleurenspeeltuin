@@ -450,7 +450,7 @@ const trein=(()=>{
   const g=new T.Group(); scene.add(g);
   const TH=SPOOR.TH, RISE=SPOOR.RISE, TYPE=SPOOR.TYPE, PH=BLOK.PH, V=BLOK.V;
   const BX=25, BZ=18, MX=26.2, MZ=18.8, MAXP=220, MAXB=60, TOPMAX=9, VCAP=3.6, AMAX=70, LAG=.6, HEAP=3, H60=1/60, CS=[1,0,-1,0], SN=[0,1,0,-1];
-  const MAXLOC=3, MAXWAG=6, MAXCAR=4, MAXSENS=6, MAXCRANE=3, MAXTUN=3, MAXBOOST=6, BOOST=5.5, BOOSTK=2, SECS=[5,10,15,0];
+  const MAXLOC=3, MAXWAG=6, MAXCAR=4, MAXSENS=6, MAXCRANE=3, MAXTUN=3, MAXBOOST=6, BOOST=3, BOOSTK=2, SECS=[5,10,15,0];
   const JIB=2.46, RMIN=.75, RMAX=2.7, PICK=['kubus','cilinder','dak','boog','hout','steen'];   /* crane: height of the trolley, how near and how far it reaches */
   /* a goods wagon holds five blocks, three below and two on top; they ride smaller than they are */
   const CAP=5, SLX=[-.27,0,.27,-.135,.135], raw=sh=>sh==='hout'||sh==='steen', msOf=sh=>raw(sh)?.55:.23;
@@ -522,7 +522,7 @@ const trein=(()=>{
   function fix(p){ p.ends=endsOf(p); p.sm=sampleOf(p); p.path=pathOf(p); aimAt(p,p,0); solid(p); }
 
   /* ----- the physics world: the mat and the rails stand still, blocks and loose trains fall and tumble, a train on its rails is pulled along them ----- */
-  let world=null, railM=null, slipM=null;
+  let world=null, railM=null, slipM=null, offM=null;
   const wakeAll=()=>{ for(const r of blocks) r.b.wakeUp(); for(const v of vehs) if(v.inW) v.b.wakeUp(); };
   const qAx=(x,y,z,a)=>{ const q=new PH.Quaternion(); q.setFromAxisAngle(V(x,y,z),a); return q; };
   function unsolid(p){ if(p.sb){ world.removeBody(p.sb); p.sb=null; wakeAll(); } }
@@ -548,6 +548,8 @@ const trein=(()=>{
     const c=world.defaultContactMaterial; c.friction=.55; c.restitution=.02; c.contactEquationStiffness=1e7; c.contactEquationRelaxation=4; c.frictionEquationStiffness=1e7; c.frictionEquationRelaxation=4;
     /* rails are slippery for blocks and loose trains (this engine's friction grips far harder than its number suggests), so the train can shove them along */
     railM=new PH.Material('rail'); slipM=new PH.Material('blok'); world.addContactMaterial(new PH.ContactMaterial(railM,slipM,{friction:.002,restitution:.02,contactEquationStiffness:1e7,contactEquationRelaxation:4,frictionEquationStiffness:1e7,frictionEquationRelaxation:4}));
+    /* a train that runs off the end of the track slides on over the rails without any grip (every contact grips once a step, so even .002 stops it in a moment) */
+    offM=new PH.Material('los'); world.addContactMaterial(new PH.ContactMaterial(railM,offM,{friction:0,restitution:.02,contactEquationStiffness:1e7,contactEquationRelaxation:4}));
     const gr=new PH.Body({mass:0}); gr.addShape(new PH.Plane()); gr.quaternion.setFromAxisAngle(V(1,0,0),-PI/2); gr.position.y=-1.1; const mb=new PH.Body({mass:0}); mb.addShape(new PH.Box(V(MX,.55,MZ))); mb.position.set(0,-.55,0);
     [gr,mb].forEach(b=>{ b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); }); world.addEventListener('preStep',drive); }
 
@@ -594,9 +596,9 @@ const trein=(()=>{
   /* v.tp is where the middle of the vehicle should be; a sudden jump (coupling, a piece taken away) is not a collision */
   function placeOn(v,c){ const K=v.K; cp(P1,v.pos); walk(P1,K.ax,c); ptAt(P1,a1); cp(P1,v.pos); walk(P1,-K.ax,c); ptAt(P1,a2); const dx=a1.x-a2.x, dy=a1.y-a2.y, dz=a1.z-a2.z, hz=Math.hypot(dx,dz); if(hz>.01){ v.yaw=Math.atan2(-dz,dx); v.pitch=Math.atan2(dy,hz); }
     old.copy(v.tp); const sp=Math.sin(v.pitch)*K.vh; v.tp.addVectors(a1,a2).multiplyScalar(.5); v.tp.x-=sp*Math.cos(v.yaw); v.tp.y+=Math.cos(v.pitch)*K.vh; v.tp.z+=sp*Math.sin(v.yaw); if(old.distanceToSquared(v.tp)>.3) v.warp=true; }
-  function setFree(v,x,z,yaw){ const vh=v.K.vh+hAt(x,z); v.drv=false; v.c=null; v.tp.set(x,vh+.03,z); v.yaw=yaw; v.pitch=0; if(!v.b) return; const b=v.b; b.position.set(x,vh+.03,z); b.quaternion.setFromAxisAngle(V(0,1,0),yaw); b.velocity.set(0,0,0); b.angularVelocity.set(0,0,0);
+  function setFree(v,x,z,yaw){ const vh=v.K.vh+hAt(x,z); v.drv=false; v.c=null; v.tp.set(x,vh+.03,z); v.yaw=yaw; v.pitch=0; if(!v.b) return; const b=v.b; b.material=slipM; b.position.set(x,vh+.03,z); b.quaternion.setFromAxisAngle(V(0,1,0),yaw); b.velocity.set(0,0,0); b.angularVelocity.set(0,0,0);
     b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; if(!v.inW){ world.addBody(b); v.inW=true; } b.wakeUp(); }
-  function setDriven(v){ v.drv=true; v.warp=true; if(!v.b) return; const b=v.b; b.fixedRotation=true; b.updateMassProperties(); b.collisionFilterGroup=DR; b.collisionFilterMask=BK|FR; if(!v.inW){ world.addBody(b); v.inW=true; } b.wakeUp(); }
+  function setDriven(v){ v.drv=true; v.warp=true; if(!v.b) return; const b=v.b; b.material=slipM; b.fixedRotation=true; b.updateMassProperties(); b.collisionFilterGroup=DR; b.collisionFilterMask=BK|FR; if(!v.inW){ world.addBody(b); v.inW=true; } b.wakeUp(); }
   function lift(v){ v.drv=false; if(v.inW){ world.removeBody(v.b); v.inW=false; } }
   /* where on the mat a point of the screen looks (ground), and where on the land, high ground included (land) */
   function land(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; let t=(RISE-o.y)/d.y; out.set(o.x+d.x*t,RISE,o.z+d.z*t); if(inPlat(out.x,out.z,PV)) return out; t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
@@ -637,7 +639,7 @@ const trein=(()=>{
   /* at the end of the line a train rides back the way it came; a car turns round on the spot */
   const turn=c=>{ if(c.net==='road'){ const v=c.veh[0]; v.pos.d=-v.pos.d; v.spin=PI; c.pause=.6; } else { c.dir=-c.dir; c.pause=.45; } c.block=null; sfx.boop(); };
   const shut=p=>p.type==='overweg'&&p.shut;
-  /* one step for a train with an engine. It stops for the end of the track and for a train in front of it: behind a train going the same way it waits, facing one coming the other way (or wagons standing still) it turns back */
+  /* one step for a train with an engine. Behind a train going the same way it waits, facing one coming the other way (or wagons standing still) it turns back. At the end of the track it rides off (c.off); only a car, or a train at a dead end inside the high ground (half a tunnel), turns back there */
   function advance(c,dt){ c.block=null; const K=KN[c.net], n=c.veh.length, lead=c.dir>0?c.veh[0]:c.veh[n-1], tail=c.dir>0?c.veh[n-1]:c.veh[0], d=K.speed*c.fast*dt;
     cp(P1,lead.pos); const left=walk(P1,c.dir*(d+K.half),c,c.net==='road'?shut:null), hit=walk.hit; let room=d-left, blocker=null;
     hd.set(Math.cos(lead.yaw)*c.dir,0,-Math.sin(lead.yaw)*c.dir);
@@ -649,13 +651,13 @@ const trein=(()=>{
     if(room<=.002){
       if(blocker){ let rel=-1; if(motor(blocker)){ const ol=blocker.dir>0?blocker.veh[0]:blocker.veh[blocker.veh.length-1]; rel=hd.x*Math.cos(ol.yaw)*blocker.dir-hd.z*Math.sin(ol.yaw)*blocker.dir; }
         if(rel<=.2||(blocker.block===c&&c.id>blocker.id)) turn(c); else c.block=blocker; }
-      else if(hit==='end'){ cp(P1,tail.pos); if(walk(P1,-c.dir*(K.half+.05),c)<=1e-6) turn(c); }
+      else if(hit==='end'){ ptAt(P1,cv); if(c.net==='rail'&&!hidPt(cv.x,cv.y-TH,cv.z)) c.off=true; else { cp(P1,tail.pos); if(walk(P1,-c.dir*(K.half+.05),c)<=1e-6) turn(c); } }
       return false; }
     for(const v of c.veh) walk(v.pos,c.dir*room,c); return true; }
   /* a sensor block beside the rails: the engine stops next to it for the time the block shows */
   function sense(c){ const l=c.veh[0]; for(const s of props){ if(!s.wp) continue; const d=Math.hypot(l.tp.x-s.wp.x,l.tp.z-s.wp.z);
       if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
-  /* a speed boost on the rails: the engine that rides over it goes twice as fast for a while, then slowly back to its own speed (both ways, also riding backwards) */
+  /* a speed boost on the rails: the engine that rides over it goes twice as fast for three seconds, the last half second slowing back to its own speed (both ways, also riding backwards) */
   function zoom(c){ const l=c.veh[0]; for(const f of boosts){ if(!f.wp) continue; const d=Math.hypot(l.tp.x-f.wp.x,l.tp.z-f.wp.z);
       if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ tone(260,.32,'sawtooth',.05,1300); tone(520,.26,'triangle',.12,1560,.04); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
   /* how many blocks the train is leaning on: the ones it touches and everything piled against those. One or two it shoves along; running into a heap throws it off the rails */
@@ -666,6 +668,11 @@ const trein=(()=>{
     c.veh.forEach((v,k)=>{ v.c=null; v.drv=false; if(!v.inW){ stage(v); return; } const b=v.b, fx=Math.cos(v.yaw), fz=-Math.sin(v.yaw), side=Math.random()<.5?-1:1, sd=R(1.2,2.6)*side, go=c.dir*v.K.speed*.7, w=R(7,11)*side;
       b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; b.velocity.set(fx*go-fz*sd,R(4,5.5),fz*go+fx*sd); b.angularVelocity.set(fx*w,R(-3,3),fz*w); b.wakeUp(); if(!k) burst(v.g.position,12,3.4,C.yellow); }); }
 
+  /* off the end of the track: the train slides on at its own speed (the rails are slippery), tips over the end nose first and the wagons pile up behind; everything stays where it lands */
+  function runOff(c){ cons=cons.filter(x=>x!==c); sfx.crash(); tone(140,.3,'sawtooth',.08,60); const sp=KN.rail.speed*c.fast*c.dir;
+    c.veh.forEach((v,k)=>{ v.c=null; v.drv=false; if(!v.inW){ stage(v); return; } const b=v.b, ch=Math.cos(v.pitch), fx=Math.cos(v.yaw)*ch, fy=Math.sin(v.pitch), fz=-Math.sin(v.yaw)*ch, sd=R(-.25,.25), w=R(1,1.6)*c.dir;
+      b.material=offM; v.offT=1.2; b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; b.velocity.set(fx*sp-fz*sd,fy*sp+.25,fz*sp+fx*sd); b.angularVelocity.set(fz*w,R(-1.4,1.4),-fx*w); b.wakeUp();
+      if(!k) burst(v.g.position,12,3.4,C.yellow); }); }
   /* a car that meets a train on the level crossing is knocked off the road and stays where it lands; the train rides on */
   function knock(c,v,o,w){ cons=cons.filter(x=>x!==c); v.c=null; v.drv=false; v.spin=0; sfx.crash(); burst(v.g.position,14,3.6,C.yellow); if(!v.inW){ stage(v); return; }
     const b=v.b, go=motor(o)&&o.pause<=0&&o.lag<LAG?o.dir:0, cx=Math.cos(v.yaw), cz=-Math.sin(v.yaw), back=go?0:2.4;
@@ -1002,9 +1009,9 @@ const trein=(()=>{
       const bs=held&&ptr?(overBin(ptr.cx,ptr.cy)?2:1):0; if(bs!==binSt){ binSt=bs; binUI(bs>0,bs>1); }
       if(bs===1&&ptr.mode===1){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
-      for(const c of cons.slice()){ if(c.crash){ derail(c); continue; }
+      for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
-        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/1.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
+        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
         for(const v of c.veh){ placeOn(v,c); if(v.spin){ v.spin*=Math.exp(-dt*7); if(v.spin<.02) v.spin=0; } }
         for(const e of c.ch) if(frameN-e[1].t>12) c.ch.delete(e[0]); }
       meet();
@@ -1024,7 +1031,8 @@ const trein=(()=>{
       for(const z of mills){ manStep(z,dt); const m=z.g, w=z.man, wg=w.g; m.position.x+=(z.x-m.position.x)*kv; m.position.y+=(z.y-m.position.y)*kv; m.position.z+=(z.z-m.position.z)*kv; if(w.busy&&z.blade) z.blade.rotation.z-=dt*9; w.bub.rotation.y=-wg.rotation.y;
         wg.position.set(w.x,(held&&held.rec===z?z.y:hAt(w.x,w.z))+Math.abs(Math.sin(w.step))*.05,w.z); let da=w.yaw-wg.rotation.y; da-=Math.round(da/TAU)*TAU; wg.rotation.y+=da*(1-Math.exp(-dt*14)); }
       unload(); if(stockDirty){ stockDirty=false; restack(); stockUI(stock); }
-      for(const v of vehs){ const m=v.g; if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
+      for(const v of vehs){ const m=v.g; if(v.offT>0&&(v.offT-=dt)<=0&&!v.drv) v.b.material=slipM;   /* after a moment off the end the wagons grip again, so nothing glides away along the rails */
+        if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),tab==='blok'?[]:cranes.map(s=>s.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
