@@ -663,7 +663,7 @@ const trein=(()=>{
   const inVill=(x,z,pad)=>dorpen.some(d=>inMill(d.r,x,z,pad));
   /* the open ground where you begin: the factory, the first track and the first vehicles */
   const START_R={x:0,z:3,hw:16,hd:10.5}, inStart=(x,z,pad)=>mode==='camp'&&inMill(START_R,x,z,pad);
-  function clearVillages(){ for(const d of dorpen){ if(d.site&&d.site.sign){ g.remove(d.site.sign.g); d.site.sign.tex.dispose(); } for(const o of d.objs){ g.remove(o.g); if(o.b&&world) world.removeBody(o.b); } if(d.plat){ g.remove(d.plat.g); d.plat.tex.dispose(); } for(const p of d.track){ if(pieces.indexOf(p)<0) continue; if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } dorpen=[]; vrects=[]; }
+  function clearVillages(){ for(const d of dorpen){ if(d.stockMs) d.stockMs.forEach(o=>g.remove(o)); if(d.site&&d.site.sign){ g.remove(d.site.sign.g); d.site.sign.tex.dispose(); } for(const o of d.objs){ g.remove(o.g); if(o.b&&world) world.removeBody(o.b); } if(d.plat){ g.remove(d.plat.g); d.plat.tex.dispose(); } for(const p of d.track){ if(pieces.indexOf(p)<0) continue; if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } dorpen=[]; vrects=[]; }
   function staticBox(x,y,z,hw,hh,hd){ if(!world) return null; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(hw,hh,hd))); b.position.set(x,y,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); return b; }
   function layPiece(type,x,z,q,fixed){ const t=TYPE[type], mm=SPOOR.piece(type), p={kind:'p',type,x,z,q,lv:0,m:1,fixed:!!fixed,sw:0,shut:false,g:mm.g,pier:mm.pier,arm:mm.arm,gates:mm.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; mm.g.userData.rec=p; g.add(mm.g); pieces.push(p); fix(p); mm.g.position.set(p.tx,p.ty,p.tz); mm.g.rotation.y=q*PI/2; return p; }
   /* a station of a village: three fixed straight pieces from (sx,sz) along x, the platform behind them */
@@ -677,6 +677,26 @@ const trein=(()=>{
       if(z+hd>d.sz-1.9||d.objs.some(o=>o.r&&Math.abs(o.r.x-x)<o.r.hw+hw+.7&&Math.abs(o.r.z-z)<o.r.hd+hd+.7)) continue;
       const hg=sort==='zaag'?DORP.zagerij():DORP.house(sort,rs); hg.rotation.y=rot?(rs()<.5?PI/2:-PI/2):0; villObj(d,hg,x,z,hw,hd,sort==='huis'||sort==='breed'||sort==='poort'||sort==='zaag'?.8:1.2); if(sort!=='zaag') d.houses++; n++; } return n; }
   function newVillage(kind,x,z,name){ const d={kind,x,z,name,proj:null,need:null,site:null,r:{x,z,hw:7,hd:6.5},sx:2*Math.round((x-3-1)/2)+1,sz:2*Math.round((z+3.6)/2),houses:0,objs:[],track:[],plat:null,station:false}; dorpen.push(d); return d; }
+  /* a train at a station: the engine stops beside the middle of the platform for a few seconds (longer while something is put in or taken out). Goods wagons give the village the wood and stone it needs; at the forest village the sawmill's wood goes into empty room in the goods wagons */
+  const STOCK=15;
+  function halt(c){ const l=c.veh[0];
+    for(const d of dorpen){ if(!d.station) continue; const mx=d.sx+3, dist=Math.hypot(l.tp.x-mx,l.tp.z-d.sz);
+      if(c.seenD.has(d)){ if(dist>4) c.seenD.delete(d); continue; }
+      if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ tone(784,.12,'sine',.12); tone(659,.2,'sine',.12,0,.13); } serve(c,d); } } }
+  function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ toast('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
+    const tick=()=>{ if(c.stop!==d||cons.indexOf(c)<0||c.pause<=0) return; if(swap(c,d)){ c.pause=Math.max(c.pause,1); after(.35,tick); } }; after(.6,tick); }
+  /* one block in or out; true when something moved */
+  function swap(c,d){ if(d.proj&&d.need) for(const v of c.veh){ if(v.sort!=='goed') continue; const i=v.load.findIndex(l=>d.need[l.sh]>0); if(i<0) continue;
+      const l=v.load.splice(i,1)[0]; v.inner.remove(l.m); l.m.material.dispose(); relay(v); pop(v.g,.08); d.need[l.sh]--; burst(cv.set(v.tp.x,v.tp.y+.4,v.tp.z),4,1.8,l.sh==='steen'?0xaab2c2:C.brown); tone(660,.08,'triangle',.14); tone(880,.12,'triangle',.12,0,.07);
+      DORP.drawSign(d.site.sign,d.proj==='station'?'Station':'Nieuw huis',d.need); pop(d.site.sign.g,.12); if(!d.need.hout&&!d.need.steen) finish(d); return true; }
+    if(d.kind==='bos'&&d.stock>0) for(const v of c.veh){ if(v.sort!=='goed'||v.load.length>=CAP) continue; addLoad(v,'hout',C.brown); d.stock--; showStock(d); pop(v.g,.08); sfx.plop(); return true; }
+    return false; }
+  /* the blocks in a goods wagon lie in their places again (after one was taken out of the middle) */
+  function relay(v){ v.load.forEach((l,i)=>{ const ms=msOf(l.sh); l.m.position.set(SLX[i],.33+(i>2?.21:0)+BLOK.bottom[l.sh]*ms,0); }); }
+  /* the sawmill of the forest village makes a block of wood every four seconds; they wait on the platform (fifteen at most) */
+  function showStock(d){ if(!d.stockMs){ d.stockMs=[]; for(let k=0;k<STOCK;k++){ const L=(k/6)|0, r=k%6, o=mesh(BLOK.geos.hout,BOUW.blockMat('hout'),d.sx+2.5+(r%3)*.48,.3+.18+L*.36,d.sz-1.3+((r/3)|0)*.48,g); o.visible=false; d.stockMs.push(o); } }
+    d.stockMs.forEach((o,k)=>{ const on=k<d.stock; if(on&&!o.visible) popIn(o,.2); o.visible=on; }); }
+  function produce(dt){ for(const d of dorpen){ if(d.kind!=='bos'||!d.station) continue; d.prodT=(d.prodT||4)-dt; if(d.prodT<=0){ d.prodT=4; if((d.stock||0)<STOCK){ d.stock=(d.stock||0)+1; showStock(d); } } } }
   /* a village's project: what it wants to build (d.proj: 'station' or 'huis'), what it still needs (d.need), where (d.site, with the sand and the board). Loose blocks of wood and stone that come to rest on the site are taken while they are needed */
   const HOUSES=10;
   function setProject(d,proj,rs){ d.proj=proj; d.site=null; if(!proj) return;
@@ -787,7 +807,7 @@ const trein=(()=>{
   /* a train (cons) is a row of vehicles, each with its own place on the track; the first one leads, the others follow at a fixed distance */
   const motor=c=>c.net!=='rail'||c.veh[0].loco;
   const apart=(a,b)=>{ const p=a.pos&&a.pos.p, q=b.pos&&b.pos.p; return !!(p&&q&&(p.gang||q.gang)&&p.tun!==q.tun); };
-  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,buf:null,seen:new Set(),seenB:new Set(),boost:0,fast:1});
+  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,buf:null,seen:new Set(),seenB:new Set(),seenD:new Set(),boost:0,fast:1});
   /* shift a place until there is room for half a vehicle in front and `need` behind it; false when the track is too short for that */
   function fit(pos,c,K,need){ cp(P1,pos); const a=walk(P1,K.half,c); cp(P1,pos); const b=walk(P1,-(need+K.half),c); if(a>1e-6&&b>1e-6) return false;
     if(a>1e-6){ cp(P1,pos); if(walk(P1,-(a+need+K.half),c)>1e-6) return false; walk(pos,-a,c); } else if(b>1e-6){ cp(P1,pos); if(walk(P1,b+K.half,c)>1e-6) return false; walk(pos,b,c); } return true; }
@@ -1258,7 +1278,7 @@ const trein=(()=>{
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
       for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
-        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
+        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); halt(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
         for(const v of c.veh){ placeOn(v,c); if(v.spin){ v.spin*=Math.exp(-dt*7); if(v.spin<.02) v.spin=0; } }
         for(const e of c.ch) if(frameN-e[1].t>12) c.ch.delete(e[0]); }
       meet();
@@ -1278,6 +1298,7 @@ const trein=(()=>{
       for(const f of boosts){ const m=f.g; m.position.x+=(f.x-m.position.x)*kv; m.position.y+=(f.y-m.position.y)*kv; m.position.z+=(f.z-m.position.z)*kv; let da=f.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(f.pitch-m.rotation.z)*kv; f.bolt.scale.setScalar(f.wp?1+.12*Math.sin(Tm*6)*AMP:1); }
       for(const s of props){ const m=s.g, b=s.busy; m.position.x+=(s.x-m.position.x)*kv; m.position.y+=(s.y-m.position.y)*kv; m.position.z+=(s.z-m.position.z)*kv; let da=s.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; s.num.rotation.y=(wide?0:PI/2)-m.rotation.y;
         if(b&&!(b.stop===s&&b.pause>0&&cons.indexOf(b)>=0&&b.veh[0].loco)) s.busy=null; showNum(s,s.busy?Math.max(1,Math.ceil(s.busy.pause)):s.sec); s.lamp.material.color.setHex(s.busy?SPOOR.lampCol.stop:s.wp&&s.sec?SPOOR.lampCol.go:SPOOR.lampCol.off); }
+      produce(dt);
       for(const z of mills){ manStep(z,dt); const m=z.g, w=z.man, wg=w.g; m.position.x+=(z.x-m.position.x)*kv; m.position.y+=(z.y-m.position.y)*kv; m.position.z+=(z.z-m.position.z)*kv; w.bub.rotation.y=-wg.rotation.y;
         wg.position.set(w.x,(held&&held.rec===z?z.y:hAt(w.x,w.z))+Math.abs(Math.sin(w.step))*.05,w.z); let da=w.yaw-wg.rotation.y; da-=Math.round(da/TAU)*TAU; wg.rotation.y+=da*(1-Math.exp(-dt*14)); }
       unload(); if(frameN%12===0) for(const d of dorpen) if(d.proj&&d.site) feed(d); if(stockDirty){ stockDirty=false; restack(); stockUI(stock); }
