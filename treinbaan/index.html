@@ -384,7 +384,12 @@ const SPOOR=(()=>{
     mesh(roundBox(3.3,.11,.16,.04,.02),yel,1.15,.36,0,top); mesh(roundBox(.42,.28,.32,.06,.025),ink,-.5,.3,0,top);
     const trol=new T.Group(); trol.position.set(1.2,.28,0); top.add(trol); mesh(roundBox(.26,.1,.24,.03,.015),ink,0,0,0,trol);
     const cable=mesh(cyl(.016,.016,1,6),ink,0,-.5,0,trol), hook=new T.Group(); trol.add(hook); mesh(cyl(.07,.03,.1,10),red,0,-.05,0,hook); return {g,top,trol,cable,hook}; }
-  return {RR,TH,HW,RISE,BL,TYPE,rise,piece,loco,goods,coach,car,sensor,crane,numMat,lampCol};
+  /* the speed boost: a flat orange plate with a yellow bolt; it lies on the rails, the bolt along +x, the way the track runs */
+  const plateG=(()=>{ const q=new T.ExtrudeGeometry(rrShape(.9,.62,.14),{depth:.03,bevelEnabled:false}); q.rotateX(-PI/2); return q; })();
+  const boltG=(()=>{ const q=new T.ExtrudeGeometry(side([[-.36,.1],[.06,.2],[.02,.05],[.36,-.1],[-.06,-.2],[-.02,-.05]]),{depth:.025,bevelEnabled:false}); q.rotateX(-PI/2); return q; })();
+  const plateM=mat(C.orange,{shininess:50}), boltM=mat(C.yellow,{shininess:60,emissive:0x5a3a00});
+  function boost(){ const g=new T.Group(), p=mesh(plateG,plateM,0,.004,0,g), b=mesh(boltG,boltM,0,.034,0,g), gh=new T.Mesh(sph(.45,10,8),new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); p.castShadow=b.castShadow=false; gh.position.y=.15; g.add(gh); return {g,bolt:b}; }
+  return {RR,TH,HW,RISE,BL,TYPE,rise,piece,loco,goods,coach,car,sensor,crane,boost,numMat,lampCol};
 })();
 
 /* ---------- the toy forest: wooden trees on a little foot ---------- */
@@ -445,7 +450,7 @@ const trein=(()=>{
   const g=new T.Group(); scene.add(g);
   const TH=SPOOR.TH, RISE=SPOOR.RISE, TYPE=SPOOR.TYPE, PH=BLOK.PH, V=BLOK.V;
   const BX=25, BZ=18, MX=26.2, MZ=18.8, MAXP=220, MAXB=60, TOPMAX=9, VCAP=3.6, AMAX=70, LAG=.6, HEAP=3, H60=1/60, CS=[1,0,-1,0], SN=[0,1,0,-1];
-  const MAXLOC=3, MAXWAG=6, MAXCAR=4, MAXSENS=6, MAXCRANE=3, MAXTUN=3, SECS=[5,10,15,0];
+  const MAXLOC=3, MAXWAG=6, MAXCAR=4, MAXSENS=6, MAXCRANE=3, MAXTUN=3, MAXBOOST=6, BOOST=5.5, BOOSTK=2, SECS=[5,10,15,0];
   const JIB=2.46, RMIN=.75, RMAX=2.7, PICK=['kubus','cilinder','dak','boog','hout','steen'];   /* crane: height of the trolley, how near and how far it reaches */
   /* a goods wagon holds five blocks, three below and two on top; they ride smaller than they are */
   const CAP=5, SLX=[-.27,0,.27,-.135,.135], raw=sh=>sh==='hout'||sh==='steen', msOf=sh=>raw(sh)?.55:.23;
@@ -478,7 +483,7 @@ const trein=(()=>{
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]], oP=[[0,0],[-1.3,0],[1.3,0],[-.9,.3],[.9,-.3],[-.9,-.3],[.9,.3],[-.45,0],[.45,0]], oT=[[.78,0],[-.78,0],[.78,.7],[-.78,.7],[.78,-.7],[-.78,-.7]];
@@ -537,7 +542,7 @@ const trein=(()=>{
     for(const v of vehs){ if(!v.drv||!v.inW) continue; const b=v.b, p=b.position; te.set(0,v.yaw+v.spin,v.pitch); tq.setFromEuler(te); b.quaternion.set(tq.x,tq.y,tq.z,tq.w); b.angularVelocity.set(0,0,0); b.wakeUp();
       if(v.warp){ v.warp=false; p.set(v.tp.x,v.tp.y,v.tp.z); b.velocity.set(0,0,0); continue; }
       const cp=Math.cos(v.pitch), fx=Math.cos(v.yaw)*cp, fy=Math.sin(v.pitch), fz=-Math.sin(v.yaw)*cp; let dx=(v.tp.x-p.x)/H60, dy=(v.tp.y-p.y)/H60, dz=(v.tp.z-p.z)/H60; const al=dx*fx+dy*fy+dz*fz; dx-=al*fx; dy-=al*fy; dz-=al*fz;
-      const vel=b.velocity, now=vel.x*fx+vel.y*fy+vel.z*fz, want=clampN(al,VCAP), nv=(want-now)*want>0&&Math.abs(want)>Math.abs(now)?now+clampN(want-now,AMAX*H60):want, pm=Math.hypot(dx,dy,dz), k=pm>6?6/pm:1;
+      const vel=b.velocity, now=vel.x*fx+vel.y*fy+vel.z*fz, want=clampN(al,VCAP*(v.c&&v.c.fast||1)), nv=(want-now)*want>0&&Math.abs(want)>Math.abs(now)?now+clampN(want-now,AMAX*H60):want, pm=Math.hypot(dx,dy,dz), k=pm>6?6/pm:1;
       vel.set(dx*k+nv*fx,dy*k+nv*fy,dz*k+nv*fz); } }
   if(PH){ world=new PH.World(); world.gravity.set(0,-22,0); world.broadphase=new PH.NaiveBroadphase(); world.solver.iterations=36; world.allowSleep=true;
     const c=world.defaultContactMaterial; c.friction=.55; c.restitution=.02; c.contactEquationStiffness=1e7; c.contactEquationRelaxation=4; c.frictionEquationStiffness=1e7; c.frictionEquationRelaxation=4;
@@ -597,7 +602,7 @@ const trein=(()=>{
   function land(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; let t=(RISE-o.y)/d.y; out.set(o.x+d.x*t,RISE,o.z+d.z*t); if(inPlat(out.x,out.z,PV)) return out; t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function ground(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; const t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function clearAt(x,z,self){ if(Math.abs(x)>MX-.6||Math.abs(z)>MZ-.6||(inPlat(x,z,PV+.7)&&!inPlat(x,z,PV-.7))) return false; for(const r of rocks) if(r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.6) return false; for(const w of vehs) if(w!==self&&!w.c&&Math.hypot(w.g.position.x-x,w.g.position.z-z)<1.15) return false;
-    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of cranes) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.25) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false;
+    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of cranes) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.25) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false;
     for(const r of blocks){ const q=r.b.position; if(Math.hypot(q.x-x,q.z-z)<1) return false; } for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>8) continue; for(const q of p.path) if((q.x-x)*(q.x-x)+(q.z-z)*(q.z-z)<.8) return false; } return true; }
   /* the strip of ground just above the buttons: its depth and how far it reaches left and right */
   function lowEdge(){ const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
@@ -608,7 +613,7 @@ const trein=(()=>{
   /* a train (cons) is a row of vehicles, each with its own place on the track; the first one leads, the others follow at a fixed distance */
   const motor=c=>c.net!=='rail'||c.veh[0].loco;
   const apart=(a,b)=>{ const p=a.pos&&a.pos.p, q=b.pos&&b.pos.p; return !!(p&&q&&(p.gang||q.gang)&&p.tun!==q.tun); };
-  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,seen:new Set()});
+  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,seen:new Set(),seenB:new Set(),boost:0,fast:1});
   /* shift a place until there is room for half a vehicle in front and `need` behind it; false when the track is too short for that */
   function fit(pos,c,K,need){ cp(P1,pos); const a=walk(P1,K.half,c); cp(P1,pos); const b=walk(P1,-(need+K.half),c); if(a>1e-6&&b>1e-6) return false;
     if(a>1e-6){ cp(P1,pos); if(walk(P1,-(a+need+K.half),c)>1e-6) return false; walk(pos,-a,c); } else if(b>1e-6){ cp(P1,pos); if(walk(P1,b+K.half,c)>1e-6) return false; walk(pos,b,c); } return true; }
@@ -633,7 +638,7 @@ const trein=(()=>{
   const turn=c=>{ if(c.net==='road'){ const v=c.veh[0]; v.pos.d=-v.pos.d; v.spin=PI; c.pause=.6; } else { c.dir=-c.dir; c.pause=.45; } c.block=null; sfx.boop(); };
   const shut=p=>p.type==='overweg'&&p.shut;
   /* one step for a train with an engine. It stops for the end of the track and for a train in front of it: behind a train going the same way it waits, facing one coming the other way (or wagons standing still) it turns back */
-  function advance(c,dt){ c.block=null; const K=KN[c.net], n=c.veh.length, lead=c.dir>0?c.veh[0]:c.veh[n-1], tail=c.dir>0?c.veh[n-1]:c.veh[0], d=K.speed*dt;
+  function advance(c,dt){ c.block=null; const K=KN[c.net], n=c.veh.length, lead=c.dir>0?c.veh[0]:c.veh[n-1], tail=c.dir>0?c.veh[n-1]:c.veh[0], d=K.speed*c.fast*dt;
     cp(P1,lead.pos); const left=walk(P1,c.dir*(d+K.half),c,c.net==='road'?shut:null), hit=walk.hit; let room=d-left, blocker=null;
     hd.set(Math.cos(lead.yaw)*c.dir,0,-Math.sin(lead.yaw)*c.dir);
     for(const o of cons){ if(o===c||o.net!==c.net) continue; for(const w of o.veh){ if(Math.abs(w.tp.y-lead.tp.y)>.7||apart(w,lead)) continue; const dx=w.tp.x-lead.tp.x, dz=w.tp.z-lead.tp.z, dist=Math.hypot(dx,dz); if(dist>K.gap+d+.1) continue;
@@ -650,6 +655,9 @@ const trein=(()=>{
   /* a sensor block beside the rails: the engine stops next to it for the time the block shows */
   function sense(c){ const l=c.veh[0]; for(const s of props){ if(!s.wp) continue; const d=Math.hypot(l.tp.x-s.wp.x,l.tp.z-s.wp.z);
       if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
+  /* a speed boost on the rails: the engine that rides over it goes twice as fast for a while, then slowly back to its own speed (both ways, also riding backwards) */
+  function zoom(c){ const l=c.veh[0]; for(const f of boosts){ if(!f.wp) continue; const d=Math.hypot(l.tp.x-f.wp.x,l.tp.z-f.wp.z);
+      if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ tone(260,.32,'sawtooth',.05,1300); tone(520,.26,'triangle',.12,1560,.04); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
   /* how many blocks the train is leaning on: the ones it touches and everything piled against those. One or two it shoves along; running into a heap throws it off the rails */
   function heapOf(c){ const ct=world.contacts, seen=new Set(); let grew=true; for(const q of ct){ const a=q.bi, b=q.bj; if(a.veh&&a.veh.c===c&&b.blk) seen.add(b); else if(b.veh&&b.veh.c===c&&a.blk) seen.add(a); }
     if(!seen.size) return 0; while(grew&&seen.size<HEAP){ grew=false; for(const q of ct){ const a=q.bi, b=q.bj; if(!a.blk||!b.blk) continue; if(seen.has(a)&&!seen.has(b)){ seen.add(b); grew=true; } else if(seen.has(b)&&!seen.has(a)){ seen.add(a); grew=true; } } } return seen.size; }
@@ -694,7 +702,15 @@ const trein=(()=>{
   function beside(x,z,off,reach){ let bd=reach*reach, bp=null, bi=0; for(const p of pieces){ if(!p.live||p.gang) continue; for(let i=0;i<p.path.length;i++){ const s=p.path[i]; if(p.segs[s.si].net!=='rail'||hidPt(s.x,s.y,s.z)) continue; const dx=x-s.x, dz=z-s.z, dd=dx*dx+dz*dz; if(dd<bd){ bd=dd; bp=p; bi=i; } } }
     if(!bp) return null; const s=bp.path[bi], nx=bp.path[bi+1], o=nx&&nx.si===s.si?nx:bp.path[bi-1], sg=o===nx?1:-1; let tx=(o.x-s.x)*sg, tz=(o.z-s.z)*sg; const l=Math.hypot(tx,tz)||1; tx/=l; tz/=l;
     const sd=(x-s.x)*-tz+(z-s.z)*tx>=0?1:-1, nxn=-tz*sd, nzn=tx*sd; return {x:s.x+nxn*off,z:s.z+nzn*off,yaw:Math.atan2(-nxn,-nzn),wp:s}; }
-  function bind(){ for(const s of props){ const b=beside(s.x,s.z,0,1.35); s.wp=b?b.wp:null; } for(const k of cranes){ const b=beside(k.x,k.z,0,3), m=mills.find(q=>{ if(q.sort==='fab') return false; const d=Math.hypot(q.x+1-k.x,q.z+PZ-k.z); return d>RMIN&&d<RMAX; }); if(m) k.home=Math.atan2(k.z-m.z-PZ,m.x+1-k.x); else if(b) k.home=Math.atan2(k.z-b.wp.z,b.wp.x-k.x); } }
+  /* the spot on the nearest rail itself (within reach of x,z), with the way the track runs there and its slope; never inside a tunnel */
+  function onTrack(x,z,reach){ let bd=reach*reach, bp=null, bi=0; for(const p of pieces){ if(!p.live||p.gang) continue; for(let i=0;i<p.path.length;i++){ const s=p.path[i]; if(p.segs[s.si].net!=='rail'||hidPt(s.x,s.y,s.z)) continue; const dx=x-s.x, dz=z-s.z, dd=dx*dx+dz*dz; if(dd<bd){ bd=dd; bp=p; bi=i; } } }
+    if(!bp) return null; const s=bp.path[bi], nx=bp.path[bi+1], o=nx&&nx.si===s.si?nx:bp.path[bi-1], sg=o===nx?1:-1, tx=(o.x-s.x)*sg, ty=(o.y-s.y)*sg, tz=(o.z-s.z)*sg, l=Math.hypot(tx,tz)||1;
+    return {x:s.x,y:s.y+TH,z:s.z,yaw:Math.atan2(-tz,tx),pitch:Math.atan2(ty,l),wp:s}; }
+  /* a boost lies on the rail it was put on; when that rail goes, it drops onto the ground where it was (and clicks on again when rail comes back under it) */
+  function lay(f){ const t=onTrack(f.x,f.z,.35); if(t){ f.x=t.x; f.z=t.z; f.y=t.y; f.yaw=t.yaw; f.pitch=t.pitch; f.wp=t.wp; } else { f.wp=null; f.y=hAt(f.x,f.z)+.004; f.pitch=0; } }
+  function addBoost(){ if(boosts.length>=MAXBOOST){ sfx.boing(); return; } const m=SPOOR.boost(), q=spot(null), f={kind:'f',x:q[0],z:q[1],y:hAt(q[0],q[1])+.004,yaw:0,pitch:0,g:m.g,bolt:m.bolt,wp:null};
+    m.g.userData.rec=f; m.g.rotation.order='YZX'; m.g.position.set(f.x,f.y,f.z); g.add(m.g); boosts.push(f); popIn(m.g,.3); sfx.pop(5); }
+  function bind(){ for(const f of boosts) if(!held||held.rec!==f) lay(f); for(const s of props){ const b=beside(s.x,s.z,0,1.35); s.wp=b?b.wp:null; } for(const k of cranes){ const b=beside(k.x,k.z,0,3), m=mills.find(q=>{ if(q.sort==='fab') return false; const d=Math.hypot(q.x+1-k.x,q.z+PZ-k.z); return d>RMIN&&d<RMAX; }); if(m) k.home=Math.atan2(k.z-m.z-PZ,m.x+1-k.x); else if(b) k.home=Math.atan2(k.z-b.wp.z,b.wp.x-k.x); } }
   function propBody(s,on){ if(!world) return; if(s.b){ world.removeBody(s.b); s.b=null; } if(!on) return; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.31,.21,.31))); b.position.set(s.x,.21+hAt(s.x,s.z),s.z); b.quaternion.setFromAxisAngle(V(0,1,0),s.yaw); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); s.b=b; wakeAll(); }
   function showNum(s,n){ if(s.shown!==n){ s.shown=n; s.plate.material=SPOOR.numMat(n); } }
   function addSensor(){ if(props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
@@ -912,6 +928,7 @@ const trein=(()=>{
     else if(r.kind==='v'){ dismount(r); te.setFromQuaternion(r.g.quaternion,'YZX'); r.yaw=te.y; r.pitch=0; r.tp.copy(r.g.position); r.g.rotation.set(0,te.y,0); held={kind:'v',rec:r,cand:null,yaw:te.y}; }
     else if(r.kind==='k'){ craneStop(r); craneBody(r,false); held={kind:'k',rec:r,snap:false}; }
     else if(r.kind==='z'){ millBody(r,false); manHome(r); held={kind:'z',rec:r,ox:r.x,oz:r.z}; }
+    else if(r.kind==='f'){ r.wp=null; held={kind:'f',rec:r,snap:false}; }
     else if(r.kind==='s'){ propBody(r,false); if(r.busy){ r.busy.pause=0; r.busy.stop=null; r.busy=null; } r.wp=null; held={kind:'s',rec:r,snap:false}; }
     else { world.removeBody(r.b); wakeAll(); te.setFromQuaternion(r.m.quaternion,'YXZ'); const rot=Math.round(te.y/(PI/2))&1; heldQ.setFromAxisAngle(YAX,Math.round(te.y/(PI/2))*PI/2); tgt.copy(r.m.position); held={kind:'b',rec:r,rot:!!rot,out:false}; }
     sfx.pop(5); }
@@ -926,6 +943,7 @@ const trein=(()=>{
       else { held.cand=null; const q=held.q, m=held.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); aimAt(p,{type:p.type,x:F.x-a1.x,z:F.z-a1.z,q,lv:0,m},.45+F.y); } }
     else if(held.kind==='z'){ const m=held.rec; m.x=F.x; m.z=F.z; m.y=.35+F.y; }
     else if(held.kind==='k'){ const k=held.rec, b=bin?null:beside(F.x,F.z,1.4,2); if(b&&Math.abs(b.x)<MX-.45&&Math.abs(b.z)<MZ-.45&&!mills.some(m=>inMill(m,b.x,b.z,.4))){ if(!held.snap) klik(); held.snap=true; k.x=b.x; k.z=b.z; k.y=hAt(b.x,b.z); k.home=Math.atan2(k.z-b.wp.z,b.wp.x-k.x); } else { held.snap=false; k.x=F.x; k.z=F.z; k.y=.4+F.y; } }
+    else if(held.kind==='f'){ const f=held.rec, t=bin?null:onTrack(F.x,F.z,1.1); if(t){ if(!held.snap) klik(); held.snap=true; f.x=t.x; f.y=t.y; f.z=t.z; f.yaw=t.yaw; f.pitch=t.pitch; } else { held.snap=false; f.x=F.x; f.z=F.z; f.y=.4+F.y; f.pitch=0; } }
     else if(held.kind==='s'){ const s=held.rec, b=bin?null:beside(F.x,F.z,1.02,1.6); if(b&&Math.abs(b.x)<MX-.3&&Math.abs(b.z)<MZ-.3){ if(!held.snap) klik(); held.snap=true; s.x=b.x; s.z=b.z; s.yaw=b.yaw; s.y=hAt(b.x,b.z); } else { held.snap=false; s.x=F.x; s.z=F.z; s.y=.4+F.y; } }
     else { const v=held.rec, net=v.K.net; let best=null, bs=null, bd=1;
       for(const p of pieces){ if(!p.live||p.gang) continue; for(const s of p.path){ if(p.segs[s.si].net!==net||hidPt(s.x,s.y,s.z)) continue; cv.set(s.x,s.y+TH+.3,s.z); const dd=ray.ray.distanceSqToPoint(cv); if(dd<bd){ bd=dd; best=p; bs=s; } } }
@@ -938,6 +956,7 @@ const trein=(()=>{
     if(h.kind==='z'){ const m=h.rec; if(out){ removeMill(m); sfx.boop(); return; } const q=nearSite(clampN(m.x,MX),clampN(m.z,MZ),m,m.hw,m.hd)||[h.ox,h.oz]; m.x=q[0]; m.z=q[1]; m.y=hAt(m.x,m.z); millBody(m,true); manHome(m); bind(); sfx.plop(); return; }
     if(h.kind==='k'){ const k=h.rec; if(out&&!h.snap){ g.remove(k.g); cranes=cranes.filter(x=>x!==k); sfx.boop(); return; }
       k.x=clampN(k.x,MX-.5); k.z=clampN(k.z,MZ-.5); k.y=hAt(k.x,k.z); craneBody(k,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
+    if(h.kind==='f'){ const f=h.rec; if(out&&!h.snap){ g.remove(f.g); boosts=boosts.filter(x=>x!==f); sfx.boop(); return; } f.x=clampN(f.x,MX-.4); f.z=clampN(f.z,MZ-.4); lay(f); if(f.wp) klik(); else sfx.plop(); return; }
     if(h.kind==='s'){ const s=h.rec; if(out&&!h.snap){ g.remove(s.g); props=props.filter(x=>x!==s); sfx.boop(); return; }
       s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=hAt(s.x,s.z); propBody(s,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
     if(h.kind==='p'&&h.rec.type==='poort'){ dropGate(h,out); return; }
@@ -954,16 +973,16 @@ const trein=(()=>{
   /* the forest and the rocks: all of them back (campaign), or none at all (creative) */
   /* everything that was put down goes away */
   function wipe(){ if(held&&held.kind==='b') world.addBody(held.rec.b); cranes.forEach(k=>{ craneStop(k); craneBody(k,false); g.remove(k.g); }); mills.slice().forEach(removeMill);
-    pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); });
-    if(pick){ pick=null; digUI(false); } marksOff(); tunnels=[]; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
+    pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g));
+    if(pick){ pick=null; digUI(false); } marksOff(); tunnels=[]; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
   function reset(){ wipe(); gen(mode==='camp'); panX=panZ=0; applyCamera(); sfx.boing(); }
 
   gen(true);
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
-  return { g, add, addTrain, addSensor, addCrane, addMill, reset, dig, COST,
-    get state(){ return {pieces,vehs,cons,open,blocks,props,cranes,mills,trees,rocks,stock,PLS,seed:seedW,held,wide,tab,shape,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
+  return { g, add, addTrain, addSensor, addBoost, addCrane, addMill, reset, dig, COST,
+    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,cranes,mills,trees,rocks,stock,PLS,seed:seedW,held,wide,tab,shape,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     setShape(s){ shape=s; sfx.tap(); },
     barH:bar,
@@ -977,20 +996,20 @@ const trein=(()=>{
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
-    exit(){ if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='k'||h.kind==='z'){ F.set(panX,0,panZ); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); if(h.rec.type==='poort'){ marksOff(); bore(h.rec.tun); } } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
-    update(dt){ frameN++; let moving=false;
+    exit(){ if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='f'||h.kind==='k'||h.kind==='z'){ F.set(panX,0,panZ); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); if(h.rec.type==='poort'){ marksOff(); bore(h.rec.tun); } } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
+    update(dt){ frameN++; let moving=false; fastest=1;
       /* something in the hand near the edge of the screen: the picture scrolls along; the button top right is a bin meanwhile */
       const bs=held&&ptr?(overBin(ptr.cx,ptr.cy)?2:1):0; if(bs!==binSt){ binSt=bs; binUI(bs>0,bs>1); }
       if(bs===1&&ptr.mode===1){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
       for(const c of cons.slice()){ if(c.crash){ derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
-        if(motor(c)){ if(c.net==='rail') sense(c); if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
+        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/1.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
         for(const v of c.veh){ placeOn(v,c); if(v.spin){ v.spin*=Math.exp(-dt*7); if(v.spin<.02) v.spin=0; } }
         for(const e of c.ch) if(frameN-e[1].t>12) c.ch.delete(e[0]); }
       meet();
       for(const m of marks){ if(!m.g.visible) continue; const w=Math.sin(Tm*5)*AMP; m.ar.position.x=.32+w*.12; m.r.scale.setScalar(1+.1*w); }
-      if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34; tone(R(150,175),.06,'triangle',.045,95); } }
+      if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34/fastest; tone(R(150,175),.06,'triangle',.045,95); } }
       const k=1-Math.exp(-dt*18), kv=1-Math.exp(-dt*24); let top=0;
       if(world){ world.step(H60,dt,4);
         for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const p=r.b.position, q=r.b.quaternion;
@@ -998,6 +1017,7 @@ const trein=(()=>{
           r.m.position.set(p.x,p.y,p.z); r.m.quaternion.set(q.x,q.y,q.z,q.w); if(p.y>top&&r.b.velocity.norm2()<1) top=p.y; }
         for(const c of cons){ let lag=0; for(const v of c.veh) if(v.inW&&!v.warp){ const p=v.b.position; lag=Math.max(lag,Math.hypot(p.x-v.tp.x,p.y-v.tp.y,p.z-v.tp.z)); } c.lag=lag; c.stuck=lag>LAG?c.stuck+dt:Math.max(0,c.stuck-dt*2); if(c.stuck>.6||lag>1.6||(motor(c)&&heapOf(c)>=HEAP)) c.crash=true; } }
       for(const p of pieces){ const m=p.g; m.position.x+=(p.tx-m.position.x)*k; m.position.y+=(p.ty-m.position.y)*k; m.position.z+=(p.tz-m.position.z)*k; let da=p.tq*PI/2-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*k; }
+      for(const f of boosts){ const m=f.g; m.position.x+=(f.x-m.position.x)*kv; m.position.y+=(f.y-m.position.y)*kv; m.position.z+=(f.z-m.position.z)*kv; let da=f.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(f.pitch-m.rotation.z)*kv; f.bolt.scale.setScalar(f.wp?1+.12*Math.sin(Tm*6)*AMP:1); }
       for(const s of props){ const m=s.g, b=s.busy; m.position.x+=(s.x-m.position.x)*kv; m.position.y+=(s.y-m.position.y)*kv; m.position.z+=(s.z-m.position.z)*kv; let da=s.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; s.num.rotation.y=(wide?0:PI/2)-m.rotation.y;
         if(b&&!(b.stop===s&&b.pause>0&&cons.indexOf(b)>=0&&b.veh[0].loco)) s.busy=null; showNum(s,s.busy?Math.max(1,Math.ceil(s.busy.pause)):s.sec); s.lamp.material.color.setHex(s.busy?SPOOR.lampCol.stop:s.wp&&s.sec?SPOOR.lampCol.go:SPOOR.lampCol.off); }
       for(const c of cranes){ craneStep(c,dt); const m=c.g; m.position.x+=(c.x-m.position.x)*kv; m.position.y+=(c.y-m.position.y)*kv; m.position.z+=(c.z-m.position.z)*kv; c.top.rotation.y=c.th; c.trol.position.x=c.r; c.cable.scale.y=c.len; c.cable.position.y=-c.len/2; c.hook.position.y=-c.len; }
@@ -1007,16 +1027,16 @@ const trein=(()=>{
       for(const v of vehs){ const m=v.g; if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
-    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),tab==='blok'?[]:cranes.map(s=>s.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
+    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),tab==='blok'?[]:cranes.map(s=>s.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
-      if((kind==='p'||kind==='s'||kind==='k'||kind==='z')&&tab==='blok'){ rec=null; kind='mat'; }
+      if((kind==='p'||kind==='s'||kind==='f'||kind==='k'||kind==='z')&&tab==='blok'){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
-      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='k'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
+      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='k'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(tab==='blok') tapBlock(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='k'||p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(tab==='blok') tapBlock(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='k'||p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
@@ -1073,22 +1093,23 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     berg:'<path d="M2.500 20C4 12.500 8 7 12 7s8 5.500 9.500 13z"/><path d="M8.500 20v-3.200a3.500 3.500 0 0 1 7 0V20"/>',
     trein:'<path d="M3.500 16.500v-9h6.500v4h10v5z"/><path d="M14 11.500v-3h2.500v3"/><circle cx="7" cy="19" r="1.700"/><circle cx="16.500" cy="19" r="1.700"/>',
     huis:'<path d="M3.500 11 12 4l8.500 7M5.500 9.500V20h13V9.500"/><path d="M10 20v-5.500h4V20"/>',
+    boost:'<path d="M13.500 2.500 5 13.500h6l-1.500 8L19 10h-6.500z" fill="currentColor"/>',
     sensor:'<rect x="4.500" y="9" width="15" height="11.500" rx="2.500"/><path d="M12 9V5.500"/><circle cx="12" cy="4" r="1.700" fill="currentColor"/><path d="M12 12v3.200l2.200 1.300" stroke-width="2"/>'};
   /* the drawer at the bottom: five tabs with a word under them; the buttons of the open tab sit beside them (wide screen) or below them (narrow screen), always on one row */
-  const p=document.createElement('div'), tabs=document.createElement('div'), items=document.createElement('div'), G={}, tb=[], bs=[], N=6, GAP=8;
+  const p=document.createElement('div'), tabs=document.createElement('div'), items=document.createElement('div'), G={}, tb=[], bs=[], N=6, GAP=8, SEP=14;
   p.id='treinBar'; tabs.className='tabs'; tabs.setAttribute('role','tablist'); items.className='items'; p.append(tabs,items); bot.appendChild(p);
   [['rails','Rails',ST.recht,'#f2c078','#b9762c','var(--ink)'],['trein','Treinen',ST.trein,'var(--red)','var(--red)'],['weg','Weg',ST.weg,'#687189','#687189'],['huis','Gebouwen',ST.huis,'var(--brown)','var(--brown)'],['blok','Blokken',ICON.kubus,'var(--purple)','var(--purple)']].forEach(([id,word,svg,c,k,i])=>{
     const b=document.createElement('button'); b.type='button'; b.className='tab'; b.id='tab-'+id; b.setAttribute('role','tab'); b.style.setProperty('--c',c); b.style.setProperty('--k',k); if(i) b.style.setProperty('--i',i);
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+svg+'</svg><span>'+word+'</span>'; b.addEventListener('click',()=>{ audio(); tabTo(id); }); tabs.appendChild(b); tb.push(b);
     const r=document.createElement('div'); r.className='row'; r.setAttribute('role','tabpanel'); r.hidden=id!=='rails'; items.appendChild(r); G[id]=r; });
   const gap=r=>{ const e=document.createElement('i'); e.className='sep'; r.appendChild(e); };
-  /* everything is sized for the fullest tab (six buttons), so nothing shifts when you switch; on a narrow screen the words get a little smaller first */
+  /* everything is sized for the fullest tab (six buttons and a gap), so nothing shifts when you switch; on a narrow screen the words get a little smaller first */
   fitBar=()=>{ const W=app.clientWidth||1, H=app.clientHeight||1, base=Math.max(46,Math.min(76,Math.min(W,H)*.125)), avail=W-24, PAD=26;
-    const size=v=>{ v=Math.floor(v); p.style.setProperty('--btn',v+'px'); p.style.setProperty('--sw',Math.round(v*.78)+'px'); items.style.minWidth=(N*v+(N-1)*GAP)+'px'; };
+    const size=v=>{ v=Math.floor(v); p.style.setProperty('--btn',v+'px'); p.style.setProperty('--sw',Math.round(v*.78)+'px'); items.style.minWidth=(N*v+(N-1)*GAP+SEP)+'px'; };
     const font=f=>{ p.style.setProperty('--tf',f+'px'); p.style.setProperty('--ti',Math.round(f*1.7)+'px'); p.style.setProperty('--tw',Math.round(f*4.2)+'px'); };
     p.classList.remove('two'); let f=base>=64?15:14; font(f); while(tabs.offsetWidth>avail-PAD&&f>10){ f--; font(f); }
-    const v1=Math.min(base,(avail-PAD-tabs.offsetWidth-12-(N-1)*GAP)/N);
-    if(v1>=Math.min(base,54)) size(v1); else { p.classList.add('two'); size(Math.max(38,Math.min(base,(avail-PAD-(N-1)*GAP)/N))); } };
+    const v1=Math.min(base,(avail-PAD-tabs.offsetWidth-12-(N-1)*GAP-SEP)/N);
+    if(v1>=Math.min(base,54)) size(v1); else { p.classList.add('two'); size(Math.max(38,Math.min(base,(avail-PAD-(N-1)*GAP-SEP)/N))); } };
   const tabTo=id=>{ for(const k in G) G[k].hidden=k!==id; tb.forEach(b=>{ const on=b.id==='tab-'+id; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); fitBar(); trein.setTab(id); };
   tb.forEach((b,i)=>{ b.classList.toggle('on',!i); b.setAttribute('aria-selected',i?'false':'true'); });
   /* the start screen is also the menu: creative or campaign (each a new world); during a game also play on and start again; sound and full screen always */
@@ -1115,6 +1136,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.trein,{id:'spoor-pass',cls:'btn face',svg:'<rect x="2.500" y="5.500" width="19" height="2.600" rx="1.300" fill="#ffd22e"/><rect x="3.500" y="7.500" width="17" height="9.500" rx="1.500" fill="#2fc866"/><rect x="5.500" y="9.500" width="3.400" height="3.400" rx=".600" fill="#bfe6ff"/><rect x="10.300" y="9.500" width="3.400" height="3.400" rx=".600" fill="#bfe6ff"/><rect x="15.100" y="9.500" width="3.400" height="3.400" rx=".600" fill="#bfe6ff"/>'+wh,label:'Passagierswagon',on:()=>trein.addTrain('pass')});
   gap(G.trein);
   mkBtn(G.trein,{id:'spoor-sensor',svg:ST.sensor,c:'var(--yellow)',i:'var(--ink)',label:'Sensor: de trein stopt hier even. Tik erop voor 5, 10, 15 of 0 tellen',on:()=>trein.addSensor()});
+  mkBtn(G.trein,{id:'spoor-boost',svg:ST.boost,c:'var(--orange)',label:'Snelheidsboost: leg hem op de rails, de trein gaat even dubbel zo snel',on:()=>trein.addBoost()});
   mkBtn(G.trein,{id:'spoor-kraan',svg:ST.kraan,c:'var(--yellow)',i:'var(--ink)',label:'Hijskraan: tilt blokken van de rails in de goederenwagon',on:()=>trein.addCrane()});
   /* Weg: road pieces, then the car */
   [['weg','Recht stuk weg'],['wbocht','Bocht in de weg'],['overweg','Spoorwegovergang: tik erop om de slagbomen dicht of open te doen']].forEach(([k,l])=>price(mkBtn(G.weg,{id:'spoor-'+k,svg:ST[k],c:'#687189',label:l,on:()=>trein.add(k)}),k));
