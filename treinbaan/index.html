@@ -686,7 +686,7 @@ const trein=(()=>{
     for(const d of dorpen){ if(!d.station) continue; const mx=d.sx+3, dist=Math.hypot(l.tp.x-mx,l.tp.z-d.sz);
       if(c.seenD.has(d)){ if(dist>4) c.seenD.delete(d); continue; }
       if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ tone(784,.12,'sine',.12); tone(659,.2,'sine',.12,0,.13); } serve(c,d); } } }
-  function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ toast('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
+  function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ if(!(d.kind==='bos'&&earn(['brug','sensor'],'De trein is in '+d.name+'! Je krijgt de brug en de sensor.'))) toast('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
     const tick=()=>{ if(c.stop!==d||cons.indexOf(c)<0||c.pause<=0) return; if(swap(c,d)){ c.pause=Math.max(c.pause,1); after(.35,tick); } }; after(.6,tick); }
   /* travellers: people of the start village who want to go to the other village and back. They wait on the platform; a train with a passenger coach that stops there takes them along (four to a coach) and lets them off at the station they want. There they stay a while, then wait to go home again; at home they rest before the next trip. st: 'wait' (at a station), 'ride' (in coach v), 'away' (in a village, until t runs out) */
   const SEATS=4, other=d=>dorpen.find(q=>q!==d&&q.station);
@@ -746,10 +746,13 @@ const trein=(()=>{
     if(d.proj==='station'){ vrects=vrects.filter(x=>x!==d.trackR); d.platR.soft=false;
       for(const p of pieces.slice()){ if(p.fixed) continue; mid(p,a1); if(Math.abs(a1.z-d.sz)<.5&&a1.x>d.sx-.1&&a1.x<d.sx+6.1){ evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } }
       buildStation(d); if(!pieces.some(p=>!p.fixed&&p.ends&&p.ends.some(e=>e.x===d.sx&&e.z===d.sz))){ const b=layPiece('eind',d.sx,d.sz,2); popIn(b.g,.3); } d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); rebuild(); settle();
-      locked.delete('graaf'); lockUI(locked); const e=newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); toast(d.name+' heeft een station! Je krijgt een graafmachine.'); after(7,()=>{ if(dorpen.indexOf(d)>=0) toast('Wil je verder bouwen? Sleep een stootblok naar de prullenbak en leg nieuwe rails.'); }); setProject(d,'huis',Math.random); }
+      earn(['graaf','wissel'],d.name+' heeft een station! Je krijgt een graafmachine en de wissel.'); newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); after(7,()=>{ if(dorpen.indexOf(d)>=0) toast('Wil je verder? Leg een wissel in je spoor, of sleep een stootblok naar de prullenbak.'); }); setProject(d,'huis',Math.random); }
     else { const hg=DORP.house(S.sort,Math.random); villObj(d,hg,R.x,R.z,R.hw-.3,R.hd-.3,S.sort==='huis'||S.sort==='breed'||S.sort==='poort'?.8:1.2); popIn(hg,.4); d.houses++;
-      addFolk(d,2); if(locked.has('pass')){ locked.delete('pass'); locked.delete('auto'); lockUI(locked); toast('Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon en de auto.'); } else toast('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
+      addFolk(d,2); if(earn(['pass','auto','overweg'],'Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon, de auto en de overweg.')){} else if(d.houses>=6&&earn(['tunnel','wtunnel','boost'],'Een nieuw huis in '+d.name+'! Je krijgt tunnels en de boost.')){} else toast('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
       setProject(d,d.houses<HOUSES?'huis':null,Math.random); } }
+  /* what you have to earn in the campaign, step by step: vehicles and pieces of track. earn: they come free, with a message */
+  const LOCK0=['graaf','pass','auto','wissel','brug','tunnel','overweg','wtunnel','sensor','boost'];
+  function earn(keys,msg){ let any=false; for(const k of keys) if(locked.delete(k)) any=true; if(!any) return false; lockUI(locked); if(msg) toast(msg); sfx.tada(); return true; }
   const hello=()=>{ const d=dorpen.find(q=>q.proj==='station'); if(!d) return; after(1.2,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast(d.name+' wil een station! Het vraagt 8 hout en 6 steen.'); });
     after(7.5,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast('Schep met de shovel hout en steen in de wagon. Tik dan op de groene knop: de trein brengt het naar '+d.name+'.'); }); };
   function placeVillages(rs){ const pick=l=>l[(rs()*l.length)|0];
@@ -794,7 +797,7 @@ const trein=(()=>{
   /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
   function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
     for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
-    clearFolk(); clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?['graaf','pass','auto']:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
+    clearFolk(); clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?LOCK0:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -921,7 +924,7 @@ const trein=(()=>{
     for(const X of L) for(let e=0;e<ty.ends.length;e++){ const E=ty.ends[e]; if(E.net!==X.e.net||(ty.sym&&(e&1))) continue;
       for(const m of ms){ const q=(X.e.q+2-(m>0?E.oq:4-E.oq))&3, lz=E.z*m, c={type,q,m,x:X.e.x-(E.x*CS[q]+lz*SN[q]),z:X.e.z-(-E.x*SN[q]+lz*CS[q]),lv:X.e.lv-E.l}; if(c.lv<0||c.lv>1) continue; if(free(c,null)) return c; } }
     return null; }
-  function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } if(!canPay(type)){ sfx.boing(); stockUI(stock,null,true); return; } const t=TYPE[type]; let best=attach(type), bc=1e9; const snap=!!best;
+  function add(type){ if(locked.has(type)||pieces.length>=MAXP){ sfx.boing(); return; } if(!canPay(type)){ sfx.boing(); stockUI(stock,null,true); return; } const t=TYPE[type]; let best=attach(type), bc=1e9; const snap=!!best;
     if(!best){ const q=0, e=lowEdge(), xc=(e.x0+e.x1)/2, hw=(e.x1-e.x0)/2-1.2, zt=panZ-vd/2+1.5;
       /* nothing to click onto: first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
       for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o=rest({type,x,z,q,lv:0,m:1}); mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } }); }
@@ -948,12 +951,12 @@ const trein=(()=>{
     return {x:s.x,y:s.y+TH,z:s.z,yaw:Math.atan2(-tz,tx),pitch:Math.atan2(ty,l),wp:s}; }
   /* a boost lies on the rail it was put on; when that rail goes, it drops onto the ground where it was (and clicks on again when rail comes back under it) */
   function lay(f){ const t=onTrack(f.x,f.z,.35); if(t){ f.x=t.x; f.z=t.z; f.y=t.y; f.yaw=t.yaw; f.pitch=t.pitch; f.wp=t.wp; } else { f.wp=null; f.y=hAt(f.x,f.z)+.004; f.pitch=0; } }
-  function addBoost(){ if(boosts.length>=MAXBOOST){ sfx.boing(); return; } const m=SPOOR.boost(), q=spot(null), f={kind:'f',x:q[0],z:q[1],y:hAt(q[0],q[1])+.004,yaw:0,pitch:0,g:m.g,bolt:m.bolt,wp:null};
+  function addBoost(){ if(locked.has('boost')||boosts.length>=MAXBOOST){ sfx.boing(); return; } const m=SPOOR.boost(), q=spot(null), f={kind:'f',x:q[0],z:q[1],y:hAt(q[0],q[1])+.004,yaw:0,pitch:0,g:m.g,bolt:m.bolt,wp:null};
     m.g.userData.rec=f; m.g.rotation.order='YZX'; m.g.position.set(f.x,f.y,f.z); g.add(m.g); boosts.push(f); popIn(m.g,.3); sfx.pop(5); }
   function bind(){ for(const f of boosts) if(!held||held.rec!==f) lay(f); for(const s of props){ const b=beside(s.x,s.z,0,1.35); s.wp=b?b.wp:null; } }
   function propBody(s,on){ if(!world) return; if(s.b){ world.removeBody(s.b); s.b=null; } if(!on) return; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.31,.21,.31))); b.position.set(s.x,.21+hAt(s.x,s.z),s.z); b.quaternion.setFromAxisAngle(V(0,1,0),s.yaw); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); s.b=b; wakeAll(); }
   function showNum(s,n){ if(s.shown!==n){ s.shown=n; s.plate.material=SPOOR.numMat(n); } }
-  function addSensor(){ if(props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
+  function addSensor(){ if(locked.has('sensor')||props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
     m.g.userData.rec=s; m.g.position.set(s.x,s.y,s.z); g.add(m.g); props.push(s); propBody(s,true); bind(); popIn(m.g,.3); sfx.pop(6); }
   function tapSensor(s){ s.sec=SECS[(SECS.indexOf(s.sec)+1)%SECS.length]; if(s.busy) s.busy.pause=Math.min(s.busy.pause,s.sec); pop(s.g,.2); tone(520+s.sec*30,.1,'triangle',.2); }
 
@@ -1002,7 +1005,7 @@ const trein=(()=>{
   /* the picture slides over to a place */
   function glide(x,z){ const x0=panX, z0=panZ; tw(.7,e=>{ panX=x0+(x-x0)*e; panZ=z0+(z-z0)*e; applyCamera(); },ease.inOut); }
   /* the tunnel button: the markers come up on the sides of the high ground. A second press (or another tab) puts the button down again */
-  function dig(net){ net=net||'rail'; if(held) return; if(pick){ const same=pick.net===net; undig(); if(same){ sfx.boop(); return; } } if(nTun(net)>=MAXTUN){ sfx.boing(); return; } if(!canPay('tunnel')){ sfx.boing(); stockUI(stock,null,true); return; }
+  function dig(net){ net=net||'rail'; if(held) return; if(locked.has(net==='rail'?'tunnel':'wtunnel')){ sfx.boing(); return; } if(pick){ const same=pick.net===net; undig(); if(same){ sfx.boop(); return; } } if(nTun(net)>=MAXTUN){ sfx.boing(); return; } if(!canPay('tunnel')){ sfx.boing(); stockUI(stock,null,true); return; }
     const by={}; openSpots(null,net).forEach(s=>{ (by[s.pl]=by[s.pl]||[]).push(s); }); const ok=Object.keys(by).filter(k=>by[k].length>=2); if(!ok.length){ sfx.boing(); return; }
     pick={a:null,t:null,net}; marksOn([].concat(...ok.map(k=>by[k]))); digUI(true,net); sfx.tap();
     /* the picture slides over to the nearest table */
@@ -1460,7 +1463,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept van hopen en losse blokjes en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
   mkBtn(G.mach,{id:'mach-kiep',cls:'btn face',svg:ST.kiep,label:'Kiepwagen: tik erop om in te stappen. Brengt steen naar de fabriek',on:()=>trein.addMachine('kiep')});
   /* a locked vehicle (campaign): grey with a lock; you earn it by building up the villages */
-  lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
+  lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto',wissel:'spoor-wissel',brug:'spoor-brug',tunnel:'spoor-tunnel',overweg:'spoor-overweg',wtunnel:'spoor-wtunnel',sensor:'spoor-sensor',boost:'spoor-boost'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
   /* the driving pad: push the stick the way you want to go; the big button does the work, the small one gets you out */
   { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)']}; let sid=null;
     uit.style.setProperty('--c','var(--purple)'); uit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST.uit+'</svg>'; uit.setAttribute('aria-label','Uitstappen'); uit.title='Uitstappen';
