@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#58c6ff">
 <style>html{box-sizing:border-box;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
 <title>Treinbaan</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600&display=swap">
 <style>
 /* Layout: one full-screen 3D play field (larger than the screen, you scroll over it). Top left the menu, in the middle the stock counter, top right a bin that only shows while something is in the hand; along the bottom a drawer with tabs and one row of chunky round candy buttons. */
 :root{
@@ -145,6 +145,86 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .pill{display:inline-flex;align-items:center;gap:.35em;padding:.42em 1em .42em .75em;border:4px solid var(--paper);border-radius:999px;background:var(--paper);color:var(--ink);font:800 clamp(15px,3.8vmin,19px)/1 var(--display);cursor:pointer;box-shadow:0 5px 0 var(--shade);touch-action:manipulation}
 .pill svg{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pill:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+/* ----- the menu: an enamel station board on the left, the world rides on behind it ----- */
+#start{--emaille:#1f3d6b;--emaille2:#16294a;--creme:#f4ecd6;--mat:#a9bbd6;--sein:#f5c542;--stop:#e5533d;--go:#3fb56b;--camp:#e08a2e;--vrij:#7c5cc4;--bord:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;--tekst:"Barlow",system-ui,sans-serif;
+  display:block;padding:0;background:linear-gradient(90deg,rgba(14,26,48,.4),rgba(14,26,48,0) 60%);-webkit-backdrop-filter:none;backdrop-filter:none;overflow:hidden}
+#start .in{position:absolute;left:max(16px,env(safe-area-inset-left));top:16px;bottom:16px;width:clamp(350px,38vw,460px);max-width:none;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:26px 26px 22px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(244,236,214,.3) transparent;
+  background:linear-gradient(180deg,#25487a,var(--emaille) 38%,#1b375f);border-radius:22px;color:var(--creme);font-family:var(--tekst);box-shadow:0 22px 50px rgba(8,18,36,.42);outline:2px solid rgba(244,236,214,.45);outline-offset:-9px}
+#start .kop{position:relative;overflow:hidden;padding-top:4px;flex:none}
+#start .in h1{margin:0;font:800 clamp(42px,4.4vw,58px)/.95 var(--bord);letter-spacing:.015em;color:var(--creme);text-shadow:none}
+#start .lijn{position:relative;height:16px;margin-top:22px;background:linear-gradient(var(--creme),var(--creme)) 0 3px/100% 2px no-repeat,linear-gradient(var(--creme),var(--creme)) 0 11px/100% 2px no-repeat,repeating-linear-gradient(90deg,rgba(244,236,214,.4) 0 3px,transparent 3px 13px) 0 0/100% 16px no-repeat}
+#start .lijn .loc{position:absolute;bottom:6px;left:calc(100% - 58px);width:56px;height:26px}
+#start .kop.rij .loc{animation:aankomst 2.6s cubic-bezier(.22,.7,.25,1) both}
+@keyframes aankomst{from{left:-64px}to{left:calc(100% - 58px)}}
+#start .in h2{margin:0 0 9px;display:flex;align-items:center;gap:10px;font:700 15px/1 var(--bord);letter-spacing:.06em;color:var(--mat);text-shadow:none;text-align:left}
+#start .in h2::after{content:"";flex:1;height:1px;background:rgba(169,187,214,.32)}
+#start .ik{justify-content:flex-start;gap:10px}
+#start .ik .lab{font:700 17px/1 var(--bord);color:var(--mat);letter-spacing:.04em}
+#start .ik input{width:auto;flex:1 1 150px;min-width:0;padding:.38em .7em;border:0;border-radius:10px;background:var(--creme);color:var(--emaille2);font:700 20px/1.2 var(--bord);text-align:left;box-shadow:inset 0 -3px 0 rgba(22,41,74,.18)}
+#start .ik input:focus{outline:3px solid var(--sein);outline-offset:2px;border:0}
+#start .kls{gap:6px;flex-wrap:wrap}
+#start .kl{width:26px;height:26px;border:2px solid rgba(244,236,214,.35);box-shadow:none}
+#start .kl.on{transform:none;border-color:var(--creme);box-shadow:0 0 0 3px var(--sein)}
+#start .kl:focus-visible{outline:3px solid var(--creme);outline-offset:3px}
+#start .samen{align-self:stretch;padding:4px;gap:4px;border-radius:12px;background:var(--emaille2);box-shadow:inset 0 0 0 1px rgba(244,236,214,.12)}
+#start .samen button{flex:1;padding:.5em .4em;border-radius:9px;color:var(--creme);font:700 18px/1 var(--bord);letter-spacing:.02em}
+#start .samen button.on{background:var(--sein);color:var(--emaille2)}
+#start .samen button:focus-visible{outline:3px solid var(--creme);outline-offset:1px}
+#start .snote{max-width:none;margin-top:-6px;font:500 15px/1.35 var(--tekst);color:var(--mat);text-shadow:none;text-align:left}
+#start .modes{display:grid;gap:10px;justify-content:stretch}
+#start .mode{display:grid;grid-template-columns:44px 1fr 22px;grid-template-rows:auto auto;column-gap:14px;row-gap:3px;align-items:center;justify-items:start;width:auto;padding:11px 12px;border:2px solid rgba(244,236,214,.16);border-radius:14px;background:rgba(244,236,214,.06);color:var(--creme);box-shadow:none;text-align:left;transition:border-color .15s,background-color .15s}
+#start .mode:hover{border-color:var(--sein);background:rgba(244,236,214,.1)}
+#start .mode:active{transform:translateY(2px);box-shadow:none}
+#start .mode:focus-visible{outline:3px solid var(--sein);outline-offset:2px}
+#start .mode .rt{grid-row:1/3;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+#start .mode .rt.camp{background:var(--camp)}
+#start .mode .rt.vrij{background:var(--vrij)}
+#start .mode .rt svg{width:26px;height:26px;fill:none;stroke:var(--creme);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#start .mode b{font:800 24px/1 var(--bord);letter-spacing:.01em}
+#start .mode span{font:500 14px/1.3 var(--tekst);color:var(--mat);opacity:1;max-width:none;text-align:left}
+#start .mode .pijl{grid-row:1/3;grid-column:3;width:22px;height:22px;fill:none;stroke:var(--sein);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+#start .saves{width:auto;gap:0}
+#start .saves .lst{max-height:none;gap:0;padding:0;overflow:visible;border-radius:12px;background:var(--emaille2);box-shadow:inset 0 0 0 1px rgba(244,236,214,.12)}
+#start .slot{gap:0;align-items:center;border-top:1px solid rgba(244,236,214,.1)}
+#start .slot:first-child{border-top:0}
+#start .slot .ld{gap:12px;padding:9px 12px;border:0;border-radius:0;background:transparent;color:var(--creme);box-shadow:none;font:700 19px/1.15 var(--bord)}
+#start .slot button.ld:hover{background:rgba(244,236,214,.06)}
+#start .slot .ld time{flex:none;min-width:3.3em;font:700 19px/1 var(--bord);font-variant-numeric:tabular-nums;color:var(--sein)}
+#start .slot .ld > i{flex:none;width:12px;height:12px;border-radius:50%}
+#start .slot .ld small{margin-top:2px;font:500 13.5px/1.25 var(--tekst);color:var(--mat);opacity:1}
+#start .slot .ld small i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--camp)}
+#start .slot .ld small i.vrij{background:var(--vrij)}
+#start .slot .ld.now{box-shadow:inset 4px 0 0 var(--sein)}
+#start .slot .del{width:42px;height:36px;margin-right:8px;border:1px solid rgba(244,236,214,.25);border-radius:9px;background:transparent;color:var(--mat);box-shadow:none}
+#start .slot .del:hover{color:var(--creme);border-color:var(--creme)}
+#start .slot .del svg{width:20px;height:20px;stroke-width:2}
+#start .slot .del.sure{width:auto;padding:0 .75em;background:var(--stop);border-color:var(--stop);color:#fff;font:700 16px/1 var(--bord)}
+#start .slot .ld:active,#start .slot .del:active{transform:none;box-shadow:none}
+#start .slot .mee{min-width:6em;height:36px;margin-right:8px;border:0;border-radius:9px;background:var(--go);color:#fff;font:700 17px/1 var(--bord);letter-spacing:.02em;box-shadow:none}
+#start .slot .mee:disabled{background:#33507a;color:var(--mat)}
+#start .slot .mee.stop{background:var(--stop)}
+#start .slot .mee:focus-visible,#start .slot .ld:focus-visible,#start .slot .del:focus-visible{outline:3px solid var(--sein);outline-offset:-3px}
+#start #lobby-leeg{padding:12px 4px 0}
+#start .naam{justify-items:stretch;gap:12px}
+#start .naam b{font:700 22px/1.1 var(--bord);color:var(--creme);text-shadow:none;text-align:left}
+#start .naam input{width:100%;border:0;border-radius:10px;padding:.45em .7em;font:700 26px/1.2 var(--bord);text-align:left;background:var(--creme);color:var(--emaille2);box-shadow:none}
+#start .naam input:focus{outline:3px solid var(--sein);outline-offset:2px;border:0}
+#start .naam .opts{justify-content:flex-start}
+#start .in > .opts{margin-top:auto;justify-content:flex-start;gap:8px;padding-top:4px}
+#start .go{flex:1 1 100%;padding:.55em 1em;border:0;border-radius:12px;background:var(--sein);color:var(--emaille2);font:800 22px/1 var(--bord);letter-spacing:.02em;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+#start .naam .go{flex:0 1 auto;padding:.5em 1.6em}
+#start .go:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+#start .go:focus-visible{outline:3px solid var(--creme);outline-offset:2px}
+#start .pill{padding:.5em .8em .5em .6em;border:1px solid rgba(244,236,214,.28);border-radius:10px;background:transparent;color:var(--creme);font:600 15px/1 var(--tekst);box-shadow:none}
+#start .pill:hover{border-color:var(--creme)}
+#start .pill:active{transform:translateY(1px);box-shadow:none}
+#start .pill svg{width:1.15em;height:1.15em;stroke-width:2}
+#start .pill:focus-visible{outline:3px solid var(--sein);outline-offset:2px}
+body.menu .bar,body.menu #rij,body.menu #spelers{visibility:hidden}
+body.menu #toast{z-index:6}
+@media (min-width:641px){body.menu #toast{top:24px;left:calc(50% + clamp(175px,19vw,230px) + 8px);max-width:min(calc(100vw - clamp(350px,38vw,460px) - 64px),560px)}}
+@media (max-width:640px){#start{background:rgba(14,26,48,.3)}#start .in{left:10px;right:10px;top:10px;bottom:10px;width:auto;padding:22px 18px 18px;gap:16px;outline-offset:-7px}}
+@media (prefers-reduced-motion:reduce){#start .kop.rij .loc{animation:none}#start .mode{transition:none}}
 /* creative: no stock, no prices, no buildings */
 body.vrij #hud,body.vrij .cost{display:none}
 @media (prefers-reduced-motion:reduce){.mode,.go{transition:none}}
@@ -163,15 +243,15 @@ body.vrij #hud,body.vrij .cost{display:none}
   <div class="bar bottom" id="bot"></div>
   <div id="rij" hidden><div id="stick" role="application" aria-label="Stuur: duw de knop de kant op waar je heen wilt"><div id="knob"></div></div>
     <div class="rjr"><button type="button" class="btn" id="rij-uit"></button><button type="button" class="btn" id="rij-doe"></button></div></div>
-  <div id="start"><div class="in">
-    <h1>Treinbaan</h1>
-    <div class="ik"><input id="ik-naam" type="text" maxlength="14" autocomplete="off" aria-label="Jouw naam" placeholder="Jouw naam"><div class="kls" id="ik-kl" role="radiogroup" aria-label="Jouw kleur"></div></div>
+  <div id="start"><div class="in" role="dialog" aria-modal="true" aria-labelledby="bord-titel">
+    <header class="kop rij"><h1 id="bord-titel">Treinbaan</h1><div class="lijn" aria-hidden="true"><svg class="loc" viewBox="0 0 60 28"><rect x="2" y="19" width="46" height="3" rx="1" fill="#16294a"/><rect x="14" y="8" width="31" height="12" rx="3" fill="#f5c542"/><rect x="4" y="2" width="14" height="18" rx="2" fill="#f4ecd6"/><rect x="7" y="5" width="8" height="6" rx="1" fill="#1f3d6b"/><rect x="36" y="1" width="5" height="8" rx="1" fill="#e5533d"/><rect x="45" y="14" width="5" height="4" rx="1" fill="#f4ecd6"/><circle cx="12" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/><circle cx="24" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/><circle cx="37" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/></svg></div></header>
+    <div class="ik"><label class="lab" for="ik-naam">Jij</label><input id="ik-naam" type="text" maxlength="14" autocomplete="off" aria-label="Jouw naam" placeholder="Jouw naam"><div class="kls" id="ik-kl" role="radiogroup" aria-label="Jouw kleur"></div></div>
     <div class="samen" id="samen" role="radiogroup" aria-label="Alleen of samen spelen"><button type="button" role="radio" class="on" aria-checked="true">Alleen</button><button type="button" role="radio" aria-checked="false">Host</button><button type="button" role="radio" aria-checked="false">Meedoen</button></div>
     <p class="snote" id="snote" hidden></p>
     <div class="saves" id="lobby" hidden><h2>Open spellen</h2><div class="lst" id="lobby-lst"></div><p class="snote" id="lobby-leeg">Zoeken naar spellen…</p></div>
-    <div class="modes">
-      <button type="button" class="mode" id="start-vrij"><svg viewBox="0 0 64 48" aria-hidden="true"><rect x="5" y="25" width="19" height="19" rx="3" fill="#ff4d5a"/><rect x="25" y="25" width="19" height="19" rx="3" fill="#2f9bff"/><rect x="15" y="5" width="19" height="19" rx="3" fill="#ffd22e"/><path d="M46 44V30a8 8 0 0 1 16 0v14h-5V31a3 3 0 0 0-6 0v13z" fill="#9b63ff"/><path d="m47 6 2 4.500 4.800.500-3.600 3.300 1 4.700-4.200-2.400-4.200 2.400 1-4.700-3.600-3.300 4.800-.500z" fill="#ff9a1f"/></svg><b>Creatief</b><span>Lege wereld, alles gratis</span></button>
-      <button type="button" class="mode" id="start-camp"><svg viewBox="0 0 64 48" aria-hidden="true"><path d="M16 4 5 20h5L3 31h10v8h6v-8h10l-7-11h5z" fill="#2f9e5b"/><rect x="13" y="38" width="6" height="6" fill="#a8683a"/><path d="M35 28 44 23.500l9 4.500v9L44 41.500 35 37z" fill="#a8683a"/><path d="M35 28l9 4.500 9-4.500-9-4.500z" fill="#c98a55"/><path d="M47 13 54 9.500l7 3.500v7L54 23.500 47 20z" fill="#8791a6"/><path d="M47 13l7 3.500 7-3.500-7-3.500z" fill="#b4bccb"/><rect x="3" y="43" width="58" height="3" rx="1.500" fill="#f2c078"/></svg><b>Campagne</b><span>Hak hout en steen en verdien je rails</span></button>
+    <div class="modes"><h2>Vertrek</h2>
+      <button type="button" class="mode" id="start-camp"><i class="rt camp" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10.5 19v-5h3v5"/></svg></i><b>Campagne</b><span>Bouw dorpen op en verdien nieuwe stukken</span><svg class="pijl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button type="button" class="mode" id="start-vrij"><i class="rt vrij" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/><path d="M8 6v12M12 6v12M16 6v12"/></svg></i><b>Creatief</b><span>Een lege wereld, alles is gratis</span><svg class="pijl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <div class="saves" id="saves" hidden><h2>Je spellen</h2><div class="lst" id="saves-lst"></div></div>
     <div class="naam" id="naam" hidden><b>Hoe heet je spel?</b><input id="naam-in" type="text" maxlength="24" autocomplete="off" enterkeyhint="go" aria-label="Naam van je spel"><div class="opts"><button type="button" class="go" id="naam-start">Start</button><button type="button" class="pill" id="naam-terug">Terug</button></div></div>
@@ -986,7 +1066,7 @@ const trein=(()=>{
   function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
-  let me=null, walking=false, hintM=false, nearT=0, ambT=0, engT2=0;
+  let me=null, walking=false, hintM=false, nearT=0, ambT=0, engT2=0, mdX=0, mdZ=0, mdT=0;
   /* what the world sounds like here: trees in the picture (birds), the nearest village (murmur, a hammer while it builds), the nearest train that rides (click-clack, faster when it goes faster) */
   function ambScene(dt){ let n=0; const rx=vw*.6+3, rz=vd*.6+3; for(const t of trees) if(t.alive&&Math.abs(t.x-panX)<rx&&Math.abs(t.z-panZ)<rz) n++;
     let vil=0, build=false; for(const d of dorpen){ const k=Math.max(0,1-Math.hypot(d.x-panX,d.z-panZ)/24); if(k>vil){ vil=k; build=!!d.site; } }
@@ -1773,8 +1853,11 @@ const trein=(()=>{
     barH:bar,
     /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
     frame(W,H,top,bottom,th){ wide=true; botPx=bottom; ppuV=Math.max(28,Math.min(64,Math.sqrt(W*H)/18))/(1+tallA*.05); vw=W/ppuV; vd=Math.max(.4*H,H-top-bottom)/ppuV/.743;
-      panX=clampN(panX,Math.max(0,MX+1-vw/2)); panZ=clampN(panZ,Math.max(0,MZ+1.2-vd/2)); return {c:[panX,.3+tallA/2,panZ],d:H/(2*th*ppuV),dir:[0,1,.9]}; },
+      panX=clampN(panX,Math.max(0,MX+1-vw/2)); panZ=clampN(panZ,Math.max(0,MZ+1.2-vd/2)); return {c:[panX+mdX,.3+tallA/2,panZ+mdZ],d:H/(2*th*ppuV),dir:[0,1,.9]}; },
     get pan(){ return [panX,panZ]; },
+    menuDrift(on,dt){ mdT+=dt; const bo=on&&(app.clientWidth||0)>700?document.querySelector('#start .in'):null, sh=bo?(bo.offsetWidth+16)/2/ppuV:0;
+      const tx=on?Math.sin(mdT*.05)*6-sh:0, tz=on?Math.sin(mdT*.037)*2.5:0, k=1-Math.exp(-dt*(on?.9:4)), nx=mdX+(tx-mdX)*k, nz=mdZ+(tz-mdZ)*k;
+      if(Math.abs(nx-mdX)+Math.abs(nz-mdZ)>1e-4){ mdX=nx; mdZ=nz; applyCamera(); } },
     get mode(){ return mode; },
     /* choose how to play ('camp' or 'vrij'): a fresh world either way */
     setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); if(mode==='camp') hello(); panX=mode==='camp'?2:0; panZ=mode==='camp'?4:0; applyCamera(); },
@@ -1919,9 +2002,11 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   function saveNow(){ if(!started||!curSave) return; try{ const D=trein.serialize(); D.name=curSave.name; localStorage.setItem(SKEY+curSave.id,JSON.stringify(D)); curSave.date=Date.now(); writeList([{id:curSave.id,name:curSave.name,mode:curSave.mode,date:curSave.date}].concat(readList().filter(x=>x.id!==curSave.id))); }catch(e){} }
   setInterval(()=>{ if(!document.hidden) saveNow(); },8000); document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveNow(); }); window.addEventListener('pagehide',saveNow);
   const when=t=>{ const d=new Date(t); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); };
+  /* on the board: the time of today, else the day */
+  const clock=t=>{ const d=new Date(t), n=new Date(); return d.toDateString()===n.toDateString()?d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}).replace('.',''); };
   function showSaves(){ const l=readList(); lstEl.innerHTML=''; savesEl.hidden=!l.length;
     for(const it of l){ const row=document.createElement('div'), ld=document.createElement('button'), del=document.createElement('button'); row.className='slot'; ld.type=del.type='button'; ld.className='ld'+(curSave&&curSave.id===it.id&&started?' now':'');
-      ld.innerHTML='<i class="'+(it.mode==='vrij'?'vrij':'')+'"></i><span></span>'; const sp=ld.querySelector('span'); sp.textContent=it.name; const sm=document.createElement('small'); sm.textContent=(it.mode==='vrij'?'Creatief':'Campagne')+' · '+when(it.date); sp.appendChild(sm);
+      const vrij=it.mode==='vrij', kind=vrij?'Creatief':'Campagne'; ld.innerHTML='<time></time><span></span>'; ld.querySelector('time').textContent=clock(it.date); const sp=ld.querySelector('span'); sp.textContent=it.name; const sm=document.createElement('small'); sm.innerHTML='<i class="'+(vrij?'vrij':'')+'"></i>'; sm.append(kind); sp.appendChild(sm); ld.setAttribute('aria-label',it.name+', '+kind+', '+when(it.date));
       ld.addEventListener('click',()=>loadGame(it)); del.className='del'; del.setAttribute('aria-label','Weggooien: '+it.name); del.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.bin+'</svg>'; let sure=null;
       del.addEventListener('click',()=>{ sfx.tap(); if(!sure){ del.classList.add('sure'); del.textContent='Zeker?'; sure=setTimeout(()=>{ sure=null; del.classList.remove('sure'); del.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.bin+'</svg>'; },3000); return; }
         clearTimeout(sure); try{ localStorage.removeItem(SKEY+it.id); }catch(e){} writeList(readList().filter(x=>x.id!==it.id)); if(curSave&&curSave.id===it.id) curSave=null; sfx.boop(); showSaves(); });
@@ -2035,7 +2120,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     const el=document.documentElement, go=el.requestFullscreen||el.webkitRequestFullscreen, stop=document.exitFullscreen||document.webkitExitFullscreen, isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
     const fullUI=()=>{ full.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[isFull()?'small':'full']+'</svg>'+(isFull()?'Klein scherm':'Volledig scherm'); };
     if(go&&stop){ full.hidden=false; fullUI(); full.addEventListener('click',()=>{ sfx.tap(); try{ const r=isFull()?stop.call(document):go.call(el); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }); ['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,fullUI)); } }
-  mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Menu: verder spelen, opnieuw beginnen, geluid en volledig scherm',on:()=>{ sfx.tap(); saveNow(); showSaves(); naamEl.hidden=true; modesEl.hidden=optsEl.hidden=false; door.hidden=again.hidden=!started; startEl.hidden=false; MP.menu(); (started?door:$('#start-camp')).focus(); }});
+  mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Menu: verder spelen, opnieuw beginnen, geluid en volledig scherm',on:()=>{ sfx.tap(); saveNow(); showSaves(); naamEl.hidden=true; modesEl.hidden=optsEl.hidden=false; door.hidden=again.hidden=!started; startEl.hidden=false; { const k=startEl.querySelector('.kop'); k.classList.remove('rij'); void k.offsetWidth; k.classList.add('rij'); } MP.menu(); (started?door:$('#start-camp')).focus(); }});
   /* Rails: the pieces of track and the tunnel */
   [['recht','Recht stuk'],['bocht','Bocht'],['brug','Brug omhoog of omlaag'],['wissel','Wissel: tik erop om hem om te zetten'],['eind','Eindrails met stootblok: de trein stopt hier. Druk op de groene knop, dan rijdt hij terug']].forEach(([k,l])=>price(mkBtn(G.rails,{id:'spoor-'+k,svg:ST[k],c:'#f2c078',i:'var(--ink)',label:l,on:()=>trein.add(k)}),k));
   { const tb2=price(mkBtn(G.rails,{id:'spoor-tunnel',svg:ST.berg,c:'#f2c078',i:'var(--ink)',label:'Tunnel door de verhoging: tik een ingang en een uitgang aan',on:()=>trein.dig('rail')}),'tunnel'); tunBtn.rail=tb2; }
@@ -2090,7 +2175,7 @@ function resize(){ fitBar(); renderer.setSize(app.clientWidth||1,app.clientHeigh
 if(window.ResizeObserver) new ResizeObserver(resize).observe(app); window.addEventListener('resize',resize);
 let lastT=performance.now();
 function loop(now){ const dt=Math.min(.05,Math.max(0,(now-lastT)/1000)); lastT=now; Tm+=dt;
-  stepAnim(dt); trein.update(dt,Tm);
+  stepAnim(dt); { const mo=!document.getElementById('start').hidden; document.body.classList.toggle('menu',mo); trein.menuDrift(mo,dt); } trein.update(dt,Tm);
   sunG.rotation.z+=dt*.15*AMP; for(const c of clouds){ c.g.position.x+=c.v*dt*AMP; if(c.g.position.x>24) c.g.position.x=-24; }
   stepConf(dt); setCam(); renderer.render(scene,camera); requestAnimationFrame(loop); }
 trein.enter(); resize(); requestAnimationFrame(loop);
