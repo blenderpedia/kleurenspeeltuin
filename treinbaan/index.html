@@ -458,13 +458,25 @@ const trein=(()=>{
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
-  /* the high ground: a table of land in the far right corner, exactly one bridge high. PL is its outer row of dots, where a bridge piece ends; the land itself reaches PV further, so those dots lie on it and do not hang over the rim */
-  const PL={x0:11,x1:25,z0:-18,z1:-6}, PV=.42, inPlat=(x,z,pad)=>x>PL.x0-pad&&x<PL.x1+pad&&z>PL.z0-pad&&z<PL.z1+pad, hAt=(x,z)=>inPlat(x,z,PV)?RISE:0;
+  /* the high ground: one or two tables of land, exactly one bridge high, somewhere else in every new world. Each is the rectangle of its outer row of dots {x0,x1,z0,z1}, where a bridge piece ends; the land itself reaches PV further, so those dots lie on it and do not hang over the rim */
+  const PV=.42, inRect=(P,x,z,pad)=>x>P.x0-pad&&x<P.x1+pad&&z>P.z0-pad&&z<P.z1+pad;
+  let PLS=[], platMs=[], platBs=[], SPOTS=[], seedW=0;
+  const inPlat=(x,z,pad)=>{ for(const P of PLS) if(inRect(P,x,z,pad)) return true; return false; }, hAt=(x,z)=>inPlat(x,z,PV)?RISE:0;
   const matM=(()=>{ const q=roundBox(MX*2,MZ*2,1.1,.6,.08); q.rotateX(-PI/2); return mesh(q,mat(0xb2e48a,{shininess:6,specular:0x0a0a0a}),0,-.55,0,g); })();
-  const platMs=(()=>{ const w=PL.x1-PL.x0+2*PV, d=PL.z1-PL.z0+2*PV, cx=(PL.x0+PL.x1)/2, cz=(PL.z0+PL.z1)/2, a=roundBox(w,d,RISE-.1,.4,.05), b=roundBox(w,d,.1,.4,.035); a.rotateX(-PI/2); b.rotateX(-PI/2);
-    return [mesh(a,mat(0xdcb07c,{shininess:8,specular:0x0a0a0a}),cx,(RISE-.1)/2,cz,g),mesh(b,mat(0xa4de7b,{shininess:6,specular:0x0a0a0a}),cx,RISE-.05,cz,g)]; })();
-  { const dm=new T.MeshLambertMaterial({color:0xe6f7cc}), im=new T.InstancedMesh(cyl(.13,.13,.02,12),dm,(BX+1)*(BZ+1)), o=new T.Object3D(); let i=0;
-    for(let x=-BX;x<=BX;x+=2) for(let z=-BZ;z<=BZ;z+=2){ o.position.set(x,hAt(x,z)+.011,z); o.updateMatrix(); im.setMatrixAt(i++,o.matrix); } im.frustumCulled=false; im.receiveShadow=true; g.add(im); }
+  const sideM=mat(0xdcb07c,{shininess:8,specular:0x0a0a0a}), topM=mat(0xa4de7b,{shininess:6,specular:0x0a0a0a});
+  const dots=(()=>{ const im=new T.InstancedMesh(cyl(.13,.13,.02,12),new T.MeshLambertMaterial({color:0xe6f7cc}),(BX+1)*(BZ+1)); im.frustumCulled=false; im.receiveShadow=true; g.add(im); return im; })();
+  /* build the tables (picture and physics) and lay the dots at the right height */
+  function raise(){ platMs.forEach(m=>{ g.remove(m); m.geometry.dispose(); }); platMs=[];
+    for(const P of PLS){ const w=P.x1-P.x0+2*PV, d=P.z1-P.z0+2*PV, cx=(P.x0+P.x1)/2, cz=(P.z0+P.z1)/2, a=roundBox(w,d,RISE-.1,.4,.05), b=roundBox(w,d,.1,.4,.035); a.rotateX(-PI/2); b.rotateX(-PI/2); platMs.push(mesh(a,sideM,cx,(RISE-.1)/2,cz,g),mesh(b,topM,cx,RISE-.05,cz,g)); }
+    if(world){ platBs.forEach(b=>world.removeBody(b)); platBs=PLS.map(P=>{ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V((P.x1-P.x0)/2+PV,RISE/2,(P.z1-P.z0)/2+PV))); b.position.set((P.x0+P.x1)/2,RISE/2,(P.z0+P.z1)/2); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); return b; }); }
+    const o=new T.Object3D(); let i=0; for(let x=-BX;x<=BX;x+=2) for(let z=-BZ;z<=BZ;z+=2){ o.position.set(x,hAt(x,z)+.011,z); o.updateMatrix(); dots.setMatrixAt(i++,o.matrix); } dots.instanceMatrix.needsUpdate=true; }
+  /* where the tables go: 8 to 14 wide, 6 to 12 deep, one or (more often) two of them. The middle stays flat, so you can start building at once, and two tables keep six apart, so track fits between them */
+  function pickPlats(rs){ const out=[], n=rs()<.6?2:1;
+    for(let k=0;k<n;k++) for(let tries=0;tries<400;tries++){ const w=8+2*((rs()*4)|0), d=6+2*((rs()*4)|0), x0=-BX+2*((rs()*((2*BX-w)/2+1))|0), z0=-BZ+2*((rs()*((2*BZ-d)/2+1))|0), P={x0,x1:x0+w,z0,z1:z0+d};
+      if(P.x0-PV<7.5&&P.x1+PV>-7.5&&P.z0-PV<5.5&&P.z1+PV>-5.5) continue;
+      if(out.some(Q=>!(P.x0>=Q.x1+6||Q.x0>=P.x1+6||P.z0>=Q.z1+6||Q.z0>=P.z1+6))) continue;
+      out.push(P); break; }
+    return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
   let tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
@@ -532,20 +544,28 @@ const trein=(()=>{
     /* rails are slippery for blocks and loose trains (this engine's friction grips far harder than its number suggests), so the train can shove them along */
     railM=new PH.Material('rail'); slipM=new PH.Material('blok'); world.addContactMaterial(new PH.ContactMaterial(railM,slipM,{friction:.002,restitution:.02,contactEquationStiffness:1e7,contactEquationRelaxation:4,frictionEquationStiffness:1e7,frictionEquationRelaxation:4}));
     const gr=new PH.Body({mass:0}); gr.addShape(new PH.Plane()); gr.quaternion.setFromAxisAngle(V(1,0,0),-PI/2); gr.position.y=-1.1; const mb=new PH.Body({mass:0}); mb.addShape(new PH.Box(V(MX,.55,MZ))); mb.position.set(0,-.55,0);
-    const pb=new PH.Body({mass:0}); pb.addShape(new PH.Box(V((PL.x1-PL.x0)/2+PV,RISE/2,(PL.z1-PL.z0)/2+PV))); pb.position.set((PL.x0+PL.x1)/2,RISE/2,(PL.z0+PL.z1)/2);
-    [gr,mb,pb].forEach(b=>{ b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); }); world.addEventListener('preStep',drive); }
+    [gr,mb].forEach(b=>{ b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); }); world.addEventListener('preStep',drive); }
 
-  /* the rocks lie spread over the land, two of them up on the high ground; each holds six blocks of stone and shrinks as they are cut out */
+  /* the rocks lie spread over the land, at least one up on every table; each holds six blocks of stone and shrinks as they are cut out */
   const ROCK=6, rockSize=r=>{ const k=.5+.5*r.left/ROCK; r.rad=.86*r.sc*k; r.g.userData.s0=null; r.g.scale.setScalar(r.sc*k); };
-  [[-20,-13],[-9,-14.4],[2.2,-12.6],[-21.2,.4],[-14.4,9.6],[-3,12.6],[8.2,14.2],[19.4,10.2],[21.6,.2],[14.4,3.4],[17,-14],[21.6,-10.4]].forEach(([x,z],i)=>{ const rg=BOS.rock(i), y=hAt(x,z), r={x,z,y,sc:.95+((i*37)%10)/40,g:rg,left:ROCK,res:null,rad:0,b:null}; rg.position.set(x,y,z); rg.rotation.y=i*1.7; g.add(rg); rockSize(r);
-    if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.55,.4,.55))); b.position.set(x,y+.4,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); r.b=b; } rocks.push(r); });
-  /* the forest: clumps of trees around an open middle, also up on the high ground but not along its rim; the same every time */
+  function placeRocks(rs){ const ok=(x,z,up)=>Math.abs(x)<MX-1.6&&Math.abs(z)<MZ-1.6&&!(Math.abs(x)<9.6&&Math.abs(z)<7.2)&&(up?inPlat(x,z,-1.8):!inPlat(x,z,PV+2.4))&&rocks.every(q=>Math.hypot(q.x-x,q.z-z)>4.5);
+    const put=(x,z)=>{ const rg=BOS.rock(rocks.length), y=hAt(x,z), r={x,z,y,sc:.95+rs()*.25,g:rg,left:ROCK,res:null,rad:0,b:null}; rg.position.set(x,y,z); rg.rotation.y=rs()*6.28; g.add(rg); rockSize(r);
+      if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.55,.4,.55))); b.position.set(x,y+.4,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); r.b=b; } rocks.push(r); };
+    for(const P of PLS){ const n=(P.x1-P.x0)*(P.z1-P.z0)>=100?2:1; for(let k=0,t=0;k<n&&t<120;t++){ const x=P.x0+1.8+rs()*(P.x1-P.x0-3.6), z=P.z0+1.8+rs()*(P.z1-P.z0-3.6); if(ok(x,z,true)){ put(x,z); k++; } } }
+    for(let t=0;rocks.length<12&&t<800;t++){ const x=(rs()*2-1)*(MX-1.6), z=(rs()*2-1)*(MZ-1.6); if(ok(x,z,false)) put(x,z); } }
+  /* the forest: clumps of trees around an open middle, also up on the tables but not along their rims (so there is room for a tunnel gate) */
   function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci), y=hAt(x,z); tg.position.set(x,y,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={x,z,y,sc,g:tg,yaw:tg.rotation.y,alive:true,res:null,b:null};
     if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.2*sc,sc,.2*sc))); b.position.set(x,y+sc,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); t.b=b; } trees.push(t); }
-  { let seed=11; const rs=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  function plant(rs){ const L=[];
     for(let cx=-22.75;cx<23;cx+=6.5) for(let cz=-16.5;cz<17;cz+=5.5){ if(rs()<.2) continue; const ox=cx+(rs()-.5)*2.4, oz=cz+(rs()-.5)*2, n=4+((rs()*5)|0), kind=rs()<.55?1:0;
-      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||(inPlat(x,z,PV+1.2)&&!inPlat(x,z,-1.3))||trees.some(t=>Math.hypot(t.x-x,t.z-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
-        addTree(x,z,rs()<.8?kind:1-kind,(rs()*4)|0,.72+rs()*.24); i++; } } }
+      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||(inPlat(x,z,PV+2.3)&&!inPlat(x,z,-1.3))||L.some(t=>Math.hypot(t[0]-x,t[1]-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
+        L.push([x,z,rs()<.8?kind:1-kind,(rs()*4)|0,.72+rs()*.24]); i++; } }
+    /* about as many trees as ever (a big forest is heavy for a tablet): a few go when there are too many */
+    while(L.length>190) L.splice((rs()*L.length)|0,1); L.forEach(t=>addTree(...t)); }
+  /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
+  function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
+    for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
+    PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ placeRocks(rs); plant(rs); } if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -729,13 +749,9 @@ const trein=(()=>{
     v.load=[]; pop(v.g,.2); sfx.plop(); tone(196,.2,'triangle',.2,120,.06); return true; }
 
   /* ----- tunnels through the high ground: point at a way in and a way out, the train goes through unseen ----- */
-  /* the places for a gate: every dot just outside a side of the high ground that does not lie against the edge of the world, corners left out. ix,iz is where it meets the way inside, dx,dz points into the hill, mx,mz is where its marker stands */
-  const SPOTS=(()=>{ const o=[], put=(x,z,q)=>{ const dx=CS[q], dz=-SN[q]; o.push({i:o.length,x,z,q,dx,dz,ix:x+2*dx,iz:z+2*dz,mx:x+.8*dx,mz:z+.8*dz}); };
-    if(PL.x0-2>=-BX) for(let z=PL.z0+2;z<=PL.z1-2;z+=2) put(PL.x0-2,z,0);
-    if(PL.z1+2<=BZ) for(let x=PL.x0+2;x<=PL.x1-2;x+=2) put(x,PL.z1+2,1);
-    if(PL.x1+2<=BX) for(let z=PL.z0+2;z<=PL.z1-2;z+=2) put(PL.x1+2,z,2);
-    if(PL.z0-2>=-BZ) for(let x=PL.x0+2;x<=PL.x1-2;x+=2) put(x,PL.z0-2,3);
-    return o; })();
+  /* the places for a gate: every dot just outside a side of a table that does not lie against the edge of the world, corners left out. pl is the table, ix,iz is where it meets the way inside, dx,dz points into the hill, mx,mz is where its marker stands */
+  function makeSpots(){ const o=[]; PLS.forEach((P,pl)=>{ const put=(x,z,q)=>{ if(Math.abs(x)>BX||Math.abs(z)>BZ||inPlat(x,z,1.9)) return; const dx=CS[q], dz=-SN[q]; o.push({i:o.length,pl,x,z,q,dx,dz,ix:x+2*dx,iz:z+2*dz,mx:x+.8*dx,mz:z+.8*dz}); };
+      for(let z=P.z0+2;z<=P.z1-2;z+=2){ put(P.x0-2,z,0); put(P.x1+2,z,2); } for(let x=P.x0+2;x<=P.x1-2;x+=2){ put(x,P.z1+2,1); put(x,P.z0-2,3); } }); return o; }
   const gatePose=sp=>({type:'poort',x:sp.x,z:sp.z,q:sp.q,lv:0,m:1,spot:sp.i});
   /* the places still open: no other gate there, and nothing in the way of the bit of rails in front of it */
   const openSpots=self=>SPOTS.filter(s=>!pieces.some(p=>p!==self&&p.type==='poort'&&p.spot===s.i)&&free(gatePose(s),self));
@@ -747,7 +763,7 @@ const trein=(()=>{
   function portal(t,sp){ const o=gatePose(sp), m=SPOOR.piece('poort'), ty=TYPE.poort, p={kind:'p',type:'poort',tun:t,spot:sp.i,x:o.x,z:o.z,q:o.q,lv:0,m:1,sw:0,shut:false,g:m.g,pier:m.pier,arm:null,gates:null,segs:ty.segs,endSegs:ty.endSegs,multi:false,n:[],cid:{},live:false,sb:null};
     m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); return p; }
   /* the way inside: an unseen piece of track from one gate to the other, a smooth curve on the mat under the hill. It carries its own ends and its own way through (def) */
-  function bore(t){ unbore(t); if(!t.a||!t.b) return; const A=SPOTS[t.a.spot], B=SPOTS[t.b.spot], k=Math.max(1.5,Math.min(6,Math.hypot(A.ix-B.ix,A.iz-B.iz)*.5)), P=[], L=[0];
+  function bore(t){ unbore(t); if(!t.a||!t.b) return; const A=SPOTS[t.a.spot], B=SPOTS[t.b.spot], Q=PLS[A.pl], deep=S=>S.dx>0?Q.x1-S.ix:S.dx<0?S.ix-Q.x0:S.dz<0?S.iz-Q.z0:Q.z1-S.iz, k=Math.min(Math.max(1.5,Math.min(6,Math.hypot(A.ix-B.ix,A.iz-B.iz)*.5)),deep(A)*.75,deep(B)*.75), P=[], L=[0];
     for(let i=0;i<=64;i++){ const s=i/64, u=1-s, b0=u*u*u, b1=3*u*u*s, b2=3*u*s*s, b3=s*s*s; P.push([b0*A.ix+b1*(A.ix+A.dx*k)+b2*(B.ix+B.dx*k)+b3*B.ix,b0*A.iz+b1*(A.iz+A.dz*k)+b2*(B.iz+B.dz*k)+b3*B.iz]); if(i) L.push(L[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])); }
     const len=L[64], at=(u,o)=>{ const d=u*len; let i=1; while(i<64&&L[i]<d) i++; const f=Math.max(0,Math.min(1,(d-L[i-1])/((L[i]-L[i-1])||1))); return o.set(P[i-1][0]+(P[i][0]-P[i-1][0])*f,0,P[i-1][1]+(P[i][1]-P[i-1][1])*f); };
     const ty={net:'rail',flat:true,berg:true,ends:[{x:A.ix,l:0,z:A.iz,oq:(A.q+2)&3,net:'rail'},{x:B.ix,l:0,z:B.iz,oq:(B.q+2)&3,net:'rail'}],segs:[{at,len,a:0,b:1,net:'rail',n:Math.max(9,Math.round(len/.5))}],endSegs:[[0],[0]],multi:false};
@@ -759,12 +775,16 @@ const trein=(()=>{
   function glide(x,z){ const x0=panX, z0=panZ; tw(.7,e=>{ panX=x0+(x-x0)*e; panZ=z0+(z-z0)*e; applyCamera(); },ease.inOut); }
   /* the tunnel button: the markers come up on the sides of the high ground. A second press (or another tab) puts the button down again */
   function dig(){ if(held) return; if(pick){ undig(); sfx.boop(); return; } if(tunnels.length>=MAXTUN){ sfx.boing(); return; } if(!canPay('tunnel')){ sfx.boing(); stockUI(stock,null,true); return; }
-    const sp=openSpots(null); if(sp.length<2){ sfx.boing(); return; } pick={a:null,t:null}; marksOn(sp); digUI(true); sfx.tap(); let x=0, z=0; sp.forEach(s=>{ x+=s.mx; z+=s.mz; }); glide(x/sp.length,z/sp.length); }
+    const by={}; openSpots(null).forEach(s=>{ (by[s.pl]=by[s.pl]||[]).push(s); }); const ok=Object.keys(by).filter(k=>by[k].length>=2); if(!ok.length){ sfx.boing(); return; }
+    pick={a:null,t:null}; marksOn([].concat(...ok.map(k=>by[k]))); digUI(true); sfx.tap();
+    /* the picture slides over to the nearest table */
+    let near=null, bd=1e9; for(const k of ok){ const P=PLS[k], d=Math.hypot((P.x0+P.x1)/2-panX,(P.z0+P.z1)/2-panZ); if(d<bd){ bd=d; near=by[k]; } } let x=0, z=0; near.forEach(s=>{ x+=s.mx; z+=s.mz; }); glide(x/near.length,z/near.length); }
   function dropLone(){ const a=pick&&pick.a; if(!a) return; pick.a=pick.t=null; evict(a); unsolid(a); g.remove(a.g); pieces=pieces.filter(x=>x!==a); rebuild(); settle(); }
   function undig(){ if(!pick) return; dropLone(); pick=null; marksOff(); digUI(false); }
   /* a marker is tapped: the first one is the way in, the second the way out */
   function pickSpot(sp){ if(pieces.some(p=>p.type==='poort'&&p.spot===sp.i)||!free(gatePose(sp),null)){ sfx.boing(); marksOn(openSpots(null)); return; }
-    if(!pick.a){ const t={a:null,b:null,gang:null}; pick.t=t; pick.a=t.a=portal(t,sp); rebuild(); settle(); klik(); sfx.pop(4); marksOn(openSpots(null)); return; }
+    if(!pick.a){ const t={a:null,b:null,gang:null}; pick.t=t; pick.a=t.a=portal(t,sp); rebuild(); settle(); klik(); sfx.pop(4); marksOn(openSpots(null).filter(s=>s.pl===sp.pl)); return; }
+    if(sp.pl!==SPOTS[pick.a.spot].pl){ sfx.boing(); return; }   /* the way out lies on the same table as the way in */
     if(tunnels.length>=MAXTUN||!canPay('tunnel')){ sfx.boing(); stockUI(stock,null,true); undig(); return; }
     const t=pick.t; t.b=portal(t,sp); tunnels.push(t); pick=null; marksOff(); digUI(false); bore(t); pay('tunnel',1); rebuild(); settle(); sfx.tada(); [t.a,t.b].forEach(p=>{ wpt(p,0,.7,cv); cv.y+=1; burst(cv,16,3.2); }); }
   /* while pointing, a finger only finds the markers and the way in (tap it again to take it back); anything else scrolls */
@@ -853,7 +873,7 @@ const trein=(()=>{
     m.userData.blk=r; m.quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w); m.updateMatrixWorld(); blocks.push(r); popIn(m,.25); return r; }
   function removeBlock(r,inWorld){ if(inWorld) world.removeBody(r.b); g.remove(r.m); r.m.material.dispose(); blocks=blocks.filter(x=>x!==r); }
   /* everything a block can come to rest on */
-  function floor(ex){ const l=[matM,platMs[0],platMs[1]]; for(const r of blocks) if(r!==ex) l.push(r.m); for(const p of pieces) l.push(p.g); for(const s of props) l.push(s.g); return l; }
+  function floor(ex){ const l=[matM].concat(platMs); for(const r of blocks) if(r!==ex) l.push(r.m); for(const p of pieces) l.push(p.g); for(const s of props) l.push(s.g); return l; }
   /* highest thing (mat, rails or another block) under a block's footprint at (x,z), ignoring one block; a flat roof looks along its whole length */
   function surface(x,z,ex,sh,rot){ const list=floor(ex), pts=sh==='plat'?oP:sh==='tunnel'?oT:o5; let y=0, sup=null;
     for(let i=0;i<pts.length;i++){ org.set(x+(rot?pts[i][1]:pts[i][0]),40,z+(rot?pts[i][0]:pts[i][1])); dray.set(org,DN); const h=dray.intersectObjects(list,true)[0]; if(!h) continue; if(h.point.y>y) y=h.point.y;
@@ -888,7 +908,7 @@ const trein=(()=>{
     wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(h.point.x,h.point.y,h.point.z));
     if(now-pushSnd>110){ pushSnd=now; tone(R(150,210),.08,'triangle',.16,90); burst(h.point,3,1.6,r.col); } }
 
-  function grab(r){ if(r.kind==='p'){ const gate=r.type==='poort'; if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
+  function grab(r){ if(r.kind==='p'){ const gate=r.type==='poort'; if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
     else if(r.kind==='v'){ dismount(r); te.setFromQuaternion(r.g.quaternion,'YZX'); r.yaw=te.y; r.pitch=0; r.tp.copy(r.g.position); r.g.rotation.set(0,te.y,0); held={kind:'v',rec:r,cand:null,yaw:te.y}; }
     else if(r.kind==='k'){ craneStop(r); craneBody(r,false); held={kind:'k',rec:r,snap:false}; }
     else if(r.kind==='z'){ millBody(r,false); manHome(r); held={kind:'z',rec:r,ox:r.x,oz:r.z}; }
@@ -932,19 +952,18 @@ const trein=(()=>{
       else if(out){ g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
       else { setFree(v,clampN(F.x,MX-.5),clampN(F.z,MZ-.4),h.yaw); sfx.plop(); } } }
   /* the forest and the rocks: all of them back (campaign), or none at all (creative) */
-  function nature(on){ for(const t of trees){ t.res=null; if(t.alive===on) continue; t.alive=on; if(on){ t.g.rotation.set(0,t.yaw,0); t.g.scale.setScalar(t.sc); t.g.userData.s0=null; g.add(t.g); popIn(t.g,.4); if(t.b&&world) world.addBody(t.b); } else { g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } }
-    for(const r of rocks){ r.res=null; const has=r.left>0; if(on){ if(r.left===ROCK) continue; r.left=ROCK; rockSize(r); if(!has){ g.add(r.g); if(r.b&&world) world.addBody(r.b); } popIn(r.g,.4); } else if(has){ r.left=0; g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } } }
   /* everything that was put down goes away */
   function wipe(){ if(held&&held.kind==='b') world.addBody(held.rec.b); cranes.forEach(k=>{ craneStop(k); craneBody(k,false); g.remove(k.g); }); mills.slice().forEach(removeMill);
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); tunnels=[]; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
-  /* start again: everything away, and in the campaign the forest and the rocks stand again */
-  function reset(){ const camp=mode==='camp'; if(!pieces.length&&!vehs.length&&!blocks.length&&!props.length&&!cranes.length&&!mills.length&&(!camp||(trees.every(t=>t.alive)&&rocks.every(r=>r.left===ROCK)&&stock.hout===START.hout&&stock.steen===START.steen))){ sfx.boop(); return; }
-    wipe(); nature(camp); sfx.boing(); }
+  /* start again: everything away, and a new world in the same way of playing */
+  function reset(){ wipe(); gen(mode==='camp'); panX=panZ=0; applyCamera(); sfx.boing(); }
+
+  gen(true);
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   return { g, add, addTrain, addSensor, addCrane, addMill, reset, dig, COST,
-    get state(){ return {pieces,vehs,cons,open,blocks,props,cranes,mills,trees,rocks,stock,PL,held,wide,tab,shape,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
+    get state(){ return {pieces,vehs,cons,open,blocks,props,cranes,mills,trees,rocks,stock,PLS,seed:seedW,held,wide,tab,shape,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     setShape(s){ shape=s; sfx.tap(); },
     barH:bar,
@@ -954,7 +973,7 @@ const trein=(()=>{
     get pan(){ return [panX,panZ]; },
     get mode(){ return mode; },
     /* choose how to play ('camp' or 'vrij'): a fresh world either way */
-    setMode(m){ mode=m==='vrij'?'vrij':'camp'; wipe(); nature(mode==='camp'); panX=panZ=0; applyCamera(); },
+    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); panX=panZ=0; applyCamera(); },
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
@@ -988,7 +1007,7 @@ const trein=(()=>{
       for(const v of vehs){ const m=v.g; if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
-    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),tab==='blok'?[]:cranes.map(s=>s.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM,platMs[0],platMs[1]]),true), now=performance.now(); let rec=null, kind='mat';
+    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),tab==='blok'?[]:cranes.map(s=>s.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='s'||kind==='k'||kind==='z')&&tab==='blok'){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
@@ -1103,7 +1122,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.weg,{id:'spoor-auto',cls:'btn face',svg:'<path d="M2.500 17v-4.500c0-1 .700-1.700 1.700-1.800l2.300-.300 1.800-3.200c.400-.700 1-1 1.800-1h5c.800 0 1.400.400 1.800 1l1.800 3.200h1c1 0 1.800.800 1.800 1.800V17z" fill="#2f9bff"/><path d="M8.700 10.200 9.900 8h2.300v2.200zM13.700 8h2l1.200 2.200h-3.200z" fill="#bfe6ff"/><circle cx="7.500" cy="17.500" r="2.700" fill="'+ik+'"/><circle cx="16.500" cy="17.500" r="2.700" fill="'+ik+'"/>',label:'Auto',on:()=>trein.addTrain('auto')});
   /* Gebouwen (campaign only) */
   mkBtn(G.huis,{id:'bouw-zagerij',cls:'btn face',svg:'<path d="M2 10.500 9 4.500l7 6z" fill="#ff4d5a"/><rect x="3.500" y="10.500" width="11" height="8.500" fill="#e2ab66"/><rect x="5.500" y="13.500" width="3" height="5.500" fill="#a8683a"/><rect x="2" y="19" width="20" height="2" rx="1" fill="#f2c078"/><circle cx="18" cy="14.500" r="3.600" fill="#cfd8e6" stroke="'+ik+'" stroke-width="1.200" stroke-dasharray="1.600 1.200"/><circle cx="18" cy="14.500" r="1" fill="'+ik+'"/>',label:'Houtzagerij: zet hem bij bomen, de houthakker maakt er blokjes van',on:()=>trein.addMill('zaag')});
-  mkBtn(G.huis,{id:'bouw-mijn',cls:'btn face',svg:'<path d="M2 10.500 9 4.500l7 6z" fill="#ffd22e"/><rect x="3.500" y="10.500" width="11" height="8.500" fill="#8f99ad"/><path d="M6.500 19v-4.500a2.500 2.500 0 0 1 5 0V19z" fill="'+ik+'"/><rect x="2" y="19" width="20" height="2" rx="1" fill="#f2c078"/><path d="m16 15 3-3.500 3 2-1 4.500h-4z" fill="#aab2c2"/><path d="m18.500 8 3-2M17 5.500c1.500-.800 4-.500 5.500 1" fill="none" stroke="'+ik+'" stroke-width="1.400" stroke-linecap="round"/>',label:'Steenmijn: zet hem boven bij de rotsen, de mijnwerker hakt er steenblokjes uit',on:()=>trein.addMill('mijn')});
+  mkBtn(G.huis,{id:'bouw-mijn',cls:'btn face',svg:'<path d="M2 10.500 9 4.500l7 6z" fill="#ffd22e"/><rect x="3.500" y="10.500" width="11" height="8.500" fill="#8f99ad"/><path d="M6.500 19v-4.500a2.500 2.500 0 0 1 5 0V19z" fill="'+ik+'"/><rect x="2" y="19" width="20" height="2" rx="1" fill="#f2c078"/><path d="m16 15 3-3.500 3 2-1 4.500h-4z" fill="#aab2c2"/><path d="m18.500 8 3-2M17 5.500c1.500-.800 4-.500 5.500 1" fill="none" stroke="'+ik+'" stroke-width="1.400" stroke-linecap="round"/>',label:'Steenmijn: zet hem bij rotsen, de mijnwerker hakt er steenblokjes uit',on:()=>trein.addMill('mijn')});
   mkBtn(G.huis,{id:'bouw-fabriek',cls:'btn face',svg:'<path d="M3 19V9.500l4.500 3V9.500l4.500 3V9.500l4.500 3V19z" fill="#2f9bff"/><rect x="17.500" y="4" width="3" height="15" fill="#ff4d5a"/><rect x="2" y="19" width="20" height="2" rx="1" fill="#f2c078"/><rect x="5" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/><rect x="9.500" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/><rect x="14" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/>',label:'Rails- en wegfabriek: lever hier hout en steen af, dan telt het mee',on:()=>trein.addMill('fab')});
   /* Blokken */
   [['kubus','var(--red)','Blok'],['cilinder','var(--blue)','Rol'],['dak','var(--orange)','Dak'],['boog','var(--purple)','Boog'],['plat','var(--green)','Plat dak'],['tunnel','var(--pink)','Tunnelblok: past over rails of weg']].forEach(([k,c,l])=>{ bs.push(mkBtn(G.blok,{id:'tblok-'+k,icon:ST[k]?null:k,svg:ST[k],c,label:l,on:b=>{ trein.setShape(k); choose(bs,b); }})); }); bs[0].classList.add('on'); }
