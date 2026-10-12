@@ -85,6 +85,7 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .rjr .btn{pointer-events:auto}
 #rij-doe{width:calc(var(--btn)*1.45);height:calc(var(--btn)*1.45)}
 #rij-doe.busy{animation:klaar .9s ease-in-out infinite}
+#rij-doe.off{filter:grayscale(1);opacity:.4}
 /* the bin top right: only there while something is in the hand */
 #bin{visibility:hidden;opacity:0;transform:scale(.5);transition:opacity .15s,transform .15s,visibility 0s .15s;pointer-events:none}
 #bin.show{visibility:visible;opacity:1;transform:none;transition:opacity .15s,transform .15s}
@@ -108,6 +109,12 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .slot .del.sure{width:4.6em;background:var(--red);border-color:var(--red);color:var(--paper)}
 .slot .ld:active,.slot .del:active{transform:translateY(4px);box-shadow:0 1px 0 var(--shade)}
 .naam{display:grid;justify-items:center;gap:16px}
+.ik{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 12px}
+.ik input{width:min(56vw,250px);box-sizing:border-box;padding:.3em .7em;border:4px solid var(--paper);border-radius:999px;background:var(--paper);color:var(--ink);font:800 clamp(17px,4.4vmin,22px)/1.2 var(--display);text-align:center;box-shadow:0 4px 0 var(--shade);outline:none}
+.ik input:focus{border-color:var(--yellow)}
+.kls{display:flex;gap:7px}
+.kl{width:clamp(28px,7vmin,36px);height:clamp(28px,7vmin,36px);border-radius:50%;border:4px solid var(--paper);box-shadow:0 3px 0 var(--shade);cursor:pointer;padding:0;touch-action:manipulation}
+.kl.on{transform:scale(1.18);border-color:var(--ink)}
 .naam input{width:min(84vw,440px);box-sizing:border-box;padding:.45em .8em;border:5px solid var(--paper);border-radius:22px;background:var(--paper);color:var(--ink);font:800 clamp(20px,5.4vmin,30px)/1.2 var(--display);text-align:center;box-shadow:0 5px 0 var(--shade);outline:none}
 .naam input:focus{border-color:var(--yellow)}
 #start h1{margin:0;font:800 clamp(34px,10vmin,68px)/1 var(--display);color:var(--paper);text-shadow:0 5px 0 var(--shade);letter-spacing:.01em}
@@ -144,6 +151,7 @@ body.vrij #hud,body.vrij .cost{display:none}
     <div class="rjr"><button type="button" class="btn" id="rij-uit"></button><button type="button" class="btn" id="rij-doe"></button></div></div>
   <div id="start"><div class="in">
     <h1>Treinbaan</h1>
+    <div class="ik"><input id="ik-naam" type="text" maxlength="14" autocomplete="off" aria-label="Jouw naam" placeholder="Jouw naam"><div class="kls" id="ik-kl" role="radiogroup" aria-label="Jouw kleur"></div></div>
     <div class="modes">
       <button type="button" class="mode" id="start-vrij"><svg viewBox="0 0 64 48" aria-hidden="true"><rect x="5" y="25" width="19" height="19" rx="3" fill="#ff4d5a"/><rect x="25" y="25" width="19" height="19" rx="3" fill="#2f9bff"/><rect x="15" y="5" width="19" height="19" rx="3" fill="#ffd22e"/><path d="M46 44V30a8 8 0 0 1 16 0v14h-5V31a3 3 0 0 0-6 0v13z" fill="#9b63ff"/><path d="m47 6 2 4.500 4.800.500-3.600 3.300 1 4.700-4.200-2.400-4.200 2.400 1-4.700-3.600-3.300 4.800-.500z" fill="#ff9a1f"/></svg><b>Creatief</b><span>Lege wereld, alles gratis</span></button>
       <button type="button" class="mode" id="start-camp"><svg viewBox="0 0 64 48" aria-hidden="true"><path d="M16 4 5 20h5L3 31h10v8h6v-8h10l-7-11h5z" fill="#2f9e5b"/><rect x="13" y="38" width="6" height="6" fill="#a8683a"/><path d="M35 28 44 23.500l9 4.500v9L44 41.500 35 37z" fill="#a8683a"/><path d="M35 28l9 4.500 9-4.500-9-4.500z" fill="#c98a55"/><path d="M47 13 54 9.500l7 3.500v7L54 23.500 47 20z" fill="#8791a6"/><path d="M47 13l7 3.500 7-3.500-7-3.500z" fill="#b4bccb"/><rect x="3" y="43" width="58" height="3" rx="1.500" fill="#f2c078"/></svg><b>Campagne</b><span>Hak hout en steen en verdien je rails</span></button>
@@ -279,7 +287,7 @@ function hit(ev,list,rec){ const r=canvas.getBoundingClientRect(); ndc.set((ev.c
 /* while something is in the hand the button top right turns into a bin; the buttons further down fill these in */
 let binUI=()=>{}, overBin=()=>false;
 /* the tunnel button stays down while you point at a way in and a way out */
-const tunBtn={}; let lockUI=()=>{}, toastT=null;
+const tunBtn={}; let lockUI=()=>{}, nearUI=()=>{}, toastT=null;
 function toast(msg){ const e=document.getElementById('toast'); if(!e) return; e.textContent=msg; e.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.remove('show'),Math.max(3500,msg.length*75)); }
 let digUI=(on,net)=>{ for(const k in tunBtn) tunBtn[k].classList.toggle('on',!!on&&k===net); };
 /* getting into a machine swaps the drawer for the joystick (the buttons fill this in) */
@@ -510,8 +518,15 @@ const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:
   /* a traveller: a little peg doll in a coloured coat with a hat */
   const skinM=mat(0xf6cfa0,{shininess:16}), headG=sph(.085,12,9);
   function person(i){ const g=new T.Group(), c=walls[i%walls.length], h=roofs[(i*3+1)%roofs.length]; mesh(cyl(.09,.11,.05,12),postM,0,.025,0,g); mesh(cyl(.08,.1,.26,12),M(c===C.paper?C.blue:c),0,.18,0,g); mesh(headG,skinM,0,.39,0,g); mesh(cyl(.09,.095,.05,12),M(h),0,.47,0,g); return g; }
+  /* you: a bigger peg doll in your own colour, with arms */
+  function player(col){ const g=new T.Group(); mesh(cyl(.17,.2,.1,14),postM,0,.05,0,g); mesh(cyl(.15,.19,.44,14),M(col),0,.32,0,g); mesh(sph(.15,14,10),skinM,0,.66,0,g); mesh(cyl(.16,.165,.08,14),M(col),0,.78,0,g); mesh(box(.15,.03,.26),M(col),.15,.76,0,g);
+    mesh(sph(.022,6,5),postM,.14,.68,.06,g); mesh(sph(.022,6,5),postM,.14,.68,-.06,g); [-1,1].forEach(sd=>{ const a=mesh(cyl(.035,.035,.32,8),M(col),0,.38,sd*.2,g); a.rotation.x=sd*.25; }); g.scale.setScalar(1.25); return g; }
+  /* a name over a doll or a machine: always on top, always facing you */
+  function nameTag(name,col){ const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const c=cv.getContext('2d'); c.font='800 64px "Baloo 2",Arial,sans-serif'; const w=Math.min(492,c.measureText(name).width+64), x0=(512-w)/2;
+    c.fillStyle=hx(C.paper); c.strokeStyle=hx(col); c.lineWidth=12; c.beginPath(); if(c.roundRect) c.roundRect(x0,14,w,100,50); else c.rect(x0,14,w,100); c.fill(); c.stroke(); c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; c.fillText(name,256,68,w-40);
+    const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),depthTest:false,transparent:true,sizeAttenuation:false})); sp.scale.set(.17,.0425,1); sp.renderOrder=20; return sp; }
   SORTS.zaag=[1.3,.5];
-  return {house,platform,zagerij,plot,sign,drawSign,person,skinM,SORTS,B}; })();
+  return {house,platform,zagerij,plot,sign,drawSign,person,player,nameTag,skinM,SORTS,B}; })();
 
 const MACH=(()=>{ const ink=mat(C.ink), dark=mat(0x4a4466,{shininess:20}), glass=mat(0xbfe6ff), steel=mat(0xb4bccb,{shininess:70,specular:0x555555}), hub=mat(C.paper);
   /* a wheel that turns: a tyre, a hub and a spoke you can see go round */
@@ -808,6 +823,29 @@ const trein=(()=>{
     const a=dorpen.find(q=>q.kind==='woon'), x0=a?a.sx+6:-7; layPiece('eind',x0,4,2); for(let x=x0;x<=5;x+=2) layPiece('recht',x,4,0); layPiece('eind',7,4,0); rebuild();
     const p=pieces.find(q=>q.type==='recht'&&q.x===3&&q.z===4); for(const sort of ['loc','goed']){ addTrain(sort,true); mount(vehs[vehs.length-1],{p,si:0,u:.5,d:1}); }
     newMach('shovel',-4.5,7.6,PI/2); newMach('kiep',-1.2,7.8,PI/2); }
+  function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
+  /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
+  const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
+  let me=null, walking=false, hintM=false, nearT=0;
+  function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
+    let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
+    if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
+    me.name=name; me.ci=ci; me.body=DORP.player(PCOL[ci]); me.g.add(me.body); me.tag=DORP.nameTag(name,PCOL[ci]); (driving?driving.g:me.g).add(me.tag); me.tag.position.y=driving?2.7:1.75; if(fresh) placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
+  /* is there room for the doll here (the same things a machine bumps into) */
+  const meFree=(x,z)=>!hitsAt(me,x,z,.3);
+  function placeMe(x,z){ me.up=inPlat(x,z,0); me.y=me.up?RISE:0; for(let r=0;r<=8;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(inPlat(sx,sz,0)===me.up&&meFree(sx,sz)){ me.x=sx; me.z=sz; me.g.position.set(sx,me.y,sz); me.g.rotation.y=me.yaw; return; } } me.x=x; me.z=z; me.g.position.set(x,me.y,z); }
+  /* the machine you can get into from where you stand */
+  function nearMach(){ let best=null, bd=1e9; for(const m of machs){ if(m===driving||m.by||m.up!==me.up||(held&&held.rec===m)) continue; const d=Math.hypot(m.x-me.x,m.z-me.z)-MS[m.sort].rad; if(d<1.5&&d<bd){ bd=d; best=m; } } return best; }
+  function stroll(){ if(driving||!me) return; walking=true; stX=stZ=0; driveUI(true,'lopen'); nearUI(!!nearMach()); pop(me.g,.1); tone(520,.08,'triangle',.12); tone(660,.1,'triangle',.1,0,.08); }
+  /* out of a machine: the doll stands beside it */
+  function outOf(m){ const r=MS[m.sort].rad+.7; me.up=m.up; me.y=m.y; let done=false; for(const a of [PI/2,-PI/2,PI,0,PI*.75,-PI*.75,PI/4,-PI/4]){ const x=m.x+Math.cos(m.yaw+a)*r, z=m.z-Math.sin(m.yaw+a)*r; if(meFree(x,z)){ me.x=x; me.z=z; done=true; break; } } if(!done) placeMe(m.x,m.z+r);
+    me.g.position.set(me.x,me.y,me.z); me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; popIn(me.g,.25); }
+  function stepMe(dt){ const mag=Math.min(1,Math.hypot(stX,stZ)); let moved=false;
+    if(mag>.15){ const sp=3.4*mag*dt, dx=stX/mag*sp, dz=stZ/mag*sp; me.yaw=Math.atan2(-dz,dx); if(meFree(me.x+dx,me.z+dz)){ me.x+=dx; me.z+=dz; moved=true; } else if(meFree(me.x+dx,me.z)){ me.x+=dx; moved=true; } else if(meFree(me.x,me.z+dz)){ me.z+=dz; moved=true; } }
+    if(moved){ me.step+=dt*12; me.x=clampN(me.x,MX-.4); me.z=clampN(me.z,MZ-.4); } else me.step=0;
+    me.g.position.set(me.x,me.y+Math.abs(Math.sin(me.step))*.06,me.z); let da=me.yaw-me.g.rotation.y; da-=Math.round(da/TAU)*TAU; me.g.rotation.y+=da*(1-Math.exp(-dt*14));
+    const kf=1-Math.exp(-dt*3.5), px=me.x-panX, pz=me.z-panZ; if(px*px+pz*pz>.0004){ panX+=px*kf; panZ+=pz*kf; applyCamera(); }
+    if((nearT-=dt)<=0){ nearT=.2; nearUI(!!nearMach()); } }
   /* ----- a saved game: the world comes back from its seed, then everything that changed is put on top of it ----- */
   const R3=v=>Math.round(v*1000)/1000;
   /* sensors and boosts at a given place */
@@ -832,7 +870,8 @@ const trein=(()=>{
       trees:trees.filter(t=>!t.alive).map(t=>t.id), rocks:rocks.filter(r=>r.left<ROCK).map(r=>[r.id,r.left]), heaps:heaps.map(h=>[h.id,h.n]),
       logs:logs.map(L=>[R3(L.x),R3(L.z),R3(L.y),R3(L.ux),R3(L.uz),L.left]),
       dorpen:dorpen.map(d=>({st:d.station?1:0,proj:d.proj,need:d.need,site:d.site?{r:d.site.r,sort:d.site.sort||null}:null,extra:d.extra,houses:d.houses,stock:d.stock||0,vis:d.visited?1:0,gst:d.guests?1:0})),
-      folk:folk.map(f=>({h:dorpen.indexOf(f.home),d:dorpen.indexOf(f.dest),a:dorpen.indexOf(f.at),s:f.st,t:R3(f.t),v:f.v?V.indexOf(f.v):-1,i:f.i||0}))};
+      folk:folk.map(f=>({h:dorpen.indexOf(f.home),d:dorpen.indexOf(f.dest),a:dorpen.indexOf(f.at),s:f.st,t:R3(f.t),v:f.v?V.indexOf(f.v):-1,i:f.i||0})),
+      me:me?[R3(me.x),R3(me.z),R3(me.yaw)]:null};
     return D; }
   function restore(D){ mode=D.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',D.seed); clearPlay();
     /* the world: felled trees, broken rocks, heaps, logs */
@@ -856,6 +895,7 @@ const trein=(()=>{
     for(const [sh,x,y,z] of D.blocks||[]) dropRaw(sh,x,y,z);
     for(const o of D.folk||[]){ const home=dorpen[o.h]; if(!home) continue; const pg=DORP.person(o.i||folkN); folkN=Math.max(folkN,(o.i||0)+1); pg.visible=false; g.add(pg); const v=o.v>=0?V[o.v]:null; folk.push({home,dest:dorpen[o.d]||null,at:dorpen[o.a]||home,st:o.s==='ride'&&!v?'wait':o.s,t:o.t,g:pg,v,i:o.i||0}); }
     lineUp(); for(const v of vehs) if(v.sort==='pass') seatHeads(v);
+    if(me&&D.me){ me.yaw=D.me[2]; placeMe(D.me[0],D.me[1]); }
     locked=new Set(D.locked||[]); lockUI(locked); stock.hout=D.stock.hout; stock.steen=D.stock.steen; stockDirty=true; panX=D.pan[0]; panZ=D.pan[1]; applyCamera(); wakeAll(); }
   /* the forest: clumps of trees around an open middle, also up on the tables but not along their rims (so there is room for a tunnel gate) */
   function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci), y=hAt(x,z); tg.position.set(x,y,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={id:trees.length,x,z,y,sc,g:tg,yaw:tg.rotation.y,alive:true,res:null,b:null};
@@ -872,7 +912,7 @@ const trein=(()=>{
   /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
   function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
     for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
-    clearFolk(); clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?LOCK0:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
+    clearFolk(); clearVillages(); clearHeaps(); setSize(on); if(me&&(driving||walking)) leave(true); locked=new Set(on?LOCK0:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } homeMe(); if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -1129,8 +1169,10 @@ const trein=(()=>{
     if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
   /* get in (tap a machine), get out (the button) */
-  function getIn(m){ if(driving===m){ pop(m.g,.06); tone(330,.12,'square',.06); tone(392,.16,'square',.05,0,.12); return; } driving=m; stX=stZ=0; driveUI(true,m.sort); busyUI(m.work||m.busy); tone(70,.4,'sawtooth',.06,140); pop(m.g,.06); }
-  function leave(quiet){ if(!driving) return; driving.v=0; driving=null; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
+  function getIn(m){ if(driving===m){ pop(m.g,.06); tone(330,.12,'square',.06); tone(392,.16,'square',.05,0,.12); return; } if(driving) leave(true); driving=m; walking=false; stX=stZ=0; if(me){ me.g.visible=false; m.g.add(me.tag); me.tag.position.y=2.7; } driveUI(true,m.sort); busyUI(m.work||m.busy); tone(70,.4,'sawtooth',.06,140); pop(m.g,.06); }
+  /* leave: back to building (out of the machine and off your feet); out: one step back (machine → walking → building) */
+  function leave(quiet){ if(!driving&&!walking) return; if(driving){ const m=driving; m.v=0; driving=null; if(me) outOf(m); } walking=false; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
+  function out(){ if(driving){ const m=driving; m.v=0; driving=null; stX=stZ=0; if(me) outOf(m); sfx.boop(); stroll(); } else if(walking) leave(); }
   /* ----- machine work. A machine's pose is a few numbers (excavator: swing, reach, height, curl; loader: arm, bucket; truck: bed); a little film of poses plays its work, with moments where something happens ----- */
   const REST={graaf:{sw:0,d:1.3,y:-.35,cu:0},shovel:{arm:-.42,bk:.42},kiep:{bed:0}}, CARRY={arm:-.12,bk:1.0}, KCAP=8, LC=3, cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   function play(m,keys,evs,then){ let cur=Object.assign({},m.pose); const ks=[{t:0,p:cur}]; for(const k of keys){ const p=Object.assign({},cur,k.p); if(p.sw!=null) p.sw=cur.sw+wrapA(p.sw-cur.sw); ks.push({t:k.t,p}); cur=p; }
@@ -1204,7 +1246,7 @@ const trein=(()=>{
         m.load.forEach((sh,j)=>{ const o=(j%4-1.5)*.42, back=1.55+(j>>2)*.45, x=clampN(m.x-c*back+sn*o,MX-.6), z=clampN(m.z+sn*back+c*o,MZ-.6); dropRaw(sh,x,hAt(x,z)+.5+(j>>2)*.3,z); });
         m.load=[]; showLoad(m); sfx.plop(); tone(196,.25,'triangle',.2,110,.08); }}],()=>{ m.busy=false; workUI(m); }); }
   /* the work button */
-  function act(){ const m=driving; if(!m) return;
+  function act(){ const m=driving; if(!m){ if(walking&&me){ const n=nearMach(); if(n) getIn(n); else { pop(me.g,.08); sfx.boing(); } } return; }
     if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
     if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else tipAct(m); }
   /* one step for the machine you drive: it turns towards the way you push the stick (pull back and a loader or truck backs up), and rides as far as nothing is in the way */
@@ -1367,7 +1409,7 @@ const trein=(()=>{
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
-  return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving; }, addMill, serialize, restore, reset, dig, COST,
+  return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; }, addMill, serialize, restore, reset, dig, COST,
     get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,folk,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
@@ -1397,6 +1439,7 @@ const trein=(()=>{
       bumpT-=dt; for(const m of machs){ const hd=held&&held.rec===m; if(m===driving&&!hd) steer(m,dt); else m.v=0; showM(m,dt); const o=m.g;
         if(hd){ o.position.x+=(m.x-o.position.x)*.35; o.position.y+=(m.y-o.position.y)*.35; o.position.z+=(m.z-o.position.z)*.35; } else o.position.set(m.x,m.y,m.z); o.rotation.y=m.yaw; syncM(m); }
       if(driving&&!(held&&held.rec===driving)){ const kf=1-Math.exp(-dt*3.5), dx=driving.x-panX, dz=driving.z-panZ; if(dx*dx+dz*dz>.0004){ panX+=dx*kf; panZ+=dz*kf; applyCamera(); } }
+      if(walking&&me&&!driving) stepMe(dt);
       for(const m of marks){ if(!m.g.visible) continue; const w=Math.sin(Tm*5)*AMP; m.ar.position.x=.32+w*.12; m.r.scale.setScalar(1+.1*w); }
       if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34/fastest; tone(R(150,175),.06,'triangle',.045,95); } }
       const k=1-Math.exp(-dt*18), kv=1-Math.exp(-dt*24); let top=0;
@@ -1417,7 +1460,7 @@ const trein=(()=>{
         if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
-    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
+    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
@@ -1426,7 +1469,7 @@ const trein=(()=>{
       if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m') getIn(p.rec); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
@@ -1484,6 +1527,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     scheppen:'<path d="M3.500 11h13v6.500H6.500z"/><circle cx="8.500" cy="8.800" r="1.700" fill="currentColor"/><circle cx="12.500" cy="8.300" r="1.700" fill="currentColor"/><path d="M16.500 11 21 7.500"/>',
     kiepen:'<path d="M3.500 19h17"/><path d="M5.500 16 15 7.500l4 4.500-9.500 4z"/><circle cx="7" cy="20" r=".5"/>',
     uit:'<path d="M14 4h5.500v16H14"/><path d="M10 8l-4.500 4 4.500 4M5.500 12H15"/>',
+    instap:'<path d="M13 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/><path d="M3 12h11M10 8l4 4-4 4"/>',
     eind:'<rect x="2.500" y="12" width="12.500" height="7" rx="1.500"/><path d="M19.500 7.500v13" stroke-width="3.400"/><path d="M15 15.500h4.500"/>',
     sensor:'<rect x="4.500" y="9" width="15" height="11.500" rx="2.500"/><path d="M12 9V5.500"/><circle cx="12" cy="4" r="1.700" fill="currentColor"/><path d="M12 12v3.200l2.200 1.300" stroke-width="2"/>'};
   /* the drawer at the bottom: four tabs with a word under them; the buttons of the open tab sit beside them (wide screen) or below them (narrow screen), always on one row */
@@ -1531,6 +1575,13 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   $('#start-vrij').addEventListener('click',()=>askName('vrij')); $('#start-camp').addEventListener('click',()=>askName('camp'));
   $('#naam-start').addEventListener('click',startNew); $('#naam-terug').addEventListener('click',()=>{ sfx.tap(); closeName(); }); naamIn.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); startNew(); } });
   showSaves();
+  /* you: your name and colour, remembered in this browser */
+  { const PK='treinbaan-speler', COLS=['var(--red)','var(--orange)','var(--yellow)','var(--green)','var(--blue)','var(--purple)','var(--pink)'], inp=$('#ik-naam'), box=$('#ik-kl'); let prof={name:'Speler',color:4};
+    try{ const p=JSON.parse(localStorage.getItem(PK)||'null'); if(p&&typeof p.name==='string') prof={name:p.name.slice(0,14),color:(p.color|0)%COLS.length}; }catch(e){}
+    const keep=()=>{ try{ localStorage.setItem(PK,JSON.stringify(prof)); }catch(e){} trein.setMe(prof.name,prof.color); };
+    const dots=COLS.map((c,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='kl'; b.style.background=c; b.setAttribute('role','radio'); b.setAttribute('aria-label','Kleur '+(i+1)); b.addEventListener('click',()=>{ sfx.tap(); prof.color=i; mark(); keep(); }); box.appendChild(b); return b; });
+    const mark=()=>dots.forEach((b,i)=>{ b.classList.toggle('on',i===prof.color); b.setAttribute('aria-checked',i===prof.color?'true':'false'); });
+    inp.value=prof.name; mark(); inp.addEventListener('input',()=>{ prof.name=inp.value.slice(0,14); keep(); }); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); }); keep(); window.__prof=()=>prof; }
   door.addEventListener('click',()=>{ audio(); shut(); sfx.tap(); });
   again.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.reset+'</svg>Opnieuw beginnen'; again.addEventListener('click',()=>{ audio(); shut(); trein.reset(); saveNow(); });
   const sndUI=()=>{ snd.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[muted?'mute':'sound']+'</svg>'+(muted?'Geluid uit':'Geluid aan'); snd.setAttribute('aria-pressed',muted?'false':'true'); }; sndUI();
@@ -1563,15 +1614,15 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   /* a locked vehicle (campaign): grey with a lock; you earn it by building up the villages */
   lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto',wissel:'spoor-wissel',brug:'spoor-brug',tunnel:'spoor-tunnel',overweg:'spoor-overweg',wtunnel:'spoor-wtunnel',sensor:'spoor-sensor',boost:'spoor-boost'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
   /* the driving pad: push the stick the way you want to go; the big button does the work, the small one gets you out */
-  { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)']}; let sid=null;
+  { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)'],lopen:['var(--green)','instap','Instappen','var(--paper)']}; let sid=null;
     uit.style.setProperty('--c','var(--purple)'); uit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST.uit+'</svg>'; uit.setAttribute('aria-label','Uitstappen'); uit.title='Uitstappen';
-    driveUI=(on,sort)=>{ rij.hidden=!on; bot.hidden=on; if(on){ const v=MSV[sort]; stk.style.setProperty('--kc',v[0]); doe.style.setProperty('--c',v[0]); doe.style.setProperty('--i',v[3]); doe.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST[v[1]]+'</svg>'; doe.setAttribute('aria-label',v[2]); doe.title=v[2]; } knob.style.transform=''; applyCamera(); };
+    driveUI=(on,sort)=>{ rij.hidden=!on; bot.hidden=on; doe.classList.remove('off'); if(on){ uit.setAttribute('aria-label',sort==='lopen'?'Stoppen met lopen':'Uitstappen'); uit.title=uit.getAttribute('aria-label'); const v=MSV[sort]; stk.style.setProperty('--kc',v[0]); doe.style.setProperty('--c',v[0]); doe.style.setProperty('--i',v[3]); doe.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST[v[1]]+'</svg>'; doe.setAttribute('aria-label',v[2]); doe.title=v[2]; } knob.style.transform=''; applyCamera(); };
     const mv=e=>{ const r=stk.getBoundingClientRect(), R=r.width/2; let x=(e.clientX-r.left-R)/(R*.7), y=(e.clientY-r.top-R)/(R*.7); const l=Math.hypot(x,y); if(l>1){ x/=l; y/=l; } knob.style.transform='translate('+(x*R*.56)+'px,'+(y*R*.56)+'px)'; trein.stick(x,y); };
     stk.addEventListener('pointerdown',e=>{ audio(); sid=e.pointerId; try{ stk.setPointerCapture(sid); }catch(err){} mv(e); });
     stk.addEventListener('pointermove',e=>{ if(e.pointerId===sid) mv(e); });
     ['pointerup','pointercancel','lostpointercapture'].forEach(n=>stk.addEventListener(n,e=>{ if(e.pointerId!==sid) return; sid=null; knob.style.transform=''; trein.stick(0,0); }));
-    busyUI=on=>doe.classList.toggle('busy',on);
-    doe.addEventListener('click',()=>{ audio(); trein.act(); }); uit.addEventListener('click',()=>{ audio(); trein.leave(); }); }
+    busyUI=on=>doe.classList.toggle('busy',on); nearUI=on=>doe.classList.toggle('off',!on);
+    doe.addEventListener('click',()=>{ audio(); trein.act(); }); uit.addEventListener('click',()=>{ audio(); trein.out(); }); }
 }
 
 /* ---------- input ---------- */
@@ -1584,7 +1635,7 @@ canvas.addEventListener('wheel',e=>{ e.preventDefault(); const k=e.deltaMode===1
 /* the arrow keys scroll the picture; in a machine they (and W A S D) steer it, the space bar does the work and Escape gets you out */
 const keys=new Set(), KEY={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d',A:'l',D:'r',W:'u',S:'d'};
 const keyStick=()=>{ const x=(keys.has('r')?1:0)-(keys.has('l')?1:0), y=(keys.has('d')?1:0)-(keys.has('u')?1:0), l=Math.hypot(x,y)||1; trein.stick(x/l,y/l); };
-window.addEventListener('keydown',e=>{ if(trein.driving&&$('#start').hidden){ const k=KEY[e.key]; if(k){ e.preventDefault(); keys.add(k); keyStick(); return; } if(e.key===' '){ e.preventDefault(); if(!e.repeat) trein.act(); return; } if(e.key==='Escape'){ trein.leave(); return; } }
+window.addEventListener('keydown',e=>{ if(trein.driving&&$('#start').hidden){ const k=KEY[e.key]; if(k){ e.preventDefault(); keys.add(k); keyStick(); return; } if(e.key===' '){ e.preventDefault(); if(!e.repeat) trein.act(); return; } if(e.key==='Escape'){ trein.out(); return; } }
   const d={ArrowLeft:[-2,0],ArrowRight:[2,0],ArrowUp:[0,-2],ArrowDown:[0,2]}[e.key]; if(d){ e.preventDefault(); trein.panBy(d[0],d[1]); } });
 window.addEventListener('keyup',e=>{ const k=KEY[e.key]; if(k&&keys.delete(k)&&trein.driving) keyStick(); });
 
