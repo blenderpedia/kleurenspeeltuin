@@ -785,6 +785,10 @@ const trein=(()=>{
 
   /* ----- the goods wagon's load ----- */
   function addLoad(v,sh,col){ const i=v.load.length, ms=msOf(sh), m=mesh(BLOK.geos[sh],mat(col),SLX[i],.33+(i>2?.21:0)+BLOK.bottom[sh]*ms,0,v.inner); m.scale.setScalar(ms); v.load.push({sh,col,m}); }
+  /* a goods wagon stands still long enough to be loaded: a train without an engine, one at a sensor with more than `need` seconds to go, or one against a buffer */
+  const still=(c,need)=>!motor(c)||(!!c.stop&&c.pause>need)||!!c.buf;
+  function wagonsNear(x,z,y,lo,hi,need){ const o=[]; for(const v of vehs){ const c=v.c; if(v.sort!=='goed'||!c||cons.indexOf(c)<0||v.load.length>=CAP||!still(c,need)||Math.abs(v.tp.y-v.K.vh-y)>.6) continue; const d=Math.hypot(v.tp.x-x,v.tp.z-z); if(d>lo&&d<hi) o.push({v,c,d}); } return o.sort((a,b)=>a.d-b.d); }
+  const rawCol=sh=>sh==='steen'?BOUW.STONE:C.brown;
   /* tap a goods wagon: it tips its blocks out beside the track, full size again */
   function tip(v,to){ if(!v.load||!v.load.length) return false; const at=v.g.position, yaw=v.c?v.yaw:te.setFromQuaternion(v.g.quaternion,'YZX').y, fx=Math.cos(yaw), fz=-Math.sin(yaw); let best=null;
     for(const sd of [1,-1]){ const x=at.x-fz*1.2*sd, z=at.z+fx*1.2*sd; if(Math.abs(x)>MX-.8||Math.abs(z)>MZ-.8) continue; const y=to?Math.hypot(x-to.x,z-to.z):surface(x,z,null).y; if(!best||y<best.y-.05) best={x,z,y}; }   /* to the side of the factory, else to the side where there is room */
@@ -909,18 +913,20 @@ const trein=(()=>{
         ()=>{ m.busy=false; if(m.work) digOnce(m); else workUI(m); });
       return; }
     let tgt=null; for(const k of machs){ if(k.sort!=='kiep'||k.load.length>=KCAP||k.up!==m.up) continue; bedAt(k,a1); const Dk=Math.hypot(a1.x-m.x,a1.z-m.z); if(Dk>1.05&&Dk<2.35&&(!tgt||Dk<tgt.D)) tgt={k,x:a1.x,z:a1.z,y:a1.y,D:Dk}; }
+    for(const w of wagonsNear(m.x,m.z,m.y,1.05,2.35,4.3)) if(!tgt||w.d<tgt.D){ tgt={w:w.v,c:w.c,x:w.v.tp.x,z:w.v.tp.z,y:w.v.tp.y+.25,D:w.d}; break; }   /* (a train at a sensor has to stay until the block is in) */
     if(!tgt){ const d=dropAt(m,ac); if(!d){ m.work=false; workUI(m); nope(m); return; } tgt={k:null,x:d.x,z:d.z,y:d.y+.3,D:1.8}; }
     const sc=wrapA(ac-m.yaw), st=wrapA(Math.atan2(-(tgt.z-m.z),tgt.x-m.x)-m.yaw), dc=cl(D-.36,.7,1.95), dt=cl(tgt.D-.36,.7,1.95), yt=tgt.y-base+.55, sh=J.kind==='log'?'hout':'steen';
     m.busy=true; m.dug=true; workUI(m); tone(70,.3,'sawtooth',.05,110);
     play(m,[{t:1.1,p:{sw:sc,d:dc,y:yc+.55,cu:-.4}},{t:1.6,p:{y:yc,cu:-.4}},{t:2.1,p:{cu:1}},{t:2.6,p:{y:yc+1}},{t:3.7,p:{sw:st,d:dt,y:yt+.5}},{t:4.15,p:{cu:-.9}},{t:5,p:REST.graaf}],
       [{t:1.95,fn:()=>{ if(J.kind==='q'?qTake(J.i):J.kind==='rock'?chip(J.r):cutLog(J.L)){ m.carry=[sh]; showLoad(m); } }},
-       {t:4,fn:()=>{ if(!m.carry.length) return; const k=tgt.k; if(k&&machs.indexOf(k)>=0&&k.load.length<KCAP&&Math.hypot(bedAt(k,a2).x-tgt.x,a2.z-tgt.z)<.7){ k.load.push(m.carry[0]); showLoad(k); pop(k.g,.04); sfx.plop(); }
+       {t:4,fn:()=>{ if(!m.carry.length) return; const k=tgt.k, w=tgt.w; if(k&&machs.indexOf(k)>=0&&k.load.length<KCAP&&Math.hypot(bedAt(k,a2).x-tgt.x,a2.z-tgt.z)<.7){ k.load.push(m.carry[0]); showLoad(k); pop(k.g,.04); sfx.plop(); }
+         else if(w&&w.c===tgt.c&&cons.indexOf(tgt.c)>=0&&w.load.length<CAP&&Math.hypot(w.tp.x-tgt.x,w.tp.z-tgt.z)<.7){ addLoad(w,m.carry[0],rawCol(m.carry[0])); pop(w.g,.06); sfx.plop(); }
          else { m.M.load.getWorldPosition(cv); dropRaw(m.carry[0],cv.x,Math.max(cv.y,hAt(cv.x,cv.z)+.4),cv.z); } m.carry=[]; showLoad(m); }}],
       ()=>{ m.busy=false; if(m.work) digOnce(m); else workUI(m); }); }
   /* steering the excavator while it works: it stops, puts down what it holds and folds its arm */
   function stopDig(m){ m.work=false; m.stopping=true; m.busy=true; if(m.carry.length){ m.M.load.getWorldPosition(cv); dropRaw(m.carry[0],cv.x,Math.max(cv.y,hAt(cv.x,cv.z)+.4),cv.z); m.carry=[]; showLoad(m); }
     play(m,[{t:.6,p:REST.graaf}],[],()=>{ m.busy=false; m.stopping=false; workUI(m); }); workUI(m); }
-  /* the loader: an empty bucket picks up three blocks from the stone in front of it (the nearest column first, then the one behind it) (or loose blocks of wood and stone lying there); a full bucket goes into a dump truck in front of it, or onto the ground. Quick: about a second */
+  /* the loader: an empty bucket picks up three blocks from the stone in front of it (the nearest column first, then the one behind it) (or loose blocks of wood and stone lying there); a full bucket goes into a dump truck or a goods wagon that stands still in front of it (what does not fit falls beside it), or onto the ground. Quick: about a second */
   function shovelAct(m){ frontAt(m,1.3,a1); const fx=a1.x, fz=a1.z;
     if(!m.carry.length){ const take=[];
       if(groeve&&!m.up){ const Q=groeve, cells=[]; for(let i=0;i<Q.h.length;i++){ if(!Q.h[i]) continue; const c=qc(Q,i), dx=Math.max(Math.abs(fx-c[0])-.5,0), dz=Math.max(Math.abs(fz-c[1])-.5,0), d=Math.hypot(dx,dz); if(d<1.35) cells.push([d,i]); }
@@ -932,8 +938,10 @@ const trein=(()=>{
         ()=>{ m.busy=false; workUI(m); if(!m.carry.length) play(m,[{t:.3,p:REST.shovel}]); });
       return; }
     let k=null, bd=1.7; for(const q of machs){ if(q.sort!=='kiep'||q===m||q.up!==m.up||q.load.length>=KCAP) continue; bedAt(q,a2); const d=Math.hypot(a2.x-fx,a2.z-fz); if(d<bd){ bd=d; k=q; } }
+    const wg=wagonsNear(fx,fz,m.y,-1,1.7,1)[0], W=wg&&wg.d<bd?wg:null; if(W) k=null;
     m.busy=true; workUI(m); tone(140,.25,'sawtooth',.04,90);
-    play(m,[{t:.45,p:{arm:k?.8:-.2,bk:.9}},{t:.75,p:{bk:-.5}},{t:1.25,p:REST.shovel}],[{t:.65,fn:()=>{ if(k&&machs.indexOf(k)>=0){ while(m.carry.length&&k.load.length<KCAP) k.load.push(m.carry.shift()); showLoad(k); pop(k.g,.04); }
+    play(m,[{t:.45,p:{arm:k||W?.8:-.2,bk:.9}},{t:.75,p:{bk:-.5}},{t:1.25,p:REST.shovel}],[{t:.65,fn:()=>{ if(k&&machs.indexOf(k)>=0){ while(m.carry.length&&k.load.length<KCAP) k.load.push(m.carry.shift()); showLoad(k); pop(k.g,.04); }
+        else if(W&&W.v.c===W.c&&cons.indexOf(W.c)>=0){ while(m.carry.length&&W.v.load.length<CAP){ const sh=m.carry.shift(); addLoad(W.v,sh,rawCol(sh)); } pop(W.v.g,.06); }
         frontAt(m,1.35,a1); const px=Math.sin(m.yaw), pz=Math.cos(m.yaw); m.carry.forEach((sh,j)=>dropRaw(sh,a1.x+px*(j-1)*.45,hAt(a1.x,a1.z)+.6+j*.1,a1.z+pz*(j-1)*.45)); m.carry=[]; showLoad(m); sfx.plop(); }}],
       ()=>{ m.busy=false; workUI(m); }); }
   /* the dump truck: the bed tips up and everything slides out behind it as loose blocks; beside the rails and road factory the factory hand comes for them and stacks them in the store (there they count) */
@@ -1267,7 +1275,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.weg,{id:'spoor-auto',cls:'btn face',svg:'<path d="M2.500 17v-4.500c0-1 .700-1.700 1.700-1.800l2.300-.300 1.800-3.200c.400-.700 1-1 1.800-1h5c.800 0 1.400.400 1.800 1l1.800 3.200h1c1 0 1.800.800 1.800 1.800V17z" fill="#2f9bff"/><path d="M8.700 10.200 9.900 8h2.300v2.200zM13.700 8h2l1.200 2.200h-3.200z" fill="#bfe6ff"/><circle cx="7.500" cy="17.500" r="2.700" fill="'+ik+'"/><circle cx="16.500" cy="17.500" r="2.700" fill="'+ik+'"/>',label:'Auto',on:()=>trein.addTrain('auto')});
   /* Machines: you drive them yourself (tap one to get in) */
   mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Heel traag. Graaft steen uit de groeve en van rotsen, hakt bomen om voor hout',on:()=>trein.addMachine('graaf')});
-  mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept op en laadt de kiepwagen',on:()=>trein.addMachine('shovel')});
+  mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept op en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
   mkBtn(G.mach,{id:'mach-kiep',cls:'btn face',svg:ST.kiep,label:'Kiepwagen: tik erop om in te stappen. Brengt steen naar de fabriek',on:()=>trein.addMachine('kiep')});
   /* the factory (campaign only) */
   { const e=document.createElement('i'); e.className='sep fab'; G.mach.appendChild(e); }
