@@ -148,8 +148,12 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 /* ----- the menu: an enamel station board on the left, the world rides on behind it ----- */
 #start{--emaille:#1f3d6b;--emaille2:#16294a;--creme:#f4ecd6;--mat:#a9bbd6;--sein:#f5c542;--stop:#e5533d;--go:#3fb56b;--camp:#e08a2e;--vrij:#7c5cc4;--bord:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;--tekst:"Barlow",system-ui,sans-serif;
   display:block;padding:0;background:linear-gradient(90deg,rgba(14,26,48,.4),rgba(14,26,48,0) 60%);-webkit-backdrop-filter:none;backdrop-filter:none;overflow:hidden}
-#start .in{position:absolute;left:max(16px,env(safe-area-inset-left));top:16px;bottom:16px;width:clamp(350px,38vw,460px);max-width:none;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:26px 26px 22px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(244,236,214,.3) transparent;
-  background:linear-gradient(180deg,#25487a,var(--emaille) 38%,#1b375f);border-radius:22px;color:var(--creme);font-family:var(--tekst);box-shadow:0 22px 50px rgba(8,18,36,.42);outline:2px solid rgba(244,236,214,.45);outline-offset:-9px}
+#start .in{position:absolute;left:max(16px,env(safe-area-inset-left));top:16px;bottom:16px;width:clamp(350px,38vw,460px);max-width:none;box-sizing:border-box;display:flex;flex-direction:column;padding:0;overflow:hidden;
+  background:linear-gradient(180deg,#25487a,var(--emaille) 38%,#1b375f);border-radius:22px;color:var(--creme);font-family:var(--tekst);box-shadow:0 22px 50px rgba(8,18,36,.42)}
+#start .in::after{content:"";position:absolute;inset:9px;border:2px solid rgba(244,236,214,.45);border-radius:15px;pointer-events:none;z-index:3}
+#start .rol{flex:1;min-height:0;margin:11px;border-radius:12px;display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:15px 15px 20px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(transparent,#000 13px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(transparent,#000 13px,#000 calc(100% - 22px),transparent)}
+#start .rol::-webkit-scrollbar{display:none}
 #start .kop{position:relative;overflow:hidden;padding-top:4px;flex:none}
 #start .in h1{margin:0;font:800 clamp(42px,4.4vw,58px)/.95 var(--bord);letter-spacing:.015em;color:var(--creme);text-shadow:none}
 #start .lijn{position:relative;height:16px;margin-top:22px;background:linear-gradient(var(--creme),var(--creme)) 0 3px/100% 2px no-repeat,linear-gradient(var(--creme),var(--creme)) 0 11px/100% 2px no-repeat,repeating-linear-gradient(90deg,rgba(244,236,214,.4) 0 3px,transparent 3px 13px) 0 0/100% 16px no-repeat}
@@ -210,7 +214,7 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 #start .naam input{width:100%;border:0;border-radius:10px;padding:.45em .7em;font:700 26px/1.2 var(--bord);text-align:left;background:var(--creme);color:var(--emaille2);box-shadow:none}
 #start .naam input:focus{outline:3px solid var(--sein);outline-offset:2px;border:0}
 #start .naam .opts{justify-content:flex-start}
-#start .in > .opts{margin-top:auto;justify-content:flex-start;gap:8px;padding-top:4px}
+#start .rol > .opts{margin-top:auto;justify-content:flex-start;gap:8px;padding-top:4px}
 #start .go{flex:1 1 100%;padding:.55em 1em;border:0;border-radius:12px;background:var(--sein);color:var(--emaille2);font:800 22px/1 var(--bord);letter-spacing:.02em;box-shadow:0 3px 0 rgba(0,0,0,.25)}
 #start .naam .go{flex:0 1 auto;padding:.5em 1.6em}
 #start .go:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
@@ -223,7 +227,7 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 body.menu .bar,body.menu #rij,body.menu #spelers{visibility:hidden}
 body.menu #toast{z-index:6}
 @media (min-width:641px){body.menu #toast{top:24px;left:calc(50% + clamp(175px,19vw,230px) + 8px);max-width:min(calc(100vw - clamp(350px,38vw,460px) - 64px),560px)}}
-@media (max-width:640px){#start{background:rgba(14,26,48,.3)}#start .in{left:10px;right:10px;top:10px;bottom:10px;width:auto;padding:22px 18px 18px;gap:16px;outline-offset:-7px}}
+@media (max-width:640px){#start{background:rgba(14,26,48,.3)}#start .in{left:10px;right:10px;top:10px;bottom:10px;width:auto;border-radius:20px}#start .in::after{inset:7px;border-radius:14px}#start .rol{margin:9px;padding:13px 10px 22px;gap:16px}}
 @media (prefers-reduced-motion:reduce){#start .kop.rij .loc{animation:none}#start .mode{transition:none}}
 /* campaign: the machines come with the story, not from a button */
 body:not(.vrij) #tab-mach{display:none}
@@ -245,7 +249,7 @@ body.vrij #hud,body.vrij .cost{display:none}
   <div class="bar bottom" id="bot"></div>
   <div id="rij" hidden><div id="stick" role="application" aria-label="Stuur: duw de knop de kant op waar je heen wilt"><div id="knob"></div></div>
     <div class="rjr"><button type="button" class="btn" id="rij-uit"></button><button type="button" class="btn" id="rij-doe"></button></div></div>
-  <div id="start"><div class="in" role="dialog" aria-modal="true" aria-labelledby="bord-titel">
+  <div id="start"><div class="in" role="dialog" aria-modal="true" aria-labelledby="bord-titel"><div class="rol">
     <header class="kop rij"><h1 id="bord-titel">Treinbaan</h1><div class="lijn" aria-hidden="true"><svg class="loc" viewBox="0 0 60 28"><rect x="2" y="19" width="46" height="3" rx="1" fill="#16294a"/><rect x="14" y="8" width="31" height="12" rx="3" fill="#f5c542"/><rect x="4" y="2" width="14" height="18" rx="2" fill="#f4ecd6"/><rect x="7" y="5" width="8" height="6" rx="1" fill="#1f3d6b"/><rect x="36" y="1" width="5" height="8" rx="1" fill="#e5533d"/><rect x="45" y="14" width="5" height="4" rx="1" fill="#f4ecd6"/><circle cx="12" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/><circle cx="24" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/><circle cx="37" cy="23" r="4.5" fill="#16294a" stroke="#f4ecd6" stroke-width="1.5"/></svg></div></header>
     <div class="ik"><label class="lab" for="ik-naam">Jij</label><input id="ik-naam" type="text" maxlength="14" autocomplete="off" aria-label="Jouw naam" placeholder="Jouw naam"><div class="kls" id="ik-kl" role="radiogroup" aria-label="Jouw kleur"></div></div>
     <div class="samen" id="samen" role="radiogroup" aria-label="Alleen of samen spelen"><button type="button" role="radio" class="on" aria-checked="true">Alleen</button><button type="button" role="radio" aria-checked="false">Host</button><button type="button" role="radio" aria-checked="false">Meedoen</button></div>
@@ -264,7 +268,7 @@ body.vrij #hud,body.vrij .cost{display:none}
       <button type="button" class="pill" id="start-sound"></button>
       <button type="button" class="pill" id="start-full" hidden></button>
     </div>
-  </div></div>
+  </div></div></div>
   <p id="fail" hidden>Dit spel heeft 3D nodig. Open het in een nieuwere browser.</p>
 </div>
 
@@ -1999,7 +2003,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   { const mark=()=>document.body.classList.toggle('menu',!startEl.hidden); new MutationObserver(mark).observe(startEl,{attributes:true,attributeFilter:['hidden']}); mark(); }
   const play=m=>{ audio(); MP.before(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); MP.after(); };
   /* saved games: a list in the browser (name, way of playing, when), each game on its own. The game you play saves itself every few seconds, when the menu opens and when the app goes to the background */
-  const LST='treinbaan-lijst', SKEY='treinbaan-spel-', modesEl=startEl.querySelector('.modes'), savesEl=$('#saves'), lstEl=$('#saves-lst'), naamEl=$('#naam'), naamIn=$('#naam-in'), optsEl=startEl.querySelector('.in > .opts');
+  const LST='treinbaan-lijst', SKEY='treinbaan-spel-', modesEl=startEl.querySelector('.modes'), savesEl=$('#saves'), lstEl=$('#saves-lst'), naamEl=$('#naam'), naamIn=$('#naam-in'), optsEl=startEl.querySelector('.rol > .opts');
   const readList=()=>{ try{ const l=JSON.parse(localStorage.getItem(LST)||'[]'); return Array.isArray(l)?l:[]; }catch(e){ return []; } }, writeList=l=>{ try{ localStorage.setItem(LST,JSON.stringify(l)); }catch(e){} };
   let curSave=null, newMode=null;
   function saveNow(){ if(!started||!curSave) return; try{ const D=trein.serialize(); D.name=curSave.name; localStorage.setItem(SKEY+curSave.id,JSON.stringify(D)); curSave.date=Date.now(); writeList([{id:curSave.id,name:curSave.name,mode:curSave.mode,date:curSave.date}].concat(readList().filter(x=>x.id!==curSave.id))); }catch(e){} }
