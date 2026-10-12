@@ -295,6 +295,7 @@ const SPOOR=(()=>{
   /* every piece starts at its end A (the origin) heading along +x; a bend turns left, a bridge piece climbs one level in a gentle S, a switch runs straight on and also branches off to the left (mirrored: to the right) */
   const RR=2, TH=.16, HW=.45, RISE=1.1, BL=4, ARCH=.72, N=24;
   const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech=mat(0xe2ab66,{shininess:10,specular:0x0c0c0c}), grv=new T.MeshLambertMaterial({color:0xc48a47}), ink=mat(C.ink), yel=mat(C.yellow), glass=mat(0xbfe6ff), red=mat(C.red,{shininess:60}), tar=mat(0x687189,{shininess:12,specular:0x111111}), white=new T.MeshLambertMaterial({color:C.paper});
+  const knopM=mat(0x2fc866,{shininess:60});
   const stoneM=mat(0xa3abbd,{shininess:10,specular:0x111111}), capM=mat(0x7f8aa0,{shininess:10,specular:0x111111}), mouthM=new T.MeshBasicMaterial({color:0x221a44});
   const dash=(a0,a1)=>{ const s=new T.Shape(); s.absarc(0,RR,RR+.04,-PI/2+a0,-PI/2+a1,false); s.absarc(0,RR,RR-.04,-PI/2+a1,-PI/2+a0,true); s.closePath(); return s; };
   const rise=x=>{ const u=Math.max(0,Math.min(1,x/BL)); return RISE*u*u*(3-2*u); };
@@ -327,7 +328,10 @@ const SPOOR=(()=>{
     poort:frameAt(1.58), mond:mouthAt(1.566),
     /* a road gate: the same frame, but the road runs between the dots, so it starts a dot further out and the rim lies at .58 */
     wpoort:frameAt(.58), wmond:mouthAt(.566),
-    poortKap:roundBox(.3,.14,1.96,.05,.02)
+    poortKap:roundBox(.3,.14,1.96,.05,.02),
+    /* an end of the line: a red beam with white bands across the rails on two posts, two round buffers facing the train; just behind it a yellow box with a big green button (there no train stands in front of it) */
+    juk:roundBox(.16,.22,1.04,.05,.02), jukBand:box(.17,.23,.13), jukPaal:roundBox(.12,.4,.12,.03,.015), buffer:(()=>{ const q=cyl(.085,.085,.08,16); q.rotateZ(PI/2); return q; })(), bufStang:(()=>{ const q=cyl(.035,.035,.12,8); q.rotateZ(PI/2); return q; })(),
+    knopVoet:roundBox(.4,.22,.4,.08,.03), knop:cyl(.14,.15,.1,18)
   };
   const LENB=(()=>{ let l=0; for(let i=0;i<64;i++){ const a=BL*i/64, b=BL*(i+1)/64; l+=Math.hypot(b-a,rise(b)-rise(a)); } return l; })();
   /* a way through a piece: where you are after a share u of it, and how long it is */
@@ -335,7 +339,8 @@ const SPOOR=(()=>{
     line:{len:2,at:(u,o)=>o.set(2*u,0,0)},
     arc:{len:PI*RR/2,at:(u,o)=>{ const a=u*PI/2; return o.set(RR*Math.sin(a),0,-RR*(1-Math.cos(a))); }},
     ramp:{len:LENB,at:(u,o)=>o.set(BL*u,rise(BL*u),0)},
-    cross:{len:2,at:(u,o)=>o.set(1,0,2*u-1)}
+    cross:{len:2,at:(u,o)=>o.set(1,0,2*u-1)},
+    kort:{len:1.7,at:(u,o)=>o.set(1.7*u,0,0)}
   };
   /* a sort of piece: its ends [x, levels up, z, quarter turns of the way out] and the ways through it [shape, from end, to end] */
   const mk=(net,ends,segs,o)=>{ const t=Object.assign({net,ends:ends.map(e=>({x:e[0],l:e[1],z:e[2],oq:e[3],net:e[4]||net})),segs:segs.map(s=>({at:SEG[s[0]].at,len:SEG[s[0]].len,a:s[1],b:s[2],net:s[3]||net,n:s[0]==='ramp'?19:9}))},o||{});
@@ -351,6 +356,8 @@ const SPOOR=(()=>{
     overweg:mk('rail',[[0,0,0,2],[2,0,0,0],[1,0,-1,1,'road'],[1,0,1,3,'road']],[['line',0,1],['cross',2,3,'road']],{flat:true,sym:true}),
     /* a tunnel gate: a short straight from the dot outside the high ground into its side (berg: it may go in there) */
     poort:mk('rail',[[0,0,0,2],[2,0,0,0]],[['line',0,1]],{flat:true,berg:true}),
+    /* the end of the line: rails that stop at a buffer 1.7 along; that end (net 'eind') joins nothing */
+    eind:mk('rail',[[0,0,0,2],[1.7,0,0,0,'eind']],[['kort',0,1]],{flat:true}),
     /* a car tunnel gate: a short straight road from the dot outside the high ground into its side */
     wpoort:mk('road',[[0,0,0,2],[2,0,0,0]],[['line',0,1]],{flat:true,berg:true})
   };
@@ -362,8 +369,11 @@ const SPOOR=(()=>{
       /* a boom on each side; it swings about the post it hangs on */
       gates=[-1,1].map(s=>{ const h=new T.Group(); h.position.set(1-s*.62,0,s*.74); if(s<0) h.rotation.y=PI; mesh(geo.paal,ink,0,.25,0,h); mesh(geo.kap,red,0,.56,0,h);
         const b=new T.Group(); b.position.set(0,.44,0); for(let i=0;i<4;i++) mesh(geo.boom,i&1?white:red,.08+.14+i*.28,0,0,b); mesh(geo.gewicht,ink,-.14,0,0,b); b.rotation.z=1.36; h.add(b); g.add(h); return b; }); }
-    if(type==='recht'||type==='wissel'||type==='overweg'||type==='poort'){ mesh(geo.recht,wood,0,0,0,g); [-1,1].forEach(s=>flatM(geo.gRecht,grv,1,TH+.004,s*.24,g)); }
+    if(type==='recht'||type==='wissel'||type==='overweg'||type==='poort'||type==='eind'){ mesh(geo.recht,wood,0,0,0,g); [-1,1].forEach(s=>flatM(geo.gRecht,grv,1,TH+.004,s*.24,g)); }
     if(type==='poort'){ mesh(geo.poort,stoneM,0,0,0,g); mesh(geo.poortKap,capM,1.47,1.25,0,g); g.add(new T.Mesh(geo.mond,mouthM)); }
+    if(type==='eind'){ const j=new T.Group(); j.position.set(1.87,TH,0); mesh(geo.juk,red,0,.24,0,j); [-.3,.3].forEach(z=>{ mesh(geo.jukBand,white,0,.24,z,j); mesh(geo.jukPaal,ink,.04,.2,z*1.1,j); });
+      [-.25,.25].forEach(z=>{ mesh(geo.bufStang,ink,-.12,.22,z,j); mesh(geo.buffer,ink,-.15,.22,z,j); }); g.add(j);
+      mesh(geo.knopVoet,yel,2.25,.11,0,g); const knob=mesh(geo.knop,knopM,2.25,.27,0,g); g.userData.knob=knob; g.userData.juk=j; }
     if(type==='wpoort'){ mesh(geo.wpoort,stoneM,0,0,0,g); mesh(geo.poortKap,capM,.47,1.25,0,g); g.add(new T.Mesh(geo.wmond,mouthM)); }
     if(type==='bocht'||type==='wissel'){ mesh(geo.bocht,wood,0,0,0,g); geo.gBocht.forEach(q=>flatM(q,grv,0,0,0,g)); }
     if(type==='recht') pier=mesh(geo.pijler,beech,0,0,0,g);
@@ -516,7 +526,7 @@ const trein=(()=>{
   /* the buildings: half their size, how many of them, what they make */
   const BLD={zaag:{hw:1.8,hd:.95,max:2,sh:'hout',col:C.brown},mijn:{hw:1.8,hd:.95,max:2,sh:'steen',col:BOUW.STONE},fab:{hw:2.6,hd:1.5,max:1}};
   /* the factory: what a piece costs, how much it stores of each kind, how far its hand goes for a block, what you start with */
-  const COST={recht:{hout:1},bocht:{hout:2},wissel:{hout:3},brug:{hout:4},weg:{steen:1},wbocht:{steen:2},overweg:{steen:3,hout:1},tunnel:{steen:6}}, FCAP=20, RFAB=6.5, START={hout:20,steen:0};
+  const COST={recht:{hout:1},bocht:{hout:2},wissel:{hout:3},brug:{hout:4},eind:{hout:2},weg:{steen:1},wbocht:{steen:2},overweg:{steen:3,hout:1},tunnel:{steen:6}}, FCAP=20, RFAB=6.5, START={hout:20,steen:0};
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
@@ -586,7 +596,7 @@ const trein=(()=>{
   function unsolid(p){ if(p.sb){ world.removeBody(p.sb); p.sb=null; wakeAll(); } }
   /* the rail boxes overlap a little at every joint, so a block that is shoved along the rails does not catch on a seam */
   function solid(p){ if(!world) return; unsolid(p); if(p.gang) return; const b=new PH.Body({mass:0}), t=p.type, m=mOf(p);
-    if(t==='recht'||t==='wissel'||t==='weg'||t==='overweg'||t==='poort'||t==='wpoort') b.addShape(new PH.Box(V(1.15,TH/2,.45)),V(1,TH/2,0));
+    if(t==='recht'||t==='wissel'||t==='weg'||t==='overweg'||t==='poort'||t==='wpoort'||t==='eind') b.addShape(new PH.Box(V(1.15,TH/2,.45)),V(1,TH/2,0));
     if(t==='overweg') b.addShape(new PH.Box(V(.45,TH/2,1.15)),V(1,TH/2,0));
     if(t==='bocht'||t==='wissel'||t==='wbocht') for(let i=0;i<4;i++){ const a=(i+.5)*PI/8; b.addShape(new PH.Box(V(.52,TH/2,.45)),V(2*Math.sin(a),TH/2,-2*(1-Math.cos(a))*m),qAx(0,1,0,a*m)); }
     if(t==='brug'){ for(let i=0;i<8;i++){ const x0=i/2, y0=SPOOR.rise(x0)+TH, y1=SPOOR.rise(x0+.5)+TH, a=Math.atan2(y1-y0,.5); b.addShape(new PH.Box(V(Math.hypot(.5,y1-y0)/2+.1,TH/2,.45)),V(x0+.25+Math.sin(a)*TH/2,(y0+y1)/2-Math.cos(a)*TH/2,0),qAx(0,0,1,a)); }
@@ -655,7 +665,7 @@ const trein=(()=>{
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
     for(let i=0;i<E.length;i++) for(let j=i+1;j<E.length;j++){ const a=E[i], b=E[j]; if(a.p!==b.p&&!a.p.n[a.k]&&!b.p.n[b.k]&&joins(a.e,b.e)){ a.p.n[a.k]={p:b.p,k:b.k}; b.p.n[b.k]={p:a.p,k:a.k}; } }
-    open=E.filter(a=>!a.p.n[a.k]); let id=0;
+    open=E.filter(a=>!a.p.n[a.k]&&a.e.net!=='eind'); let id=0;
     for(const p0 of list) for(const e0 of p0.ends){ const net=e0.net; if(p0.cid[net]!=null) continue; p0.cid[net]=++id; const st=[p0]; while(st.length){ const p=st.pop(); p.ends.forEach((e,k)=>{ const nb=p.n[k]; if(e.net===net&&nb&&nb.p.cid[net]==null){ nb.p.cid[net]=id; st.push(nb.p); } }); } }
     bind(); }
 
@@ -693,7 +703,7 @@ const trein=(()=>{
   /* a train (cons) is a row of vehicles, each with its own place on the track; the first one leads, the others follow at a fixed distance */
   const motor=c=>c.net!=='rail'||c.veh[0].loco;
   const apart=(a,b)=>{ const p=a.pos&&a.pos.p, q=b.pos&&b.pos.p; return !!(p&&q&&(p.gang||q.gang)&&p.tun!==q.tun); };
-  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,seen:new Set(),seenB:new Set(),boost:0,fast:1});
+  const newCons=net=>({id:++consN,net,veh:[],dir:1,pause:.3,ch:new Map(),lag:0,stuck:0,crash:false,block:null,stop:null,buf:null,seen:new Set(),seenB:new Set(),boost:0,fast:1});
   /* shift a place until there is room for half a vehicle in front and `need` behind it; false when the track is too short for that */
   function fit(pos,c,K,need){ cp(P1,pos); const a=walk(P1,K.half,c); cp(P1,pos); const b=walk(P1,-(need+K.half),c); if(a>1e-6&&b>1e-6) return false;
     if(a>1e-6){ cp(P1,pos); if(walk(P1,-(a+need+K.half),c)>1e-6) return false; walk(pos,-a,c); } else if(b>1e-6){ cp(P1,pos); if(walk(P1,b+K.half,c)>1e-6) return false; walk(pos,b,c); } return true; }
@@ -729,15 +739,19 @@ const trein=(()=>{
     if(room<=.002){
       if(blocker){ let rel=-1; if(motor(blocker)){ const ol=blocker.dir>0?blocker.veh[0]:blocker.veh[blocker.veh.length-1]; rel=hd.x*Math.cos(ol.yaw)*blocker.dir-hd.z*Math.sin(ol.yaw)*blocker.dir; }
         if(rel<=.2||(blocker.block===c&&c.id>blocker.id)) turn(c); else c.block=blocker; }
+      else if(hit==='end'&&P1.p.type==='eind'&&P1.u>.5){ if(c.buf!==P1.p){ c.buf=P1.p; const j=P1.p.g.userData.juk; if(j) pop(j,.08,.25); tone(150,.14,'triangle',.2,90); } }   /* against the buffer: it waits there */
       else if(hit==='end'){ ptAt(P1,cv); if(c.net==='rail'&&!hidPt(cv.x,cv.y-TH,cv.z)) c.off=true; else { cp(P1,tail.pos); if(walk(P1,-c.dir*(K.half+.05),c)<=1e-6) turn(c); } }
       return false; }
-    for(const v of c.veh) walk(v.pos,c.dir*room,c); return true; }
+    for(const v of c.veh) walk(v.pos,c.dir*room,c); c.buf=null; return true; }
   /* a sensor block beside the rails: the engine stops next to it for the time the block shows */
   function sense(c){ const l=c.veh[0]; for(const s of props){ if(!s.wp) continue; const d=Math.hypot(l.tp.x-s.wp.x,l.tp.z-s.wp.z);
       if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
   /* a speed boost on the rails: the engine that rides over it goes twice as fast for three seconds, the last half second slowing back to its own speed (both ways, also riding backwards) */
   function zoom(c){ const l=c.veh[0]; for(const f of boosts){ if(!f.wp) continue; const d=Math.hypot(l.tp.x-f.wp.x,l.tp.z-f.wp.z);
       if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ tone(260,.32,'sawtooth',.05,1300); tone(520,.26,'triangle',.12,1560,.04); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
+  /* the button beside the buffer: it goes down and up again, and a train standing against the buffer rides back the way it came */
+  function press(p){ const k=p.g.userData.knob; if(k) tw(.24,e=>{ k.position.y=.27-.07*Math.sin(e*PI); },e=>e); klik();
+    let any=false; for(const c of cons) if(c.buf===p){ c.buf=null; turn(c); any=true; } if(any) toot(); else tone(880,.12,'sine',.1); }
   /* how many blocks the train is leaning on: the ones it touches and everything piled against those. One or two it shoves along; running into a heap throws it off the rails */
   function heapOf(c){ const ct=world.contacts, seen=new Set(); let grew=true; for(const q of ct){ const a=q.bi, b=q.bj; if(a.veh&&a.veh.c===c&&b.blk) seen.add(b); else if(b.veh&&b.veh.c===c&&a.blk) seen.add(a); }
     if(!seen.size) return 0; while(grew&&seen.size<HEAP){ grew=false; for(const q of ct){ const a=q.bi, b=q.bj; if(!a.blk||!b.blk) continue; if(seen.has(a)&&!seen.has(b)){ seen.add(b); grew=true; } else if(seen.has(b)&&!seen.has(a)){ seen.add(a); grew=true; } } } return seen.size; }
@@ -753,7 +767,7 @@ const trein=(()=>{
       if(!k) burst(v.g.position,12,3.4,C.yellow); }); }
   /* a car that meets a train on the level crossing is knocked off the road and stays where it lands; the train rides on */
   function knock(c,v,o,w){ cons=cons.filter(x=>x!==c); v.c=null; v.drv=false; v.spin=0; sfx.crash(); burst(v.g.position,14,3.6,C.yellow); if(!v.inW){ stage(v); return; }
-    const b=v.b, go=motor(o)&&o.pause<=0&&o.lag<LAG?o.dir:0, cx=Math.cos(v.yaw), cz=-Math.sin(v.yaw), back=go?0:2.4;
+    const b=v.b, go=motor(o)&&o.pause<=0&&!o.buf&&o.lag<LAG?o.dir:0, cx=Math.cos(v.yaw), cz=-Math.sin(v.yaw), back=go?0:2.4;
     b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; b.velocity.set(Math.cos(w.yaw)*go*4.2-cx*back+R(-.7,.7),R(4.2,5.6),-Math.sin(w.yaw)*go*4.2-cz*back+R(-.7,.7)); b.angularVelocity.set(R(-8,8),R(-5,5),R(-8,8)); b.wakeUp(); }
   function meet(){ for(const c of cons.slice()){ if(c.net!=='road') continue; const v=c.veh[0]; let done=false;
       for(const o of cons){ if(o.net!=='rail'||done) continue; for(const w of o.veh){ if(Math.abs(w.tp.y-v.tp.y)>.6||apart(v,w)) continue; const dx=v.tp.x-w.tp.x, dz=v.tp.z-w.tp.z, cy=Math.cos(w.yaw), sy=Math.sin(w.yaw); if(Math.abs(dx*cy-dz*sy)<.8&&Math.abs(dx*sy+dz*cy)<.66){ knock(c,v,o,w); done=true; break; } } } } }
@@ -1243,7 +1257,7 @@ const trein=(()=>{
       if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='k'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(tab==='blok') tapBlock(); else if(p.kind==='m') getIn(p.rec); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='k'||p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(tab==='blok') tapBlock(); else if(p.kind==='m') getIn(p.rec); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='k'||p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
@@ -1309,6 +1323,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     scheppen:'<path d="M3.500 11h13v6.500H6.500z"/><circle cx="8.500" cy="8.800" r="1.700" fill="currentColor"/><circle cx="12.500" cy="8.300" r="1.700" fill="currentColor"/><path d="M16.500 11 21 7.500"/>',
     kiepen:'<path d="M3.500 19h17"/><path d="M5.500 16 15 7.500l4 4.500-9.500 4z"/><circle cx="7" cy="20" r=".5"/>',
     uit:'<path d="M14 4h5.500v16H14"/><path d="M10 8l-4.500 4 4.500 4M5.500 12H15"/>',
+    eind:'<rect x="2.500" y="12" width="12.500" height="7" rx="1.500"/><path d="M19.500 7.500v13" stroke-width="3.400"/><path d="M15 15.500h4.500"/>',
     sensor:'<rect x="4.500" y="9" width="15" height="11.500" rx="2.500"/><path d="M12 9V5.500"/><circle cx="12" cy="4" r="1.700" fill="currentColor"/><path d="M12 12v3.200l2.200 1.300" stroke-width="2"/>'};
   /* the drawer at the bottom: five tabs with a word under them; the buttons of the open tab sit beside them (wide screen) or below them (narrow screen), always on one row */
   const p=document.createElement('div'), tabs=document.createElement('div'), items=document.createElement('div'), G={}, tb=[], bs=[], N=6, GAP=8, SEP=14;
@@ -1342,7 +1357,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     if(go&&stop){ full.hidden=false; fullUI(); full.addEventListener('click',()=>{ sfx.tap(); try{ const r=isFull()?stop.call(document):go.call(el); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }); ['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,fullUI)); } }
   mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Menu: verder spelen, opnieuw beginnen, geluid en volledig scherm',on:()=>{ sfx.tap(); door.hidden=again.hidden=!started; startEl.hidden=false; (started?door:$('#start-camp')).focus(); }});
   /* Rails: the pieces of track and the tunnel */
-  [['recht','Recht stuk'],['bocht','Bocht'],['brug','Brug omhoog of omlaag'],['wissel','Wissel: tik erop om hem om te zetten']].forEach(([k,l])=>price(mkBtn(G.rails,{id:'spoor-'+k,svg:ST[k],c:'#f2c078',i:'var(--ink)',label:l,on:()=>trein.add(k)}),k));
+  [['recht','Recht stuk'],['bocht','Bocht'],['brug','Brug omhoog of omlaag'],['wissel','Wissel: tik erop om hem om te zetten'],['eind','Eindrails met stootblok: de trein stopt hier. Druk op de groene knop, dan rijdt hij terug']].forEach(([k,l])=>price(mkBtn(G.rails,{id:'spoor-'+k,svg:ST[k],c:'#f2c078',i:'var(--ink)',label:l,on:()=>trein.add(k)}),k));
   { const tb2=price(mkBtn(G.rails,{id:'spoor-tunnel',svg:ST.berg,c:'#f2c078',i:'var(--ink)',label:'Tunnel door de verhoging: tik een ingang en een uitgang aan',on:()=>trein.dig('rail')}),'tunnel'); tunBtn.rail=tb2; }
   /* Treinen: locomotive and wagons, then sensor and crane */
   const wh='<circle cx="8" cy="18" r="2.600" fill="'+ik+'"/><circle cx="16" cy="18" r="2.600" fill="'+ik+'"/>';
