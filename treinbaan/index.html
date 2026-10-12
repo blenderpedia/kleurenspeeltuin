@@ -55,6 +55,8 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .cost.st{background:#7f8aa0}
 .cost.two{right:auto;left:-6px}
 .btn.poor{filter:grayscale(.9);opacity:.55}
+.btn.lock{filter:grayscale(1);opacity:.45}
+.btn.lock::after{content:"";position:absolute;right:-5px;top:-5px;width:1.45em;height:1.45em;border-radius:50%;border:2px solid var(--paper);background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='11' width='14' height='10' rx='2' fill='white'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3' fill='none' stroke='white' stroke-width='2.6'/%3E%3C/svg%3E") center/62% no-repeat}
 .btn.bin{animation:klaar .9s ease-in-out infinite;pointer-events:none}
 .btn.bin.hot{animation:none;transform:scale(1.4);border-color:var(--ink)}
 @keyframes klaar{50%{transform:scale(1.18)}}
@@ -105,7 +107,7 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .pill svg{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pill:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 /* creative: no stock, no prices, no buildings */
-body.vrij #hud,body.vrij .cost,body.vrij #bouw-fabriek,body.vrij .sep.fab{display:none}
+body.vrij #hud,body.vrij .cost{display:none}
 @media (prefers-reduced-motion:reduce){.mode,.go{transition:none}}
 #fail{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:24px;text-align:center;font:700 20px/1.4 var(--display);background:var(--paper);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.btn.ready,.btn.bin{animation:none}.btn,.sw{transition:none}}
@@ -255,7 +257,8 @@ function hit(ev,list,rec){ const r=canvas.getBoundingClientRect(); ndc.set((ev.c
 /* while something is in the hand the button top right turns into a bin; the buttons further down fill these in */
 let binUI=()=>{}, overBin=()=>false;
 /* the tunnel button stays down while you point at a way in and a way out */
-const tunBtn={}; let digUI=(on,net)=>{ for(const k in tunBtn) tunBtn[k].classList.toggle('on',!!on&&k===net); };
+const tunBtn={}; let lockUI=()=>{};
+let digUI=(on,net)=>{ for(const k in tunBtn) tunBtn[k].classList.toggle('on',!!on&&k===net); };
 /* getting into a machine swaps the drawer for the joystick (the buttons fill this in) */
 let driveUI=()=>{}, busyUI=()=>{};
 /* the counter at the top: what lies in store at the factory. `up` names the kind that just grew, `no` shakes it (too little to pay with) */
@@ -465,7 +468,15 @@ const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:
     c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; let f=78; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; while(c.measureText(name).width>460&&f>30){ f-=4; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; } c.fillText(name,256,70);
     const tex=new T.CanvasTexture(cv), bd=new T.Mesh(new T.PlaneGeometry(1.8,.45),new T.MeshBasicMaterial({map:tex})); bd.position.set(len/4,1.25,-.3); g.add(bd); [-.8,.8].forEach(x=>mesh(cyl(.035,.035,1.1,8),postM,len/4+x,.75,-.33,g));
     return {g,tex}; }
-  return {house,platform,SORTS,B}; })();
+  /* a sawmill of blocks: a long shed with a red roof, a big round saw at its side and a log on the bench */
+  const steelM=mat(0xcfd8e6,{shininess:90,specular:0x777777}), logM=mat(0x8a5a33,{shininess:8}), dirtM=mat(0xa98a64,{shininess:6,specular:0x0a0a0a}), stakeM=mat(C.wood,{shininess:10}), flagM=mat(C.orange,{shininess:30});
+  function zagerij(){ const g=new T.Group(); [-B/2,B/2].forEach(x=>{ mesh(kubus,M(C.brown),x,B/2,0,g); mesh(dak,M(C.red),x,B,0,g); });
+    const saw=cyl(.36,.36,.04,22); saw.rotateX(PI/2); mesh(saw,steelM,B+.25,.52,.1,g); mesh(roundBox(.5,.3,.5,.05,.02),M(C.wood),B+.25,.15,.1,g); const lg=cyl(.13,.13,.9,10); lg.rotateZ(PI/2); mesh(lg,logM,B+.1,.38,.45,g); return g; }
+  /* an empty building plot: a patch of sand with a stake and a little flag on each corner */
+  function plot(hw,hd){ const g=new T.Group(), p=mesh(roundBox(hw*2,.04,hd*2,.12,.02),dirtM,0,.02,0,g); p.castShadow=false;
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ mesh(cyl(.035,.045,.6,8),stakeM,a*(hw-.1),.3,b*(hd-.1),g); mesh(box(.2,.13,.02),flagM,a*(hw-.1)+.1,.52,b*(hd-.1),g); }); return g; }
+  SORTS.zaag=[1.3,.5];
+  return {house,platform,zagerij,plot,SORTS,B}; })();
 
 const MACH=(()=>{ const ink=mat(C.ink), dark=mat(0x4a4466,{shininess:20}), glass=mat(0xbfe6ff), steel=mat(0xb4bccb,{shininess:70,specular:0x555555}), hub=mat(C.paper);
   /* a wheel that turns: a tyre, a hub and a spoke you can see go round */
@@ -516,7 +527,7 @@ const trein=(()=>{
   /* the one building: the rails and road factory, half its size and how many */
   const BLD={fab:{hw:2.6,hd:1.5,max:1}};
   /* the factory: what a piece costs, how much it stores of each kind, how far its hand goes for a block, what you start with */
-  const COST={recht:{hout:1},bocht:{hout:2},wissel:{hout:3},brug:{hout:4},eind:{hout:2},weg:{steen:1},wbocht:{steen:2},overweg:{steen:3,hout:1},tunnel:{steen:6}}, FCAP=20, RFAB=6.5, START={hout:20,steen:0};
+  const COST={recht:{hout:1},bocht:{hout:2},wissel:{hout:3},brug:{hout:4},eind:{hout:2},weg:{steen:1},wbocht:{steen:2},overweg:{steen:3,hout:1},tunnel:{steen:6}}, FCAP=40, RFAB=6.5, START={hout:20,steen:12};
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
@@ -536,11 +547,12 @@ const trein=(()=>{
   function pickPlats(rs){ const out=[], n=AREA>1.5?6+((rs()*5)|0):rs()<.6?2:1;
     for(let k=0;k<n;k++) for(let tries=0;tries<400;tries++){ const w=8+2*((rs()*4)|0), d=6+2*((rs()*4)|0), x0=-BX+2*((rs()*((2*BX-w)/2+1))|0), z0=-BZ+2*((rs()*((2*BZ-d)/2+1))|0), P={x0,x1:x0+w,z0,z1:z0+d};
       if(P.x0-PV<7.5&&P.x1+PV>-7.5&&P.z0-PV<5.5&&P.z1+PV>-5.5) continue;
+      if(mode==='camp'&&[START_R].concat(dorpen.map(d=>d.r)).some(R=>P.x0-PV<R.x+R.hw+4&&P.x1+PV>R.x-R.hw-4&&P.z0-PV<R.z+R.hd+4&&P.z1+PV>R.z-R.hd-4)) continue;   /* nor on the start or a village */
       if(out.some(Q=>!(P.x0>=Q.x1+6||Q.x0>=P.x1+6||P.z0>=Q.z1+6||Q.z0>=P.z1+6))) continue;
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], dorpen=[], vrects=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], heaps=[], dorpen=[], vrects=[], locked=new Set(), mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]];
@@ -573,6 +585,7 @@ const trein=(()=>{
     for(const t of trees){ if(!t.alive||Math.abs(t.x-o.x)+Math.abs(t.z-o.z)>9) continue; for(let i=0;i<s.length;i+=3){ if(hidPt(s[i],s[i+1],s[i+2])) continue; const dx=s[i]-t.x, dz=s[i+2]-t.z; if(dx*dx+dz*dz<.72) return false; } }   /* no track through a tree */
     for(const m of mills){ if(Math.abs(m.x-o.x)+Math.abs(m.z-o.z)>10) continue; for(let i=0;i<s.length;i+=3){ if(hidPt(s[i],s[i+1],s[i+2])) continue; if(inMill(m,s[i],s[i+2],.42)) return false; } }
     for(const H of vrects){ if(Math.abs(H.x-o.x)+Math.abs(H.z-o.z)>12) continue; for(let i=0;i<s.length;i+=3) if(s[i+1]<2.5&&inMill(H,s[i],s[i+2],.42)) return false; }   /* nor through a house or a platform */
+    for(const h of heaps){ if(Math.abs(h.x-o.x)+Math.abs(h.z-o.z)>10) continue; for(let i=0;i<s.length;i+=3) if(s[i+1]<h.y+.9&&Math.abs(s[i]-h.x)<1.1&&Math.abs(s[i+2]-h.z)<1.1) return false; }   /* nor through a heap */
     for(const L of logs){ if(Math.abs(L.x-o.x)+Math.abs(L.z-o.z)>10) continue; for(let i=0;i<s.length;i+=3){ const dx=s[i]-L.x-L.ux*.5, dz=s[i+2]-L.z-L.uz*.5; if(dx*dx+dz*dz<.7) return false; } }   /* nor through a building or a felled tree */
     return true; }
   const alone=o=>!endsOf(o).some(e=>pieces.some(p=>!p.gang&&p.ends.some(f=>f.x===e.x&&f.z===e.z)));
@@ -627,38 +640,63 @@ const trein=(()=>{
 
   /* the rocks lie spread over the land, at least one up on every table; each holds six blocks of stone and shrinks as they are cut out */
   const ROCK=6, rockSize=r=>{ const k=.5+.5*r.left/ROCK; r.rad=.86*r.sc*k; r.g.userData.s0=null; r.g.scale.setScalar(r.sc*k); };
-  function placeRocks(rs){ const ok=(x,z,up)=>Math.abs(x)<MX-1.6&&Math.abs(z)<MZ-1.6&&!(Math.abs(x)<9.6&&Math.abs(z)<7.2)&&(up?inPlat(x,z,-1.8):!inPlat(x,z,PV+2.4))&&!inVill(x,z,2.5)&&rocks.every(q=>Math.hypot(q.x-x,q.z-z)>4.5);
+  function placeRocks(rs){ const ok=(x,z,up)=>Math.abs(x)<MX-1.6&&Math.abs(z)<MZ-1.6&&!(Math.abs(x)<9.6&&Math.abs(z)<7.2)&&!inStart(x,z,1)&&!heapAt(x,z,1.5)&&(up?inPlat(x,z,-1.8):!inPlat(x,z,PV+2.4))&&!inVill(x,z,2.5)&&rocks.every(q=>Math.hypot(q.x-x,q.z-z)>4.5);
     const put=(x,z)=>{ const rg=BOS.rock(rocks.length), y=hAt(x,z), r={x,z,y,sc:.95+rs()*.25,g:rg,left:ROCK,res:null,rad:0,b:null}; rg.position.set(x,y,z); rg.rotation.y=rs()*6.28; g.add(rg); rockSize(r);
       if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.55,.4,.55))); b.position.set(x,y+.4,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); r.b=b; } rocks.push(r); };
     for(const P of PLS){ const n=(P.x1-P.x0)*(P.z1-P.z0)>=100?2:1; for(let k=0,t=0;k<n&&t<120;t++){ const x=P.x0+1.8+rs()*(P.x1-P.x0-3.6), z=P.z0+1.8+rs()*(P.z1-P.z0-3.6); if(ok(x,z,true)){ put(x,z); k++; } } }
     const want=Math.round(12*AREA); for(let t=0;rocks.length<want&&t<800*AREA;t++){ const x=(rs()*2-1)*(MX-1.6), z=(rs()*2-1)*(MZ-1.6); if(ok(x,z,false)) put(x,z); } }
-  /* villages (campaign only): five to seven, spread over the field, away from the open middle, the high ground and each other. Each has four to eight houses round a little square and, on its front side, a station: three straight pieces of track that stay where they are (fixed) with a platform and the village's name. vrects: what tracks and machines go round */
-  const NAMES=['Klotsdorp','Dakkum','Boogveen','Kubusdam','Rolhoven','Torenmeer','Hoekstede'];
+  /* the campaign starts with two villages. The start village (beside where you begin) has three houses and an empty plot where it wants a station; the forest village further off has houses, a sawmill and a station already. A station is three straight pieces of track that stay where they are (fixed) with a platform and the village's name. vrects: what tracks and machines go round */
+  const NAMES={woon:['Klotsdorp','Kubusdam','Dakkum','Boogveen','Torenmeer'],bos:['Houtveen','Dennendal','Zaagwoud','Spaanderbos']};
   const inVill=(x,z,pad)=>dorpen.some(d=>inMill(d.r,x,z,pad));
-  function clearVillages(){ for(const d of dorpen){ for(const h of d.houses){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); } g.remove(d.plat.g); d.plat.tex.dispose(); if(d.plat.b&&world) world.removeBody(d.plat.b); for(const p of d.track){ if(pieces.indexOf(p)<0) continue; if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } dorpen=[]; vrects=[]; }
+  /* the open ground where you begin: the factory, the first track and the first vehicles */
+  const START_R={x:0,z:3,hw:16,hd:10.5}, inStart=(x,z,pad)=>mode==='camp'&&inMill(START_R,x,z,pad);
+  function clearVillages(){ for(const d of dorpen){ for(const o of d.objs){ g.remove(o.g); if(o.b&&world) world.removeBody(o.b); } if(d.plat){ g.remove(d.plat.g); d.plat.tex.dispose(); } for(const p of d.track){ if(pieces.indexOf(p)<0) continue; if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } dorpen=[]; vrects=[]; }
   function staticBox(x,y,z,hw,hh,hd){ if(!world) return null; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(hw,hh,hd))); b.position.set(x,y,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); return b; }
-  function fixedPiece(type,x,z,q){ const t=TYPE[type], mm=SPOOR.piece(type), p={kind:'p',type,x,z,q,lv:0,m:1,fixed:true,sw:0,shut:false,g:mm.g,pier:mm.pier,arm:mm.arm,gates:mm.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; mm.g.userData.rec=p; g.add(mm.g); pieces.push(p); fix(p); mm.g.position.set(p.tx,p.ty,p.tz); mm.g.rotation.y=q*PI/2; return p; }
-  function placeVillages(rs){ const names=NAMES.slice(); for(let i=names.length-1;i>0;i--){ const j=(rs()*(i+1))|0; [names[i],names[j]]=[names[j],names[i]]; }
-    const n=5+((rs()*3)|0);
-    for(let t=0;dorpen.length<n&&t<3000;t++){ const cx=(rs()*2-1)*(MX-10), cz=(rs()*2-1)*(MZ-10); if(Math.abs(cx)<15&&Math.abs(cz)<11) continue;
-      if(dorpen.some(d=>Math.hypot(d.x-cx,d.z-cz)<30)) continue; const r={x:cx,z:cz,hw:6.5,hd:6}; let ok=true; for(let a=-1;a<=1&&ok;a+=.25) for(let c=-1;c<=1;c+=.25) if(inPlat(r.x+a*r.hw,r.z+c*r.hd,PV+3)){ ok=false; break; } if(!ok) continue;
-      /* the station: three straight pieces along x on the front side, the platform behind them (towards the houses) */
-      const sx=2*Math.round((cx-3-1)/2)+1, sz=2*Math.round((cz+3.6)/2), d={x:cx,z:cz,r,name:names[dorpen.length%names.length],houses:[],track:[],plat:null};
-      for(let k=0;k<3;k++) d.track.push(fixedPiece('recht',sx+2*k,sz,0));
-      const pl=DORP.platform(6,d.name); pl.g.position.set(sx+3,0,sz-1.05); g.add(pl.g); pl.b=staticBox(sx+3,.15,sz-1.05,3,.15,.5); d.plat=pl; vrects.push({x:sx+3,z:sz-1.05,hw:3,hd:.5});
-      /* the houses: anywhere on the village ground behind the platform, not touching each other */
-      const want=4+((rs()*5)|0), sorts=Object.keys(DORP.SORTS);
-      for(let tt=0;d.houses.length<want&&tt<300;tt++){ const sort=sorts[(rs()*sorts.length)|0], rot=rs()<.3, S=DORP.SORTS[sort], hw=rot?S[1]:S[0], hd=rot?S[0]:S[1], x=Math.round((cx+(rs()*2-1)*(5.5-hw))*2)/2, z=Math.round((cz-1.4+(rs()*2-1)*(3.4-hd))*2)/2;
-        if(z+hd>sz-1.8||d.houses.some(h=>Math.abs(h.x-x)<h.hw+hw+.7&&Math.abs(h.z-z)<h.hd+hd+.7)) continue;
-        const hg=DORP.house(sort,rs); hg.position.set(x,0,z); hg.rotation.y=rot?(rs()<.5?PI/2:-PI/2):0; g.add(hg); const hh=sort==='huis'||sort==='breed'||sort==='poort'?.8:1.2, h={x,z,hw,hd,g:hg,b:staticBox(x,hh,z,hw,hh,hd)}; d.houses.push(h); vrects.push({x,z,hw,hd}); }
-      dorpen.push(d); }
+  function layPiece(type,x,z,q,fixed){ const t=TYPE[type], mm=SPOOR.piece(type), p={kind:'p',type,x,z,q,lv:0,m:1,fixed:!!fixed,sw:0,shut:false,g:mm.g,pier:mm.pier,arm:mm.arm,gates:mm.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; mm.g.userData.rec=p; g.add(mm.g); pieces.push(p); fix(p); mm.g.position.set(p.tx,p.ty,p.tz); mm.g.rotation.y=q*PI/2; return p; }
+  /* a station of a village: three fixed straight pieces from (sx,sz) along x, the platform behind them */
+  function buildStation(d){ const sx=d.sx, sz=d.sz; for(let k=0;k<3;k++) d.track.push(layPiece('recht',sx+2*k,sz,0,true));
+    const pl=DORP.platform(6,d.name); pl.g.position.set(sx+3,0,sz-1.05); g.add(pl.g); d.objs.push({g:null,b:staticBox(sx+3,.15,sz-1.05,3,.15,.5)}); d.plat=pl; d.station=true; }
+  /* a thing of a village that stands in the way: its picture, its body, and its place in vrects */
+  function villObj(d,o,x,z,hw,hd,hh){ o.position.set(x,0,z); g.add(o); const r={x,z,hw,hd}, it={g:o,b:hh?staticBox(x,hh,z,hw,hh,hd):null,r}; d.objs.push(it); if(hh) vrects.push(r); return it; }
+  /* houses anywhere on the village ground behind the station, not touching each other or what is there already */
+  function addHouses(d,want,rs,only){ const sorts=only||['huis','hoog','breed','toren','poort']; let n=0;
+    for(let tt=0;n<want&&tt<400;tt++){ const sort=sorts[(rs()*sorts.length)|0], rot=sort!=='zaag'&&rs()<.3, S=DORP.SORTS[sort], hw=rot?S[1]:S[0], hd=rot?S[0]:S[1], x=Math.round((d.x+(rs()*2-1)*(5.5-hw))*2)/2, z=Math.round((d.z-1.6+(rs()*2-1)*(3.2-hd))*2)/2;
+      if(z+hd>d.sz-1.9||d.objs.some(o=>o.r&&Math.abs(o.r.x-x)<o.r.hw+hw+.7&&Math.abs(o.r.z-z)<o.r.hd+hd+.7)) continue;
+      const hg=sort==='zaag'?DORP.zagerij():DORP.house(sort,rs); hg.rotation.y=rot?(rs()<.5?PI/2:-PI/2):0; villObj(d,hg,x,z,hw,hd,sort==='huis'||sort==='breed'||sort==='poort'||sort==='zaag'?.8:1.2); if(sort!=='zaag') d.houses++; n++; } return n; }
+  function newVillage(kind,x,z,name){ const d={kind,x,z,name,r:{x,z,hw:7,hd:6.5},sx:2*Math.round((x-3-1)/2)+1,sz:2*Math.round((z+3.6)/2),houses:0,objs:[],track:[],plat:null,station:false}; dorpen.push(d); return d; }
+  function placeVillages(rs){ const pick=l=>l[(rs()*l.length)|0];
+    /* the start village, to the west of the start, its station on the line of the first track */
+    const a=newVillage('woon',-22,-.6,pick(NAMES.woon)); a.sx=-27; a.sz=4;
+    a.plot=villObj(a,DORP.plot(3.3,1.35),a.sx+3,a.sz-.55,3.3,1.35,0); vrects.push(a.trackR={x:a.sx+3,z:a.sz,hw:2.6,hd:.3},a.platR={x:a.sx+3,z:a.sz-1.05,hw:3,hd:.5}); addHouses(a,3,rs);
+    /* the forest village: 45 to 65 away, in the woods */
+    for(let t=0;t<500;t++){ const ang=rs()*PI*2, dd=45+rs()*20, x=Math.round(Math.cos(ang)*dd), z=Math.round(Math.sin(ang)*dd*.8); if(Math.abs(x)>MX-12||Math.abs(z)>MZ-11) continue;
+      const b=newVillage('bos',x,z,pick(NAMES.bos)); buildStation(b); vrects.push({x:b.sx+3,z:b.sz-1.05,hw:3,hd:.5}); addHouses(b,1,rs,['zaag']); addHouses(b,3+((rs()*2)|0),rs); break; }
     rebuild(); }
+  /* heaps of loose wood and stone lying about: the shovel (and the excavator) take from them; an empty heap is gone. Four near the start, more all over the field */
+  const HEAPP=(()=>{ const o=[]; for(let y=0;y<3;y++){ const n=3-y; for(let i=0;i<n;i++) for(let j=0;j<n;j++) o.push([(i-(n-1)/2)*.47,y*.36+.18,(j-(n-1)/2)*.47]); } return o; })();
+  function addHeap(x,z,sh,n){ const hg=new T.Group(), ms=HEAPP.map((p,i)=>{ const o=mesh(BLOK.geos[sh],BOUW.blockMat(sh),p[0],p[1],p[2],hg); o.rotation.y=((i*37)%7-3)*.05; o.visible=i<n; return o; }); hg.position.set(x,hAt(x,z),z); g.add(hg);
+    const h={x,z,y:hAt(x,z),sh,n,g:hg,ms,b:null}; heapBody(h); heaps.push(h); return h; }
+  function heapBody(h){ if(h.b&&world){ world.removeBody(h.b); h.b=null; } if(h.n>0) h.b=staticBox(h.x,h.y+(h.n>9?.36:.18),h.z,.72,h.n>9?.36:.18,.72); }
+  /* take up to k blocks off a heap; how many came */
+  function takeHeap(h,k){ let got=0; while(got<k&&h.n>0){ h.n--; got++; const o=h.ms[h.n]; tw(.2,e=>{ o.scale.setScalar(Math.max(.001,1-e)); },ease.lin,()=>{ o.visible=false; o.scale.setScalar(1); }); }
+    if(got&&seen(h.x,h.z)){ tone(R(150,190),.1,'square',.05,80); burst(cv.set(h.x,h.y+.6,h.z),4,1.8,h.sh==='steen'?0xaab2c2:C.brown); }
+    if((h.n===9||h.n===0)&&got) heapBody(h); if(!h.n){ const hg=h.g; after(.25,()=>g.remove(hg)); heaps=heaps.filter(x=>x!==h); wakeAll(); } return got; }
+  const heapAt=(x,z,pad)=>heaps.some(h=>Math.abs(h.x-x)<.72+pad&&Math.abs(h.z-z)<.72+pad);
+  function clearHeaps(){ for(const h of heaps){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); } heaps=[]; }
+  function placeHeaps(rs){ [[-10,8,'hout',10],[-6.5,10.5,'steen',10],[9.5,8.5,'hout',8],[13,6,'steen',8]].forEach(q=>addHeap(...q));
+    const want=Math.round(1.4*AREA); for(let t=0;heaps.length<4+want&&t<2000;t++){ const x=(rs()*2-1)*(MX-3), z=(rs()*2-1)*(MZ-3);
+      if(inPlat(x,z,PV+2)||inVill(x,z,2)||inStart(x,z,2)||heapAt(x,z,3)) continue; addHeap(Math.round(x*2)/2,Math.round(z*2)/2,rs()<.5?'hout':'steen',6+((rs()*5)|0)); } }
+  /* the start: the factory (it stays put), a short track with a buffer at each end and on it an engine with a goods wagon, a loader and a dump truck */
+  function startSet(){ addMill('fab',[4.5,.5]); const f=mills[mills.length-1]; if(f) f.fixed=true;
+    layPiece('eind',-7,4,2); for(let x=-7;x<=5;x+=2) layPiece('recht',x,4,0); layPiece('eind',7,4,0); rebuild();
+    const p=pieces.find(q=>q.type==='recht'&&q.x===-3&&q.z===4); for(const sort of ['loc','goed']){ addTrain(sort,true); mount(vehs[vehs.length-1],{p,si:0,u:.5,d:-1}); }
+    newMach('shovel',-4.5,7.6,PI/2); newMach('kiep',-1.2,7.8,PI/2); }
   /* the forest: clumps of trees around an open middle, also up on the tables but not along their rims (so there is room for a tunnel gate) */
   function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci), y=hAt(x,z); tg.position.set(x,y,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={x,z,y,sc,g:tg,yaw:tg.rotation.y,alive:true,res:null,b:null};
     if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.2*sc,sc,.2*sc))); b.position.set(x,y+sc,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); t.b=b; } trees.push(t); }
   function plant(rs){ const L=[];
     for(let cx=-(MX-3.45);cx<MX-3.2;cx+=6.5) for(let cz=-(MZ-2.3);cz<MZ-1.8;cz+=5.5){ if(rs()<.2) continue; const ox=cx+(rs()-.5)*2.4, oz=cz+(rs()-.5)*2, n=4+((rs()*5)|0), kind=rs()<.55?1:0;
-      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||(inPlat(x,z,PV+2.3)&&!inPlat(x,z,-1.3))||inVill(x,z,1)||L.some(t=>Math.abs(t[0]-x)<1.2&&Math.hypot(t[0]-x,t[1]-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
+      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||inStart(x,z,.5)||heapAt(x,z,.9)||(inPlat(x,z,PV+2.3)&&!inPlat(x,z,-1.3))||inVill(x,z,1)||L.some(t=>Math.abs(t[0]-x)<1.2&&Math.hypot(t[0]-x,t[1]-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
         L.push([x,z,rs()<.8?kind:1-kind,(rs()*4)|0,.72+rs()*.24]); i++; } }
     /* about as many trees as ever (a big forest is heavy for a tablet): a few go when there are too many */
     while(L.length>190*AREA) L.splice((rs()*L.length)|0,1); L.forEach(t=>addTree(...t)); }
@@ -668,7 +706,7 @@ const trein=(()=>{
   /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
   function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
     for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
-    clearVillages(); setSize(on); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ placeVillages(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
+    clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?['graaf','pass','auto']:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -700,7 +738,7 @@ const trein=(()=>{
   function land(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; let t=(RISE-o.y)/d.y; out.set(o.x+d.x*t,RISE,o.z+d.z*t); if(inPlat(out.x,out.z,PV)) return out; t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function ground(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; const t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function clearAt(x,z,self){ if(Math.abs(x)>MX-.6||Math.abs(z)>MZ-.6||(inPlat(x,z,PV+.7)&&!inPlat(x,z,PV-.7))) return false; for(const r of rocks) if(r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.6) return false; for(const w of vehs) if(w!==self&&!w.c&&Math.hypot(w.g.position.x-x,w.g.position.z-z)<1.15) return false;
-    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of machs) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.6) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false; for(const H of vrects) if(inMill(H,x,z,.6)) return false;
+    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of machs) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.6) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false; for(const H of vrects) if(inMill(H,x,z,.6)) return false; if(heapAt(x,z,.6)) return false;
     for(const r of blocks){ const q=r.b.position; if(Math.hypot(q.x-x,q.z-z)<1) return false; } for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>8) continue; for(const q of p.path) if((q.x-x)*(q.x-x)+(q.z-z)*(q.z-z)<.8) return false; } return true; }
   /* the strip of ground just above the buttons: its depth and how far it reaches left and right */
   function lowEdge(){ const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
@@ -803,11 +841,11 @@ const trein=(()=>{
     const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle();
     /* the picture follows a track that grows towards its edge */
     if(snap){ mid(p,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
-  function addTrain(sort){ const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
+  function addTrain(sort,quiet){ if(locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
     if(n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
     const vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
     if(world){ const b=new PH.Body({mass:1.5,material:slipM}); b.addShape(new PH.Box(V(K.box[0],K.box[1],K.box[2]))); if(isCar) b.mass=1; b.linearDamping=.03; b.angularDamping=.35; b.allowSleep=true; b.sleepSpeedLimit=.1; b.sleepTimeLimit=1; b.veh=v; v.b=b; }
-    g.add(vg); vehs.push(v); stage(v); vg.position.copy(v.tp); vg.rotation.set(0,v.yaw,0); popIn(vg,.3); if(isLoc) toot(); else if(isCar) honk(); else sfx.pop(3); }
+    g.add(vg); vehs.push(v); stage(v); vg.position.copy(v.tp); vg.rotation.set(0,v.yaw,0); popIn(vg,.3); if(quiet) return; if(isLoc) toot(); else if(isCar) honk(); else sfx.pop(3); }
   /* a switch: tap it and the pointer (and the next train) goes the other way */
   function flip(p){ p.sw=p.sw?0:1; const a0=p.arm.rotation.y, a1r=p.sw?.44:0; tw(.16,e=>{ p.arm.rotation.y=a0+(a1r-a0)*e; }); klik(); }
 
@@ -914,13 +952,15 @@ const trein=(()=>{
     for(const L of logs) if(Math.abs(L.y-m.y)<.6&&Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<r+.45) return true;
     for(const q of mills) if(Math.abs(q.y-m.y)<.6&&inMill(q,x,z,r*.85)) return true;
     if(!m.up) for(const H of vrects) if(inMill(H,x,z,r*.85)) return true;
+    for(const h of heaps) if(Math.abs(h.y-m.y)<.6&&Math.hypot(h.x-x,h.z-z)<r+.7) return true;
     for(const q of machs) if(q!==m&&!(held&&held.rec===q)&&Math.hypot(q.x-x,q.z-z)<r+MS[q.sort].rad) return true;
     for(const q of props) if(Math.hypot(q.x-x,q.z-z)<r+.25) return true; return false; }
   function blockedAt(m,x,z,yaw,pad){ const S=MS[m.sort], fx=Math.cos(yaw)*S.off, fz=-Math.sin(yaw)*S.off, r=S.rad*.72+(pad||0); return hitsAt(m,x,z,r)||hitsAt(m,x+fx,z+fz,r)||hitsAt(m,x-fx,z-fz,r); }
   /* the nearest place where it fits, on the level of the spot you point at */
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
-  function addMachine(sort){ if(machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const M=MACH[sort](), e=lowEdge(), m={kind:'m',sort,x:0,z:0,y:0,yaw:0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
-    if(!placeM(m,(e.x0+e.x1)/2,e.z-1.3,.6)){ sfx.boing(); return; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); }
+  function addMachine(sort){ if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
+  function newMach(sort,x,z,yaw,pad){ const M=MACH[sort](), m={kind:'m',sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
+    if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
   /* get in (tap a machine), get out (the button) */
   function getIn(m){ if(driving===m){ pop(m.g,.06); tone(330,.12,'square',.06); tone(392,.16,'square',.05,0,.12); return; } driving=m; stX=stZ=0; driveUI(true,m.sort); busyUI(m.work||m.busy); tone(70,.4,'sawtooth',.06,140); pop(m.g,.06); }
@@ -943,10 +983,11 @@ const trein=(()=>{
   const dropRaw=(sh,x,y,z)=>spawn(sh,x,y,z,false,sh==='steen'?BOUW.STONE:C.brown);
   /* the excavator reaches 1 to 2.3 away from where it stands, all round (its top turns): a rock (a block a bite, the rock shrinks), a tree (three blows and it goes over) and the log of a felled tree (a block of wood a bite, three a tree). Each block goes into a dump truck within reach that has room, else onto the ground beside it. Slow: five seconds a bite; it goes on by itself until you tap again, steer, or nothing is left in reach */
   function dropAt(m,ang){ for(const a of [ang+PI/2,ang-PI/2,ang+PI,ang+PI*.75,ang-PI*.75]){ const x=m.x+Math.cos(a)*1.8, z=m.z-Math.sin(a)*1.8;
-      if(Math.abs(x)<MX-1&&Math.abs(z)<MZ-1&&m.up===inPlat(x,z,PV)&&!machs.some(q=>q!==m&&Math.hypot(q.x-x,q.z-z)<1.1)&&!trees.some(t=>t.alive&&Math.hypot(t.x-x,t.z-z)<.7)&&!rocks.some(r=>r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.4)&&!logs.some(L=>Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<.8)&&!mills.some(q=>inMill(q,x,z,.4))&&!vrects.some(H=>inMill(H,x,z,.4))) return {x,z,y:hAt(x,z)}; } return null; }
+      if(Math.abs(x)<MX-1&&Math.abs(z)<MZ-1&&m.up===inPlat(x,z,PV)&&!machs.some(q=>q!==m&&Math.hypot(q.x-x,q.z-z)<1.1)&&!trees.some(t=>t.alive&&Math.hypot(t.x-x,t.z-z)<.7)&&!rocks.some(r=>r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.4)&&!logs.some(L=>Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<.8)&&!mills.some(q=>inMill(q,x,z,.4))&&!vrects.some(H=>inMill(H,x,z,.4))&&!heapAt(x,z,.3)) return {x,z,y:hAt(x,z)}; } return null; }
   /* the work in reach: a felled tree first (it finishes what it chopped), else the nearest rock or tree. y is the top it bites into */
   function reachJob(m){ let best=null, bd=1e9; const take=(J,D,w)=>{ if(D>1.05&&D<2.3&&D+w<bd){ bd=D+w; J.D=D; best=J; } };
     for(const L of logs){ if(Math.abs(L.y-m.y)>.1) continue; const x=L.x+L.ux*.15, z=L.z+L.uz*.15; take({kind:'log',L,x,z,y:L.y+.34},Math.hypot(x-m.x,z-m.z),-9); }
+    for(const h of heaps){ if(Math.abs(h.y-m.y)>.1) continue; take({kind:'heap',h,x:h.x,z:h.z,y:h.y+.6},Math.hypot(h.x-m.x,h.z-m.z),0); }
     for(const r of rocks){ if(!r.left||Math.abs(r.y-m.y)>.1) continue; const d=Math.hypot(r.x-m.x,r.z-m.z)||1, D=Math.max(1.06,d-r.rad*.5); take({kind:'rock',r,x:m.x+(r.x-m.x)*D/d,z:m.z+(r.z-m.z)*D/d,y:r.y+r.rad*1.05},D,0); }
     for(const t of trees){ if(!t.alive||Math.abs(t.y-m.y)>.1) continue; take({kind:'tree',t,x:t.x,z:t.z,y:t.y+.45},Math.hypot(t.x-m.x,t.z-m.z),0); }
     return best; }
@@ -955,31 +996,32 @@ const trein=(()=>{
     if(J.kind==='tree'){ const t=J.t, sw=wrapA(ac-m.yaw), dh=cl(D-.36,.7,1.95), yh=J.y-base;   /* three blows against the trunk, then it goes over */
       const blow=()=>{ if(!t.alive) return; if(seen(t.x,t.z)){ tone(R(170,210),.07,'triangle',.16,80); burst(cv.set(t.x,t.y+.5,t.z),3,1.8,C.brown); } tw(.22,(e,k)=>{ if(t.alive) t.g.rotation.z=Math.sin(k*PI*3)*.07*(1-k); },ease.lin); };
       m.busy=true; m.dug=true; workUI(m); tone(70,.3,'sawtooth',.05,110);
-      play(m,[{t:1.1,p:{sw,d:dh-.4,y:yh,cu:.3}},{t:1.4,p:{d:dh}},{t:1.8,p:{d:dh-.4}},{t:2.1,p:{d:dh}},{t:2.5,p:{d:dh-.4}},{t:2.8,p:{d:dh}},{t:3.8,p:REST.graaf}],
-        [{t:1.4,fn:blow},{t:2.1,fn:blow},{t:2.8,fn:()=>{ if(t.alive) fell(t,m.x,m.z); }}],
+      play(m,[{t:.6,p:{sw,d:dh-.4,y:yh,cu:.3}},{t:.8,p:{d:dh}},{t:1.05,p:{d:dh-.4}},{t:1.25,p:{d:dh}},{t:1.5,p:{d:dh-.4}},{t:1.7,p:{d:dh}},{t:2.3,p:REST.graaf}],
+        [{t:.8,fn:blow},{t:1.25,fn:blow},{t:1.7,fn:()=>{ if(t.alive) fell(t,m.x,m.z); }}],
         ()=>{ m.busy=false; if(m.work) digOnce(m); else workUI(m); });
       return; }
-    let tgt=null; for(const k of machs){ if(k.sort!=='kiep'||k.load.length>=KCAP||k.up!==m.up) continue; bedAt(k,a1); const Dk=Math.hypot(a1.x-m.x,a1.z-m.z); if(Dk>1.05&&Dk<2.35&&(!tgt||Dk<tgt.D)) tgt={k,x:a1.x,z:a1.z,y:a1.y,D:Dk}; }
-    for(const w of wagonsNear(m.x,m.z,m.y,1.05,2.35,4.3)) if(!tgt||w.d<tgt.D){ tgt={w:w.v,c:w.c,x:w.v.tp.x,z:w.v.tp.z,y:w.v.tp.y+.25,D:w.d}; break; }   /* (a train at a sensor has to stay until the block is in) */
+    let tgt=null; for(const k of machs){ if(k.sort!=='kiep'||k.load.length>=KCAP-1||k.up!==m.up) continue; bedAt(k,a1); const Dk=Math.hypot(a1.x-m.x,a1.z-m.z); if(Dk>1.05&&Dk<2.35&&(!tgt||Dk<tgt.D)) tgt={k,x:a1.x,z:a1.z,y:a1.y,D:Dk}; }
+    for(const w of wagonsNear(m.x,m.z,m.y,1.05,2.35,2.3)) if(!tgt||w.d<tgt.D){ tgt={w:w.v,c:w.c,x:w.v.tp.x,z:w.v.tp.z,y:w.v.tp.y+.25,D:w.d}; break; }   /* (a train at a sensor has to stay until the block is in) */
     if(!tgt){ const d=dropAt(m,ac); if(!d){ m.work=false; workUI(m); nope(m); return; } tgt={k:null,x:d.x,z:d.z,y:d.y+.3,D:1.8}; }
     const sc=wrapA(ac-m.yaw), st=wrapA(Math.atan2(-(tgt.z-m.z),tgt.x-m.x)-m.yaw), dc=cl(D-.36,.7,1.95), dt=cl(tgt.D-.36,.7,1.95), yt=tgt.y-base+.55, sh=J.kind==='log'?'hout':'steen';
     m.busy=true; m.dug=true; workUI(m); tone(70,.3,'sawtooth',.05,110);
-    play(m,[{t:1.1,p:{sw:sc,d:dc,y:yc+.55,cu:-.4}},{t:1.6,p:{y:yc,cu:-.4}},{t:2.1,p:{cu:1}},{t:2.6,p:{y:yc+1}},{t:3.7,p:{sw:st,d:dt,y:yt+.5}},{t:4.15,p:{cu:-.9}},{t:5,p:REST.graaf}],
-      [{t:1.95,fn:()=>{ if(J.kind==='rock'?chip(J.r):cutLog(J.L)){ m.carry=[sh]; showLoad(m); } }},
-       {t:4,fn:()=>{ if(!m.carry.length) return; const k=tgt.k, w=tgt.w; if(k&&machs.indexOf(k)>=0&&k.load.length<KCAP&&Math.hypot(bedAt(k,a2).x-tgt.x,a2.z-tgt.z)<.7){ k.load.push(m.carry[0]); showLoad(k); pop(k.g,.04); sfx.plop(); }
-         else if(w&&w.c===tgt.c&&cons.indexOf(tgt.c)>=0&&w.load.length<CAP&&Math.hypot(w.tp.x-tgt.x,w.tp.z-tgt.z)<.7){ addLoad(w,m.carry[0],rawCol(m.carry[0])); pop(w.g,.06); sfx.plop(); }
-         else { m.M.load.getWorldPosition(cv); dropRaw(m.carry[0],cv.x,Math.max(cv.y,hAt(cv.x,cv.z)+.4),cv.z); } m.carry=[]; showLoad(m); }}],
+    play(m,[{t:.55,p:{sw:sc,d:dc,y:yc+.55,cu:-.4}},{t:.8,p:{y:yc,cu:-.4}},{t:1.05,p:{cu:1}},{t:1.3,p:{y:yc+1}},{t:1.85,p:{sw:st,d:dt,y:yt+.5}},{t:2.08,p:{cu:-.9}},{t:2.5,p:REST.graaf}],
+      [{t:.98,fn:()=>{ const one=()=>J.kind==='rock'?chip(J.r):J.kind==='heap'?takeHeap(J.h,1)>0:cutLog(J.L); for(let k=0;k<2;k++) if(one()) m.carry.push(J.kind==='heap'?J.h.sh:sh); showLoad(m); }},
+       {t:2,fn:()=>{ if(!m.carry.length) return; const k=tgt.k, w=tgt.w;
+         if(k&&machs.indexOf(k)>=0&&Math.hypot(bedAt(k,a2).x-tgt.x,a2.z-tgt.z)<.7){ while(m.carry.length&&k.load.length<KCAP) k.load.push(m.carry.shift()); showLoad(k); pop(k.g,.04); sfx.plop(); }
+         else if(w&&w.c===tgt.c&&cons.indexOf(tgt.c)>=0&&Math.hypot(w.tp.x-tgt.x,w.tp.z-tgt.z)<.7){ while(m.carry.length&&w.load.length<CAP){ const sh=m.carry.shift(); addLoad(w,sh,rawCol(sh)); } pop(w.g,.06); sfx.plop(); }
+         m.M.load.getWorldPosition(cv); m.carry.forEach((sh,j)=>dropRaw(sh,cv.x+j*.3,Math.max(cv.y,hAt(cv.x,cv.z)+.4)+j*.3,cv.z)); m.carry=[]; showLoad(m); }}],
       ()=>{ m.busy=false; if(m.work) digOnce(m); else workUI(m); }); }
   /* steering the excavator while it works: it stops, puts down what it holds and folds its arm */
-  function stopDig(m){ m.work=false; m.stopping=true; m.busy=true; if(m.carry.length){ m.M.load.getWorldPosition(cv); dropRaw(m.carry[0],cv.x,Math.max(cv.y,hAt(cv.x,cv.z)+.4),cv.z); m.carry=[]; showLoad(m); }
+  function stopDig(m){ m.work=false; m.stopping=true; m.busy=true; if(m.carry.length){ m.M.load.getWorldPosition(cv); m.carry.forEach((sh,j)=>dropRaw(sh,cv.x+j*.3,Math.max(cv.y,hAt(cv.x,cv.z)+.4)+j*.3,cv.z)); m.carry=[]; showLoad(m); }
     play(m,[{t:.6,p:REST.graaf}],[],()=>{ m.busy=false; m.stopping=false; workUI(m); }); workUI(m); }
   /* the loader: an empty bucket picks up three loose blocks of wood and stone lying in front of it; a full bucket goes into a dump truck or a goods wagon that stands still in front of it (what does not fit falls beside it), or onto the ground. Quick: about a second */
   function shovelAct(m){ frontAt(m,1.3,a1); const fx=a1.x, fz=a1.z;
-    if(!m.carry.length){ const take=[];
+    if(!m.carry.length){ const take=[]; let hp=null, hd=1.25; for(const h of heaps){ if(Math.abs(h.y-m.y)>.6) continue; const d=Math.hypot(h.x-fx,h.z-fz); if(d<hd){ hd=d; hp=h; } } if(hp) for(let k=0;k<Math.min(LC,hp.n);k++) take.push({heap:hp});
       for(const r of blocks){ if(take.length>=LC) break; if(!raw(r.sh)||r.claim||(held&&held.rec===r)) continue; const p=r.b.position; if(Math.hypot(p.x-fx,p.z-fz)<1.0&&p.y<m.y+1.2) take.push({r}); }
       if(!take.length){ nope(m); return; }
       m.busy=true; workUI(m); tone(90,.2,'sawtooth',.05,140);
-      play(m,[{t:.3,p:{arm:-.62,bk:.62}},{t:.6,p:{arm:-.55,bk:1.15}},{t:.95,p:CARRY}],[{t:.5,fn:()=>{ for(const x of take){ if(blocks.indexOf(x.r)>=0){ m.carry.push(x.r.sh); removeBlock(x.r,true); wakeAll(); } } showLoad(m); if(m.carry.length) sfx.plop(); }}],
+      play(m,[{t:.3,p:{arm:-.62,bk:.62}},{t:.6,p:{arm:-.55,bk:1.15}},{t:.95,p:CARRY}],[{t:.5,fn:()=>{ for(const x of take){ if(x.heap){ if(takeHeap(x.heap,1)) m.carry.push(x.heap.sh); } else if(blocks.indexOf(x.r)>=0){ m.carry.push(x.r.sh); removeBlock(x.r,true); wakeAll(); } } showLoad(m); if(m.carry.length) sfx.plop(); }}],
         ()=>{ m.busy=false; workUI(m); if(!m.carry.length) play(m,[{t:.3,p:REST.shovel}]); });
       return; }
     let k=null, bd=1.7; for(const q of machs){ if(q.sort!=='kiep'||q===m||q.up!==m.up||q.load.length>=KCAP) continue; bedAt(q,a2); const d=Math.hypot(a2.x-fx,a2.z-fz); if(d<bd){ bd=d; k=q; } }
@@ -1000,11 +1042,13 @@ const trein=(()=>{
     if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
     if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else tipAct(m); }
   /* one step for the machine you drive: it turns towards the way you push the stick (pull back and a loader or truck backs up), and rides as far as nothing is in the way */
-  function steer(m,dt){ const S=MS[m.sort], mag=Math.min(1,Math.hypot(stX,stZ)); let vt=0;
+  /* is there a road right under x,z (on the low ground) */
+  function onRoad(x,z){ for(const p of pieces){ if(!p.live||p.lv||Math.abs(p.x-x)+Math.abs(p.z-z)>4) continue; for(const q of p.path){ if(p.segs[q.si].net!=='road') continue; const dx=q.x-x, dz=q.z-z; if(dx*dx+dz*dz<.36) return true; } } return false; }
+  function steer(m,dt){ const S=MS[m.sort], mag=Math.min(1,Math.hypot(stX,stZ)), fast=m.sort==='kiep'&&!m.up&&onRoad(m.x,m.z)?2:1; let vt=0;
     if(mag>.3&&m.sort==='graaf'&&(m.work||m.busy)&&!m.stopping) stopDig(m);
     if(mag>.15&&!m.busy){ const want=Math.atan2(-stZ,stX); let df=wrapA(want-m.yaw), back=false; if(!S.tank&&Math.abs(df)>2.3){ back=true; df=wrapA(want+PI-m.yaw); }
-      const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*mag*Math.max(0,Math.cos(df)); }
-    m.v+=clampN(vt-m.v,S.acc*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
+      const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*fast*mag*Math.max(0,Math.cos(df)); }
+    m.v+=clampN(vt-m.v,S.acc*fast*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
     const dx=Math.cos(m.yaw)*m.v*dt, dz=-Math.sin(m.yaw)*m.v*dt;
     if(!blockedAt(m,m.x+dx,m.z+dz,m.yaw)){ m.x+=dx; m.z+=dz; } else if(!blockedAt(m,m.x+dx,m.z,m.yaw)) m.x+=dx; else if(!blockedAt(m,m.x,m.z+dz,m.yaw)) m.z+=dz; else { if(Math.abs(m.v)>.8&&bumpT<=0){ bumpT=.4; tone(110,.1,'triangle',.18,70); } m.v=0; return; }
     m.dist+=m.v*dt; engT-=dt; if(engT<=0){ engT=m.sort==='graaf'?.22:.14; tone(m.sort==='graaf'?62:88,.07,'sawtooth',.025,55); } }
@@ -1020,7 +1064,7 @@ const trein=(()=>{
   /* may the factory stand here: on the field, clear of trees, rocks, track, machines and sensors */
   function siteFree(x,z,self,hw,hd){ if(Math.abs(x)>MX-hw-.4||Math.abs(z)>MZ-hd-.45) return false; const M={x,z,hw,hd}, up=inPlat(x,z,0);
     for(const sx of [-hw-.3,hw+.3]) for(const sz of [-hd-.3,hd+.3]) if(inPlat(x+sx,z+sz,up?PV-.1:PV+.2)!==up) return false;   /* wholly on the mat or wholly on the high ground */
-    for(const r of rocks) if(r.left&&inMill(M,r.x,r.z,r.rad+.2)) return false; for(const H of vrects) if(Math.abs(H.x-x)<H.hw+hw+.3&&Math.abs(H.z-z)<H.hd+hd+.3) return false;
+    for(const r of rocks) if(r.left&&inMill(M,r.x,r.z,r.rad+.2)) return false; for(const H of vrects) if(Math.abs(H.x-x)<H.hw+hw+.3&&Math.abs(H.z-z)<H.hd+hd+.3) return false; for(const h of heaps) if(Math.abs(h.x-x)<hw+1.1&&Math.abs(h.z-z)<hd+1.1) return false;
     for(const t of trees) if(t.alive&&inMill(M,t.x,t.z,.4)) return false; for(const m of mills) if(m!==self&&Math.abs(m.x-x)<m.hw+hw+.2&&Math.abs(m.z-z)<m.hd+hd+.2) return false; for(const L of logs) if(inMill(M,L.x+L.ux*.5,L.z+L.uz*.5,.65)) return false;
     for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>12) continue; for(const q of p.path) if(!hidPt(q.x,q.y,q.z)&&inMill(M,q.x,q.z,.46)) return false; }
     for(const q of machs) if(q!==self&&inMill(M,q.x,q.z,.9)) return false; for(const q of props) if(inMill(M,q.x,q.z,.35)) return false; return true; }
@@ -1032,7 +1076,7 @@ const trein=(()=>{
     b.position.set(m.x,m.y,m.z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); m.b=b; wakeAll(); }
   const homeOf=(m,o)=>{ o.x=m.x-1.7; o.z=m.z+m.hd+.4; return o; };
   function manHome(m){ const w=m.man; if(w.tree){ w.tree.res=null; w.tree=null; } w.job=null; w.st='home'; w.t=-2; w.carry=false; w.idle=false; homeOf(m,w); w.yaw=-PI/2; }   /* he looks round for a moment before he sets off */
-  function addMill(sort){ const B=BLD[sort]; if(mills.filter(m=>m.sort===sort).length>=B.max){ sfx.boing(); return; } const e=lowEdge(), s=nearSite((e.x0+e.x1)/2,e.z-B.hd-.5,null,B.hw,B.hd); if(!s){ sfx.boing(); return; }
+  function addMill(sort,at){ const B=BLD[sort]; if(mills.filter(m=>m.sort===sort).length>=B.max){ sfx.boing(); return; } const e=at?null:lowEdge(), s=at||nearSite((e.x0+e.x1)/2,e.z-B.hd-.5,null,B.hw,B.hd); if(!s){ sfx.boing(); return; }
     const b=BOUW.factory(), w=BOUW.man(sort), m={kind:'z',sort,sh:B.sh,col:B.col,hw:B.hw,hd:B.hd,x:s[0],z:s[1],y:hAt(s[0],s[1]),g:b.g,blade:b.blade,n:0,pile:[],store:{hout:[],steen:[]},log:null,b:null,man:{g:w.g,body:w.body,arm:w.arm,pack:w.pack,bub:w.bub,x:0,z:0,yaw:0,st:'home',t:0,step:0,hits:0,tree:null,job:null,kind:'hout',carry:false,busy:false,idle:false}};
     b.g.userData.rec=m; b.g.position.set(m.x,m.y,m.z); g.add(b.g); g.add(w.g); mills.push(m); manHome(m); w.g.position.set(m.man.x,m.y,m.man.z); millBody(m,true); bind(); restack(); popIn(b.g,.35); popIn(w.g,.35); sfx.pop(2); }
   function removeMill(m){ millBody(m,false); manHome(m); g.remove(m.g); g.remove(m.man.g); mills=mills.filter(x=>x!==m); bind(); }
@@ -1062,8 +1106,8 @@ const trein=(()=>{
         if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.kind=r.sh; w.carry=true; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) tone(700,.05,'triangle',.1); w.st='carry'; } } }
     else if(w.st==='carry'){ if(stride(w,m.x+.02,m.z+(w.kind==='hout'?-.82:.72),dt)){ w.yaw=0; w.carry=false; if(mills.indexOf(m)>=0) gain(w.kind); if(seen(m.x,m.z)){ sfx.plop(); tone(659,.1,'triangle',.14,0,.05); } w.t=.1; w.st='home'; } }
     w.pack.visible=w.carry; }
-  /* a train that stands at a sensor beside the factory tips its goods wagons by itself, on the factory's side, as long as the store has room */
-  function unload(){ const f=mills.find(m=>m.sort==='fab'); if(!f||(held&&held.rec===f)) return; for(const c of cons){ if(c.net!=='rail'||!c.stop||c.pause<=0) continue; for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length||Math.abs(v.tp.x-f.x)>f.hw+2.5||Math.abs(v.tp.z-f.z)>f.hd+2.5) continue;
+  /* a train that stands still beside the factory (at a sensor, against a buffer, or without an engine) tips its goods wagons by itself, on the factory's side, as long as the store has room */
+  function unload(){ const f=mills.find(m=>m.sort==='fab'); if(!f||(held&&held.rec===f)) return; for(const c of cons){ if(c.net!=='rail'||!still(c,.3)) continue; for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length||Math.abs(v.tp.x-f.x)>f.hw+2.5||Math.abs(v.tp.z-f.z)>f.hd+2.5) continue;
         if(v.load.some(l=>raw(l.sh)&&stock[l.sh]<FCAP)) tip(v,f); } } }
 
   /* ----- loose blocks of wood and stone: drag to move one, slide a finger over it to shove it ----- */
@@ -1149,13 +1193,13 @@ const trein=(()=>{
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g)); if(driving) leave(true); machs.forEach(m=>{ machBody(m,false); g.remove(m.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); logs.forEach(L=>g.remove(L.g)); logs=[]; tunnels=[]; lastP=null; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; machs=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
-  function reset(){ wipe(); gen(mode==='camp'); panX=panZ=0; applyCamera(); sfx.boing(); }
+  function reset(){ wipe(); gen(mode==='camp'); panX=mode==='camp'?-4:0; panZ=mode==='camp'?3:0; applyCamera(); sfx.boing(); }
 
-  gen(true);
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
+  gen(true);
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving; }, addMill, reset, dig, COST,
-    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,dorpen,vrects,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
+    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
     /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
@@ -1164,7 +1208,7 @@ const trein=(()=>{
     get pan(){ return [panX,panZ]; },
     get mode(){ return mode; },
     /* choose how to play ('camp' or 'vrij'): a fresh world either way */
-    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); panX=panZ=0; applyCamera(); },
+    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); panX=mode==='camp'?-4:0; panZ=mode==='camp'?3:0; applyCamera(); },
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
@@ -1205,7 +1249,7 @@ const trein=(()=>{
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
-      if(kind==='p'&&rec.fixed){ rec=null; kind='mat'; }
+      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
@@ -1320,12 +1364,11 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   gap(G.weg);
   mkBtn(G.weg,{id:'spoor-auto',cls:'btn face',svg:'<path d="M2.500 17v-4.500c0-1 .700-1.700 1.700-1.800l2.300-.300 1.800-3.200c.400-.700 1-1 1.800-1h5c.800 0 1.400.400 1.800 1l1.800 3.200h1c1 0 1.800.800 1.800 1.800V17z" fill="#2f9bff"/><path d="M8.700 10.200 9.900 8h2.300v2.200zM13.700 8h2l1.200 2.200h-3.200z" fill="#bfe6ff"/><circle cx="7.500" cy="17.500" r="2.700" fill="'+ik+'"/><circle cx="16.500" cy="17.500" r="2.700" fill="'+ik+'"/>',label:'Auto',on:()=>trein.addTrain('auto')});
   /* Machines: you drive them yourself (tap one to get in) */
-  mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Heel traag. Slaat steen van rotsen en hakt bomen om voor hout',on:()=>trein.addMachine('graaf')});
-  mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept losse blokjes op en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
+  mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Slaat steen van rotsen, hakt bomen om voor hout en schept van hopen',on:()=>trein.addMachine('graaf')});
+  mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept van hopen en losse blokjes en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
   mkBtn(G.mach,{id:'mach-kiep',cls:'btn face',svg:ST.kiep,label:'Kiepwagen: tik erop om in te stappen. Brengt steen naar de fabriek',on:()=>trein.addMachine('kiep')});
-  /* the factory (campaign only) */
-  { const e=document.createElement('i'); e.className='sep fab'; G.mach.appendChild(e); }
-  mkBtn(G.mach,{id:'bouw-fabriek',cls:'btn face',svg:'<path d="M3 19V9.500l4.500 3V9.500l4.500 3V9.500l4.500 3V19z" fill="#2f9bff"/><rect x="17.500" y="4" width="3" height="15" fill="#ff4d5a"/><rect x="2" y="19" width="20" height="2" rx="1" fill="#f2c078"/><rect x="5" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/><rect x="9.500" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/><rect x="14" y="14.500" width="2.400" height="2.400" fill="#bfe6ff"/>',label:'Rails- en wegfabriek: lever hier hout en steen af, dan telt het mee',on:()=>trein.addMill('fab')});
+  /* a locked vehicle (campaign): grey with a lock; you earn it by building up the villages */
+  lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
   /* the driving pad: push the stick the way you want to go; the big button does the work, the small one gets you out */
   { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)']}; let sid=null;
     uit.style.setProperty('--c','var(--purple)'); uit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST.uit+'</svg>'; uit.setAttribute('aria-label','Uitstappen'); uit.title='Uitstappen';
