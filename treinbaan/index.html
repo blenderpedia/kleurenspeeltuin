@@ -109,6 +109,20 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .slot .del.sure{width:4.6em;background:var(--red);border-color:var(--red);color:var(--paper)}
 .slot .ld:active,.slot .del:active{transform:translateY(4px);box-shadow:0 1px 0 var(--shade)}
 .naam{display:grid;justify-items:center;gap:16px}
+.samen{display:flex;gap:5px;padding:5px;border-radius:999px;background:var(--paper);box-shadow:0 4px 0 var(--shade)}
+.samen button{padding:.32em 1em;border:0;border-radius:999px;background:transparent;color:var(--ink);font:800 clamp(15px,3.8vmin,19px)/1.1 var(--display);cursor:pointer;touch-action:manipulation}
+.samen button.on{background:var(--blue);color:var(--paper)}
+.samen button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.snote{margin:0;max-width:min(92vw,480px);font:800 clamp(14px,3.6vmin,18px)/1.3 var(--display);color:var(--paper);text-shadow:0 2px 0 var(--shade);text-align:center}
+.slot .mee{flex:none;min-width:5.4em;padding:0 .9em;border:4px solid var(--paper);border-radius:20px;background:var(--green);color:var(--paper);font:800 clamp(15px,3.8vmin,19px)/1 var(--display);cursor:pointer;box-shadow:0 5px 0 var(--shade);touch-action:manipulation}
+.slot .mee:disabled{background:#9aa3b5;cursor:default}
+.slot .mee.stop{background:var(--red)}
+.slot .mee:not(:disabled):active{transform:translateY(4px);box-shadow:0 1px 0 var(--shade)}
+.slot div.ld{cursor:default}
+#spelers{position:absolute;left:16px;top:calc(var(--btn) + 30px);display:grid;gap:6px;justify-items:start;pointer-events:none}
+#spelers .sp{display:flex;align-items:center;gap:.4em;padding:.15em .75em .15em .35em;border-radius:999px;background:var(--paper);box-shadow:0 3px 0 var(--shade);font:800 clamp(13px,3.2vmin,16px)/1.25 var(--display);color:var(--ink)}
+#spelers .sp i{width:.95em;height:.95em;border-radius:50%}
+body.gast #bot{display:none!important}
 .ik{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 12px}
 .ik input{width:min(56vw,250px);box-sizing:border-box;padding:.3em .7em;border:4px solid var(--paper);border-radius:999px;background:var(--paper);color:var(--ink);font:800 clamp(17px,4.4vmin,22px)/1.2 var(--display);text-align:center;box-shadow:0 4px 0 var(--shade);outline:none}
 .ik input:focus{border-color:var(--yellow)}
@@ -143,6 +157,7 @@ body.vrij #hud,body.vrij .cost{display:none}
 <div id="app">
   <canvas id="c" aria-label="Speelmat"></canvas>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="spelers" hidden aria-label="Wie spelen er mee"></div>
   <div class="bar top"><div class="grp" id="tl"></div>
     <div class="hud" id="hud" role="status" aria-label="Voorraad bij de fabriek: hout en steen"><span id="hudH"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.500 12 5l9 4.500v7L12 21l-9-4.500z" fill="#a8683a"/><path d="M3 9.500 12 14l9-4.500L12 5z" fill="#c98a55"/><path d="M12 14v7" stroke="#7a4a26" stroke-width="1.200"/></svg><b>20</b></span><span id="hudS"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.500 12 5l9 4.500v7L12 21l-9-4.500z" fill="#8791a6"/><path d="M3 9.500 12 14l9-4.500L12 5z" fill="#b4bccb"/><path d="M12 14v7" stroke="#5f6980" stroke-width="1.200"/></svg><b>0</b></span></div>
     <div class="grp" id="tr"></div></div>
@@ -152,6 +167,9 @@ body.vrij #hud,body.vrij .cost{display:none}
   <div id="start"><div class="in">
     <h1>Treinbaan</h1>
     <div class="ik"><input id="ik-naam" type="text" maxlength="14" autocomplete="off" aria-label="Jouw naam" placeholder="Jouw naam"><div class="kls" id="ik-kl" role="radiogroup" aria-label="Jouw kleur"></div></div>
+    <div class="samen" id="samen" role="radiogroup" aria-label="Alleen of samen spelen"><button type="button" role="radio" class="on" aria-checked="true">Alleen</button><button type="button" role="radio" aria-checked="false">Host</button><button type="button" role="radio" aria-checked="false">Meedoen</button></div>
+    <p class="snote" id="snote" hidden></p>
+    <div class="saves" id="lobby" hidden><h2>Open spellen</h2><div class="lst" id="lobby-lst"></div><p class="snote" id="lobby-leeg">Zoeken naar spellen…</p></div>
     <div class="modes">
       <button type="button" class="mode" id="start-vrij"><svg viewBox="0 0 64 48" aria-hidden="true"><rect x="5" y="25" width="19" height="19" rx="3" fill="#ff4d5a"/><rect x="25" y="25" width="19" height="19" rx="3" fill="#2f9bff"/><rect x="15" y="5" width="19" height="19" rx="3" fill="#ffd22e"/><path d="M46 44V30a8 8 0 0 1 16 0v14h-5V31a3 3 0 0 0-6 0v13z" fill="#9b63ff"/><path d="m47 6 2 4.500 4.800.500-3.600 3.300 1 4.700-4.200-2.400-4.200 2.400 1-4.700-3.600-3.300 4.800-.500z" fill="#ff9a1f"/></svg><b>Creatief</b><span>Lege wereld, alles gratis</span></button>
       <button type="button" class="mode" id="start-camp"><svg viewBox="0 0 64 48" aria-hidden="true"><path d="M16 4 5 20h5L3 31h10v8h6v-8h10l-7-11h5z" fill="#2f9e5b"/><rect x="13" y="38" width="6" height="6" fill="#a8683a"/><path d="M35 28 44 23.500l9 4.500v9L44 41.500 35 37z" fill="#a8683a"/><path d="M35 28l9 4.500 9-4.500-9-4.500z" fill="#c98a55"/><path d="M47 13 54 9.500l7 3.500v7L54 23.500 47 20z" fill="#8791a6"/><path d="M47 13l7 3.500 7-3.500-7-3.500z" fill="#b4bccb"/><rect x="3" y="43" width="58" height="3" rx="1.500" fill="#f2c078"/></svg><b>Campagne</b><span>Hak hout en steen en verdien je rails</span></button>
@@ -720,7 +738,7 @@ const trein=(()=>{
     for(const d of dorpen){ if(!d.station) continue; const mx=d.sx+3, dist=Math.hypot(l.tp.x-mx,l.tp.z-d.sz);
       if(c.seenD.has(d)){ if(dist>4) c.seenD.delete(d); continue; }
       if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ tone(784,.12,'sine',.12); tone(659,.2,'sine',.12,0,.13); } serve(c,d); } } }
-  function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ if(!(d.kind==='bos'&&earn(['brug','sensor'],'De trein is in '+d.name+'! Je krijgt de brug en de sensor.'))) toast('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
+  function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ if(!(d.kind==='bos'&&earn(['brug','sensor'],'De trein is in '+d.name+'! Je krijgt de brug en de sensor.'))) news('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
     const tick=()=>{ if(c.stop!==d||cons.indexOf(c)<0||c.pause<=0) return; if(swap(c,d)){ c.pause=Math.max(c.pause,1); after(.35,tick); } }; after(.6,tick); }
   /* travellers: people of the start village who want to go to the other village and back. They wait on the platform; a train with a passenger coach that stops there takes them along (four to a coach) and lets them off at the station they want. There they stay a while, then wait to go home again; at home they rest before the next trip. st: 'wait' (at a station), 'ride' (in coach v), 'away' (in a village, until t runs out) */
   const SEATS=4, other=d=>dorpen.find(q=>q!==d&&q.station);
@@ -741,7 +759,7 @@ const trein=(()=>{
   function board(c,d){ for(const v of c.veh){ if(v.sort!=='pass') continue; const f=riders(v).find(q=>q.dest===d); if(!f) continue;
       f.st='away'; f.at=d; f.v=null; seatHeads(v); const home=d===f.home; f.dest=home?other(d):f.home; f.t=home?30+Math.random()*20:20+Math.random()*10; pop(v.g,.06);
       burst(cv.set(v.tp.x,v.tp.y+.5,v.tp.z),10,2.6); tone(523,.1,'triangle',.14); tone(784,.16,'triangle',.12,0,.1);
-      if(!d.guests&&!home){ d.guests=true; toast('De eerste reizigers zijn in '+d.name+'!'); sfx.tada(); } return true; }
+      if(!d.guests&&!home){ d.guests=true; news('De eerste reizigers zijn in '+d.name+'!','tada'); sfx.tada(); } return true; }
     const wait=folk.filter(q=>q.st==='wait'&&q.at===d&&q.dest); if(!wait.length) return false;
     for(const v of c.veh){ if(v.sort!=='pass'||riders(v).length>=SEATS) continue; const f=wait[0]; f.st='ride'; f.v=v; seatHeads(v); lineUp(); pop(v.g,.06); tone(440,.08,'square',.05); return true; }
     return false; }
@@ -789,11 +807,11 @@ const trein=(()=>{
     if(d.proj==='station'){ stationUp(d); if(!pieces.some(p=>!p.fixed&&p.ends&&p.ends.some(e=>e.x===d.sx&&e.z===d.sz))){ const b=layPiece('eind',d.sx,d.sz,2); popIn(b.g,.3); } d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); rebuild(); settle();
       earn(['graaf','wissel'],d.name+' heeft een station! Je krijgt een graafmachine en de wissel.'); newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); after(7,()=>{ if(dorpen.indexOf(d)>=0) toast('Wil je verder? Leg een wissel in je spoor, of sleep een stootblok naar de prullenbak.'); }); setProject(d,'huis',Math.random); }
     else { const hg=addExtra(d,{sort:S.sort,x:R.x,z:R.z,hw:R.hw-.3,hd:R.hd-.3,hh:S.sort==='huis'||S.sort==='breed'||S.sort==='poort'?.8:1.2,seed:(Math.random()*2147483646)|0}); popIn(hg,.4); d.houses++;
-      addFolk(d,2); if(earn(['pass','auto','overweg'],'Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon, de auto en de overweg.')){} else if(d.houses>=6&&earn(['tunnel','wtunnel','boost'],'Een nieuw huis in '+d.name+'! Je krijgt tunnels en de boost.')){} else toast('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
+      addFolk(d,2); if(earn(['pass','auto','overweg'],'Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon, de auto en de overweg.')){} else if(d.houses>=6&&earn(['tunnel','wtunnel','boost'],'Een nieuw huis in '+d.name+'! Je krijgt tunnels en de boost.')){} else news('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
       setProject(d,d.houses<HOUSES?'huis':null,Math.random); } }
   /* what you have to earn in the campaign, step by step: vehicles and pieces of track. earn: they come free, with a message */
   const LOCK0=['graaf','pass','auto','wissel','brug','tunnel','overweg','wtunnel','sensor','boost'];
-  function earn(keys,msg){ let any=false; for(const k of keys) if(locked.delete(k)) any=true; if(!any) return false; lockUI(locked); if(msg) toast(msg); sfx.tada(); return true; }
+  function earn(keys,msg){ let any=false; for(const k of keys) if(locked.delete(k)) any=true; if(!any) return false; lockUI(locked); if(msg) news(msg,'tada'); sfx.tada(); return true; }
   const hello=()=>{ const d=dorpen.find(q=>q.proj==='station'); if(!d) return; after(1.2,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast(d.name+' wil een station! Het vraagt 8 hout en 6 steen.'); });
     after(7.5,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast('Schep met de shovel hout en steen in de wagon. Tik dan op de groene knop: de trein brengt het naar '+d.name+'.'); }); };
   function placeVillages(rs){ const pick=l=>l[(rs()*l.length)|0];
@@ -827,6 +845,7 @@ const trein=(()=>{
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
   let me=null, walking=false, hintM=false, nearT=0;
+  let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
     if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
@@ -846,6 +865,122 @@ const trein=(()=>{
     me.g.position.set(me.x,me.y+Math.abs(Math.sin(me.step))*.06,me.z); let da=me.yaw-me.g.rotation.y; da-=Math.round(da/TAU)*TAU; me.g.rotation.y+=da*(1-Math.exp(-dt*14));
     const kf=1-Math.exp(-dt*3.5), px=me.x-panX, pz=me.z-panZ; if(px*px+pz*pz>.0004){ panX+=px*kf; panZ+=pz*kf; applyCamera(); }
     if((nearT-=dt)<=0){ nearT=.2; nearUI(!!nearMach()); } }
+  /* ----- playing together. The host's game is the real one; a guest sees a copy of it. What is there (track, vehicles, machines, blocks, villages, forest) comes in parts (sections) when it changes; how things move comes about twelve times a second. Everything that moves has a number (nid), the same in both games. NET: 0 alone, 1 host, 2 guest ----- */
+  const Q2=v=>Math.round(v*100), Q3=v=>Math.round(v*1000), PKEY={graaf:['sw','d','y','cu'],shovel:['arm','bk'],kiep:['bed']};
+  const netOut=msg=>{ if(netSend) netSend(msg); };
+  function news(msg,fx){ toast(msg); if(NET===1&&netNews) netNews(msg,fx||''); }
+  /* the host: everything that is there, in sections */
+  function netSecs(){ const hd=o=>held&&held.rec===o, own=pieces.filter(p=>!p.fixed&&!p.gang&&!isGate(p)&&!hd(p)), tuns=tunnels.filter(t=>t.a&&t.b);
+    return {k:[stock.hout,stock.steen,[...locked].sort()],
+      p:own.map(p=>[p.type,p.x,p.z,p.q,p.lv,p.m,p.sw?1:0,p.shut?1:0]), t:tuns.map(t=>[t.net,t.a.spot,t.b.spot]),
+      x:[props.filter(q=>!hd(q)).map(q=>[R3(q.x),R3(q.z),R3(q.yaw),q.sec]),boosts.filter(f=>!hd(f)).map(f=>[R3(f.x),R3(f.z),R3(f.yaw)])],
+      w:[trees.filter(t=>!t.alive).map(t=>t.id),rocks.filter(r=>r.left<ROCK).map(r=>[r.id,r.left]),heaps.map(h=>[h.id,h.n]),logs.map(L=>[R3(L.x),R3(L.z),R3(L.y),R3(L.ux),R3(L.uz),L.left])],
+      d:dorpen.map(d=>[d.station?1:0,d.proj||null,d.need||null,d.site?{r:d.site.r,sort:d.site.sort||null}:null,d.extra,d.houses,d.stock||0,d.visited?1:0,d.guests?1:0]),
+      v:vehs.map(v=>[v.nid,v.sort,v.load.map(l=>l.sh),v.ci||0]), m:machs.map(m=>[m.nid,m.sort,m.load.slice(),m.carry.slice()]), b:blocks.map(r=>[r.nid,r.sh]),
+      f:folk.map(f=>[dorpen.indexOf(f.home),dorpen.indexOf(f.dest),dorpen.indexOf(f.at),f.st,f.v?f.v.nid:0,f.i||0])}; }
+  /* only the sections that changed since the last time */
+  function netDiff(){ const S=netSecs(), out={}; let any=false; for(const k in S){ const j=JSON.stringify(S[k]); if(j!==lastS[k]){ lastS[k]=j; out[k]=S[k]; any=true; } }
+    if(out.v) known.v=new Set(out.v.map(a=>a[0])); if(out.m) known.m=new Set(out.m.map(a=>a[0])); if(out.b) known.b=new Set(out.b.map(a=>a[0])); return any?out:null; }
+  /* how things stand now (only what moved, unless all): whole numbers, centimetres and thousandths */
+  function netFast(all){ const F={v:[],m:[],b:[],z:[],a:[]}, same=(o,a)=>{ const L=o.ls; if(!all&&L&&L.length===a.length&&a.every((x,i)=>x===L[i])) return true; o.ls=a; return false; };
+    for(const v of vehs){ if(!all&&!known.v.has(v.nid)) continue; const p=v.g.position, q=v.g.quaternion, a=[v.nid,Q2(p.x),Q2(p.y),Q2(p.z),Q3(q.x),Q3(q.y),Q3(q.z),Q3(q.w)]; if(!same(v,a)) F.v.push(...a); }
+    for(const m of machs){ if(!all&&!known.m.has(m.nid)) continue; const p=m.g.position, ks=PKEY[m.sort], a=[m.nid,Q2(p.x),Q2(p.y),Q2(p.z),Q3(wrapA(m.yaw)),m===driving?1:m.by||0,m.work||m.busy?1:0,ks.length]; for(const k of ks) a.push(Q3(m.pose[k])); if(!same(m,a)) F.m.push(...a); }
+    for(const r of blocks){ if(!all&&!known.b.has(r.nid)) continue; const p=r.m.position, q=r.m.quaternion, a=[r.nid,Q2(p.x),Q2(p.y),Q2(p.z),Q3(q.x),Q3(q.y),Q3(q.z),Q3(q.w)]; if(!same(r,a)) F.b.push(...a); }
+    mills.forEach((z,i)=>{ const w=z.man, a=[i,Q2(w.x),Q2(w.z),Q3(w.yaw),w.carry?(w.kind==='steen'?2:1):0]; if(!same(z,a)) F.z.push(...a); });
+    if(me) F.a.push(1,Q2(me.x),Q2(me.z),Q3(me.yaw),driving?driving.nid:0,me.up?1:0); for(const a of avs.values()) if(!a.fresh) F.a.push(a.pid,Q2(a.tx),Q2(a.tz),Q3(a.tyaw),a.st,a.ty>.1?1:0);
+    return F; }
+  /* the host: what a guest asks */
+  function freeBy(pid){ for(const m of machs) if(m.by===pid){ m.by=0; m.v=0; m.sx=m.sz=0; m.work=false; } }
+  function netIn(pid,nid){ const m=machs.find(q=>q.nid===nid); if(!m||m===driving||(m.by&&m.by!==pid)||(held&&held.rec===m)) return false; freeBy(pid); m.by=pid; m.sx=m.sz=0; return true; }
+  function netStick(pid,x,z){ for(const m of machs) if(m.by===pid){ m.sx=clampN(+x||0,1); m.sz=clampN(+z||0,1); } }
+  function netAct(pid){ const m=machs.find(q=>q.by===pid); if(m) actOn(m); }
+  function netMe(pid,a){ const v=avs.get(pid); if(v&&Array.isArray(a)) avTo(v,a[0]/100,a[1]/100,a[2]/1000,a[3]|0,a[4]); }
+  /* a guest: where you are and how you steer */
+  function netMine(){ return {me:me?[Q2(me.x),Q2(me.z),Q3(me.yaw),driving?driving.nid:0,me.up?1:0]:[0,0,0,0,0],st:driving?[Q3(stX),Q3(stZ)]:null}; }
+  function netInOk(nid){ const m=nM.get(nid); if(m&&walking&&!driving) getIn(m); else netOut({t:'out'}); }
+  /* the others: a doll with a name for every other player; in a machine only the name shows, over the machine */
+  function avSet(list,mine){ for(const a of [...avs.values()]) if(!list.some(q=>q[0]===a.pid)) avDrop(a);
+    for(const [pid,name,ci] of list){ if(pid===mine) continue; let a=avs.get(pid); if(a&&(a.name!==name||a.ci!==ci)){ avDrop(a); a=null; }
+      if(!a){ a={pid,name,ci,g:new T.Group(),tag:DORP.nameTag(name,PCOL[ci%PCOL.length]),x:0,z:0,y:0,yaw:0,st:0,tx:0,tz:0,ty:0,tyaw:0,step:0,fresh:true}; a.g.add(DORP.player(PCOL[ci%PCOL.length])); a.g.add(a.tag); a.tag.position.y=1.75; a.g.visible=false; g.add(a.g); avs.set(pid,a); } } }
+  function avDrop(a){ if(a.tag.parent) a.tag.parent.remove(a.tag); a.tag.material.map.dispose(); g.remove(a.g); avs.delete(a.pid); if(NET===1) freeBy(a.pid); }
+  function avTo(a,x,z,yaw,st,up){ a.tx=x; a.tz=z; a.tyaw=yaw; a.ty=up?RISE:0; a.st=st; if(a.fresh){ a.fresh=false; a.x=x; a.z=z; a.y=a.ty; a.yaw=yaw; if(!st) popIn(a.g,.3); } }
+  function avStep(dt){ if(!avs.size) return; const k=1-Math.exp(-dt*12);
+    for(const a of avs.values()){ const dx=a.tx-a.x, dz=a.tz-a.z; a.x+=dx*k; a.z+=dz*k; a.y+=(a.ty-a.y)*k; a.yaw+=wrapA(a.tyaw-a.yaw)*k; a.step=dx*dx+dz*dz>.0009?a.step+dt*12:0;
+      const m=a.st?machs.find(q=>q.nid===a.st):null; if(m){ a.g.visible=false; if(a.tag.parent!==m.g){ m.g.add(a.tag); a.tag.position.y=2.7; } } else { if(a.tag.parent!==a.g){ a.g.add(a.tag); a.tag.position.y=1.75; } a.g.visible=!a.fresh; }
+      a.g.position.set(a.x,a.y+Math.abs(Math.sin(a.step))*.06,a.z); a.g.rotation.y=a.yaw; } }
+  /* a guest: the moving things glide to where the host says they are */
+  let nV=new Map(), nM=new Map(), nB=new Map();
+  const nmap=()=>{ nV=new Map(vehs.map(v=>[v.nid,v])); nM=new Map(machs.map(m=>[m.nid,m])); nB=new Map(blocks.map(r=>[r.nid,r])); }, kNet=dt=>1-Math.exp(-dt*14);
+  function netF(F,snap){ const qd=(a,i,p,q)=>{ p.set(a[i]/100,a[i+1]/100,a[i+2]/100); q.set(a[i+3]/1000,a[i+4]/1000,a[i+5]/1000,a[i+6]/1000).normalize(); };
+    for(let i=0;i<F.v.length;i+=8){ const v=nV.get(F.v[i]); if(!v) continue; const t=v.nt||(v.nt={p:new V3(),q:new T.Quaternion()}), first=!v.g.visible; qd(F.v,i+1,t.p,t.q);
+      if(snap||first){ v.g.position.copy(t.p); v.g.quaternion.copy(t.q); v.tp.copy(t.p); if(first){ v.g.visible=true; if(!snap) popIn(v.g,.25); } } }
+    for(let i=0;i<F.m.length;){ const a=F.m, m=nM.get(a[i]), np=a[i+7];
+      if(m){ const t=m.nt||(m.nt={pose:{}}), first=!m.g.visible; t.x=a[i+1]/100; t.y=a[i+2]/100; t.z=a[i+3]/100; t.yaw=a[i+4]/1000; m.by=a[i+5]; const busy=!!a[i+6]; if(m===driving&&busy!==!!(m.work||m.busy)) busyUI(busy); m.work=m.busy=busy;
+        (PKEY[m.sort]||[]).forEach((k,j)=>{ if(j<np) t.pose[k]=a[i+8+j]/1000; });
+        if(snap||first){ m.x=t.x; m.y=t.y; m.z=t.z; m.yaw=t.yaw; m.up=t.y>RISE/2; Object.assign(m.pose,t.pose); if(first){ m.g.visible=true; if(!snap) popIn(m.g,.25); } } }
+      i+=8+np; }
+    for(let i=0;i<F.b.length;i+=8){ const r=nB.get(F.b[i]); if(!r) continue; const t=r.nt||(r.nt={p:new V3(),q:new T.Quaternion()}), first=!r.m.visible; qd(F.b,i+1,t.p,t.q);
+      if(snap||first){ r.m.position.copy(t.p); r.m.quaternion.copy(t.q); if(first){ r.m.visible=true; if(!snap) popIn(r.m,.25); } } }
+    for(let i=0;i<F.z.length;i+=5){ const z=mills[F.z[i]]; if(!z) continue; const w=z.man, c=F.z[i+4]; w.nt={x:F.z[i+1]/100,z:F.z[i+2]/100,yaw:F.z[i+3]/1000}; w.carry=!!c; if(c) w.pack.material=BOUW.blockMat(c===2?'steen':'hout'); w.pack.visible=w.carry; if(snap){ w.x=w.nt.x; w.z=w.nt.z; w.yaw=w.nt.yaw; } }
+    for(let i=0;i<F.a.length;i+=6){ const a=avs.get(F.a[i]); if(a) avTo(a,F.a[i+1]/100,F.a[i+2]/100,F.a[i+3]/1000,F.a[i+4],F.a[i+5]); } }
+  function netVehs(dt){ const k=kNet(dt); for(const v of vehs){ const t=v.nt; if(!t) continue; v.g.position.lerp(t.p,k); v.g.quaternion.slerp(t.q,k); v.tp.copy(v.g.position); } }
+  function netMach(m,dt){ m.v=0; m.kf=null; const t=m.nt; if(!t) return; const k=kNet(dt), x0=m.x, z0=m.z; m.x+=(t.x-m.x)*k; m.z+=(t.z-m.z)*k; m.y+=(t.y-m.y)*k; m.up=t.y>RISE/2; m.yaw+=wrapA(t.yaw-m.yaw)*k;
+    for(const key in t.pose) m.pose[key]+=(t.pose[key]-m.pose[key])*k; m.dist+=(m.x-x0)*Math.cos(m.yaw)-(m.z-z0)*Math.sin(m.yaw); }
+  function netBlocks(dt){ const k=kNet(dt); let top=0; for(const r of blocks){ const t=r.nt; if(!t) continue; r.m.position.lerp(t.p,k); r.m.quaternion.slerp(t.q,k); if(r.m.position.y>top) top=r.m.position.y; } return top; }
+  function netMan(z,dt){ const w=z.man, t=w.nt; w.bub.visible=false; if(!t) return; const k=kNet(dt), dx=t.x-w.x, dz=t.z-w.z; w.x+=dx*k; w.z+=dz*k; w.yaw=t.yaw; if(dx*dx+dz*dz>.0004) w.step+=dt*12; }
+  /* a guest: the sections put the copy right, a little at a time (snap: all at once, when you join) */
+  function netS(S,snap){ if(S.k){ stock.hout=S.k[0]; stock.steen=S.k[1]; stockDirty=true; locked=new Set(S.k[2]); lockUI(locked); }
+    if(S.d) S.d.forEach((a,i)=>{ if(dorpen[i]) villTo(dorpen[i],a,snap); });
+    if(S.w) worldTo(S.w,snap); if(S.p) piecesTo(S.p,snap); if(S.t) tunnelsTo(S.t); if(S.p||S.t||S.d) rebuild(); if(S.x) propsTo(S.x);
+    if(S.v) vehsTo(S.v); if(S.m) machsTo(S.m); if(S.b) blocksTo(S.b); if(S.f) netFolk=S.f; if(S.f||S.v) folkTo(netFolk,snap); }
+  function villTo(d,a,snap){ const [st,proj,need,site,extra,houses,sk,vis,gst]=a;
+    if(st&&!d.station){ dropSite(d); stationUp(d); if(!snap){ d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); } }
+    for(let j=d.extra.length;j<(extra||[]).length;j++){ const hg=addExtra(d,extra[j]); if(!snap) popIn(hg,.4); }
+    const was=JSON.stringify([d.proj||null,d.site?{r:d.site.r,sort:d.site.sort||null}:null]), now=JSON.stringify([proj,site]);
+    if(was!==now){ dropSite(d); d.proj=proj; d.need=need; if(proj&&site){ const R=site.r; d.site={r:R,sort:site.sort,plot:villObj(d,DORP.plot(R.hw,R.hd),R.x,R.z,R.hw,R.hd,0)}; if(!snap) popIn(d.site.plot.g,.3); signUp(d); } }
+    else if(d.site&&d.site.sign&&JSON.stringify(d.need)!==JSON.stringify(need)){ d.need=need; DORP.drawSign(d.site.sign,proj==='station'?'Station':'Nieuw huis',need); if(!snap) pop(d.site.sign.g,.12); }
+    d.need=need; d.houses=houses; if((d.stock||0)!==sk){ d.stock=sk; if(d.kind==='bos'&&d.station) showStock(d); } d.visited=!!vis; d.guests=!!gst; }
+  function worldTo(w,snap){ const [tf,rk,hp,lg]=w;
+    for(const id of tf){ const t=trees[id]; if(!t||!t.alive) continue; t.alive=false; t.res=null; if(t.b&&world){ world.removeBody(t.b); t.b=null; }
+      if(snap){ g.remove(t.g); continue; } const L=lg.find(q=>Math.hypot(q[0]-t.x,q[1]-t.z)<.6); topple(t,L?L[3]:1,L?L[4]:0); }
+    const rl=new Map(rk); for(const r of rocks){ const left=rl.has(r.id)?rl.get(r.id):ROCK; if(left===r.left) continue; r.left=left; if(left>0){ rockSize(r); if(!snap) pop(r.g,.08,.2); continue; }
+      r.res=null; if(r.b&&world){ world.removeBody(r.b); r.b=null; } if(snap) g.remove(r.g); else { const s0=r.g.scale.x; tw(.25,e=>{ r.g.scale.setScalar(s0*(1-e)+.001); },ease.lin,()=>g.remove(r.g)); } }
+    const hn=new Map(hp); for(const h of heaps.slice()){ const n=hn.get(h.id)||0; if(n===h.n) continue; if(n<=0){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); heaps=heaps.filter(x=>x!==h); } else { h.n=n; h.ms.forEach((o,i)=>{ o.visible=i<n; }); heapBody(h); } }
+    const keep=new Set(); for(const q of lg){ let L=logs.find(o=>!keep.has(o)&&Math.abs(o.x-q[0])<.01&&Math.abs(o.z-q[1])<.01);
+      if(!L){ const lm=BOUW.log(); L={g:lm,x:q[0],z:q[1],y:q[2],ux:q[3],uz:q[4],left:q[5]}; lm.position.set(L.x,L.y,L.z); lm.rotation.y=Math.atan2(-L.uz,L.ux); g.add(lm); logs.push(L); if(!snap){ lm.visible=false; after(.62,()=>{ if(logs.indexOf(L)>=0){ lm.visible=true; popIn(lm,.25); } }); } }
+      keep.add(L); L.left=q[5]; L.g.scale.x=L.left/3; }
+    for(const L of logs.slice()) if(!keep.has(L)){ g.remove(L.g); logs=logs.filter(x=>x!==L); } }
+  function setSw(p,v,now){ if(!p.arm||(p.sw?1:0)===v) return; if(now){ p.sw=v; p.arm.rotation.y=v?.44:0; } else flip(p); }
+  function setShut(p,v,now){ if(!p.gates||(p.shut?1:0)===v) return; if(now){ p.shut=!!v; p.gates.forEach(b=>{ b.rotation.z=v?0:1.36; }); } else gate(p); }
+  function piecesTo(list,snap){ const key=a=>a.slice(0,6).join(), want=new Map(list.map(a=>[key(a),a]));
+    for(const p of pieces.slice()){ if(p.fixed||p.gang||isGate(p)) continue; const k=key([p.type,p.x,p.z,p.q,p.lv,p.m]), a=want.get(k);
+      if(!a){ evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); continue; } want.delete(k); setSw(p,a[6],snap); setShut(p,a[7],snap); }
+    for(const a of want.values()){ const p=layPiece(a[0],a[1],a[2],a[3],false,a[4],a[5]); if(!snap) popIn(p.g,.25); setSw(p,a[6],true); setShut(p,a[7],true); } }
+  function tunnelsTo(list){ for(const t of tunnels){ unbore(t); for(const p of [t.a,t.b]){ if(!p) continue; evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } tunnels=[];
+    for(const [net,a,b] of list){ if(!SPOTS[a]||!SPOTS[b]) continue; const t={a:null,b:null,gang:null,net}; t.a=portal(t,SPOTS[a]); t.b=portal(t,SPOTS[b]); tunnels.push(t); bore(t); } }
+  function propsTo([ps,bs]){ props.forEach(q=>{ propBody(q,false); g.remove(q.g); }); props=[]; boosts.forEach(f=>g.remove(f.g)); boosts=[]; for(const [x,z,yaw,sec] of ps) makeSensor(x,z,yaw,sec); for(const [x,z,yaw] of bs) makeBoost(x,z,yaw); bind(); }
+  function vehsTo(list){ const ids=new Set(list.map(a=>a[0]));
+    for(const v of vehs.slice()) if(!ids.has(v.nid)){ lift(v); g.remove(v.g); vehs=vehs.filter(x=>x!==v); }
+    for(const [nid,sort,load,ci] of list){ let v=vehs.find(q=>q.nid===nid);
+      if(!v){ if(sort==='loc') locN=ci; else if(sort==='auto') carN=ci; addTrain(sort,true,true); v=vehs[vehs.length-1]; v.nid=nid; lift(v); v.g.visible=false; v.nt=null; }
+      if(v.load.map(l=>l.sh).join()!==load.join()){ v.load.forEach(l=>{ v.inner.remove(l.m); l.m.material.dispose(); }); v.load=[]; load.forEach(sh=>addLoad(v,sh,rawCol(sh))); } }
+    nmap(); }
+  function machsTo(list){ const ids=new Set(list.map(a=>a[0]));
+    for(const m of machs.slice()) if(!ids.has(m.nid)){ if(driving===m){ driving=null; stX=stZ=0; if(me) outOf(m); stroll(); } machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
+    for(const [nid,sort,load,carry] of list){ let m=machs.find(q=>q.nid===nid); if(!m){ m=newMach(sort,0,0,0,0,true,true); m.nid=nid; m.g.visible=false; m.nt=null; }
+      if(m.load.join()!==load.join()||m.carry.join()!==carry.join()){ m.load=load.slice(); m.carry=carry.slice(); showLoad(m); } }
+    nmap(); }
+  function blocksTo(list){ const ids=new Set(list.map(a=>a[0])); for(const r of blocks.slice()) if(!ids.has(r.nid)) removeBlock(r,true);
+    const have=new Set(blocks.map(r=>r.nid)); for(const [nid,sh] of list) if(!have.has(nid)){ const r=dropRaw(sh,0,-40,0); r.nid=nid; r.m.visible=false; r.nt=null; } nmap(); }
+  function folkTo(list,snap){ while(folk.length>list.length){ const f=folk.pop(); g.remove(f.g); }
+    list.forEach((a,i)=>{ const [h,dd,at,st,vn,pi]=a; let f=folk[i]; if(!f||f.i!==pi){ if(f) g.remove(f.g); const pg=DORP.person(pi); pg.visible=false; g.add(pg); f=folk[i]={home:null,dest:null,at:null,st:'away',t:0,g:pg,v:null,i:pi}; }
+      const was=f.st; f.home=dorpen[h]||dorpen[0]; f.dest=dorpen[dd]||null; f.at=dorpen[at]||f.home; f.v=vn?nV.get(vn)||null:null; f.st=st==='ride'&&!f.v?'away':st; if(!snap&&was!=='wait'&&f.st==='wait') popIn(f.g,.25); });
+    for(const f of folk) folkN=Math.max(folkN,f.i+1); lineUp(); for(const v of vehs) if(v.sort==='pass') seatHeads(v); }
+  /* a guest joins: the host's world from its seed, then everything on top */
+  function netJoin(W,pl,mine){ NET=2; if(driving||walking) leave(true); mode=W.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',W.seed); clearPlay(); for(const a of [...avs.values()]) avDrop(a); avSet(pl||[],mine);
+    netFolk=[]; netS(W.s,true); netF(W.f,true); if(me){ panX=me.x; panZ=me.z; } applyCamera(); }
+  /* start or stop playing together (the others go; a guest's copy stays until a new game comes) */
+  function netRole(r){ if(NET===2&&r!==2&&driving){ NET=r; leave(true); } NET=r; lastS={}; known={v:new Set(),m:new Set(),b:new Set()}; for(const o of [...vehs,...machs,...blocks,...mills]) o.ls=null; for(const m of machs){ m.by=0; m.sx=m.sz=0; } for(const a of [...avs.values()]) avDrop(a); }
   /* ----- a saved game: the world comes back from its seed, then everything that changed is put on top of it ----- */
   const R3=v=>Math.round(v*1000)/1000;
   /* sensors and boosts at a given place */
@@ -1047,9 +1182,9 @@ const trein=(()=>{
     const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle();
     /* the picture follows a track that grows towards its edge */
     if(snap){ mid(p,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
-  function addTrain(sort,quiet){ if(locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
-    if(n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
-    const vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
+  function addTrain(sort,quiet,force){ if(!force&&locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
+    if(!force&&n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
+    const ci=isLoc?locN:isCar?carN:0, vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',nid:++nidN,ci,sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
     if(world){ const b=new PH.Body({mass:1.5,material:slipM}); b.addShape(new PH.Box(V(K.box[0],K.box[1],K.box[2]))); if(isCar) b.mass=1; b.linearDamping=.03; b.angularDamping=.35; b.allowSleep=true; b.sleepSpeedLimit=.1; b.sleepTimeLimit=1; b.veh=v; v.b=b; }
     g.add(vg); vehs.push(v); stage(v); vg.position.copy(v.tp); vg.rotation.set(0,v.yaw,0); popIn(vg,.3); if(quiet) return; if(isLoc) toot(); else if(isCar) honk(); else sfx.pop(3); }
   /* a switch: tap it and the pointer (and the next train) goes the other way */
@@ -1165,14 +1300,14 @@ const trein=(()=>{
   /* the nearest place where it fits, on the level of the spot you point at */
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
   function addMachine(sort){ if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
-  function newMach(sort,x,z,yaw,pad,quiet){ const M=MACH[sort](), m={kind:'m',sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
-    if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
+  function newMach(sort,x,z,yaw,pad,quiet,exact){ const M=MACH[sort](), m={kind:'m',nid:++nidN,by:0,sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
+    if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
   /* get in (tap a machine), get out (the button) */
   function getIn(m){ if(driving===m){ pop(m.g,.06); tone(330,.12,'square',.06); tone(392,.16,'square',.05,0,.12); return; } if(driving) leave(true); driving=m; walking=false; stX=stZ=0; if(me){ me.g.visible=false; m.g.add(me.tag); me.tag.position.y=2.7; } driveUI(true,m.sort); busyUI(m.work||m.busy); tone(70,.4,'sawtooth',.06,140); pop(m.g,.06); }
   /* leave: back to building (out of the machine and off your feet); out: one step back (machine → walking → building) */
-  function leave(quiet){ if(!driving&&!walking) return; if(driving){ const m=driving; m.v=0; driving=null; if(me) outOf(m); } walking=false; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
-  function out(){ if(driving){ const m=driving; m.v=0; driving=null; stX=stZ=0; if(me) outOf(m); sfx.boop(); stroll(); } else if(walking) leave(); }
+  function leave(quiet){ if(!driving&&!walking) return; if(driving){ const m=driving; m.v=0; driving=null; if(NET===2) netOut({t:'out'}); if(me) outOf(m); } walking=false; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
+  function out(){ if(driving){ const m=driving; m.v=0; driving=null; stX=stZ=0; if(NET===2) netOut({t:'out'}); if(me) outOf(m); sfx.boop(); stroll(); } else if(walking) leave(); }
   /* ----- machine work. A machine's pose is a few numbers (excavator: swing, reach, height, curl; loader: arm, bucket; truck: bed); a little film of poses plays its work, with moments where something happens ----- */
   const REST={graaf:{sw:0,d:1.3,y:-.35,cu:0},shovel:{arm:-.42,bk:.42},kiep:{bed:0}}, CARRY={arm:-.12,bk:1.0}, KCAP=8, LC=3, cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   function play(m,keys,evs,then){ let cur=Object.assign({},m.pose); const ks=[{t:0,p:cur}]; for(const k of keys){ const p=Object.assign({},cur,k.p); if(p.sw!=null) p.sw=cur.sw+wrapA(p.sw-cur.sw); ks.push({t:k.t,p}); cur=p; }
@@ -1246,15 +1381,16 @@ const trein=(()=>{
         m.load.forEach((sh,j)=>{ const o=(j%4-1.5)*.42, back=1.55+(j>>2)*.45, x=clampN(m.x-c*back+sn*o,MX-.6), z=clampN(m.z+sn*back+c*o,MZ-.6); dropRaw(sh,x,hAt(x,z)+.5+(j>>2)*.3,z); });
         m.load=[]; showLoad(m); sfx.plop(); tone(196,.25,'triangle',.2,110,.08); }}],()=>{ m.busy=false; workUI(m); }); }
   /* the work button */
-  function act(){ const m=driving; if(!m){ if(walking&&me){ const n=nearMach(); if(n) getIn(n); else { pop(me.g,.08); sfx.boing(); } } return; }
-    if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
+  function act(){ const m=driving; if(!m){ if(walking&&me){ const n=nearMach(); if(n){ if(NET===2) netOut({t:'in',m:n.nid}); else getIn(n); } else { pop(me.g,.08); sfx.boing(); } } return; }
+    if(NET===2){ netOut({t:'act'}); pop(m.g,.04); return; } actOn(m); }
+  function actOn(m){ if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
     if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else tipAct(m); }
   /* one step for the machine you drive: it turns towards the way you push the stick (pull back and a loader or truck backs up), and rides as far as nothing is in the way */
   /* is there a road right under x,z (on the low ground) */
   function onRoad(x,z){ for(const p of pieces){ if(!p.live||p.lv||Math.abs(p.x-x)+Math.abs(p.z-z)>4) continue; for(const q of p.path){ if(p.segs[q.si].net!=='road') continue; const dx=q.x-x, dz=q.z-z; if(dx*dx+dz*dz<.36) return true; } } return false; }
-  function steer(m,dt){ const S=MS[m.sort], mag=Math.min(1,Math.hypot(stX,stZ)), fast=m.sort==='kiep'&&!m.up&&onRoad(m.x,m.z)?2:1; let vt=0;
+  function steer(m,dt,sx,sz){ const S=MS[m.sort], mag=Math.min(1,Math.hypot(sx,sz)), fast=m.sort==='kiep'&&!m.up&&onRoad(m.x,m.z)?2:1; let vt=0;
     if(mag>.3&&m.sort==='graaf'&&(m.work||m.busy)&&!m.stopping) stopDig(m);
-    if(mag>.15&&!m.busy){ const want=Math.atan2(-stZ,stX); let df=wrapA(want-m.yaw), back=false; if(!S.tank&&Math.abs(df)>2.3){ back=true; df=wrapA(want+PI-m.yaw); }
+    if(mag>.15&&!m.busy){ const want=Math.atan2(-sz,sx); let df=wrapA(want-m.yaw), back=false; if(!S.tank&&Math.abs(df)>2.3){ back=true; df=wrapA(want+PI-m.yaw); }
       const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*fast*mag*Math.max(0,Math.cos(df)); }
     m.v+=clampN(vt-m.v,S.acc*fast*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
     const dx=Math.cos(m.yaw)*m.v*dt, dz=-Math.sin(m.yaw)*m.v*dt;
@@ -1294,8 +1430,10 @@ const trein=(()=>{
   function gain(kind){ stock[kind]++; restack(); stockUI(stock,kind); }
   const seen=(x,z)=>Math.abs(x-panX)<vw/2+2&&Math.abs(z-panZ)<vd/2+3;
   /* the tree goes over, away from the excavator that hit it (at fx,fz), and leaves a log of three blocks of wood. A log is {g,x,z,y,ux,uz,left}: its foot and the way it lies */
-  function fell(t,fx,fz){ const dx=t.x-fx, dz=t.z-fz, l=Math.hypot(dx,dz)||1, ux=dx/l, uz=dz/l, ax=new V3(uz,0,-ux), q0=t.g.quaternion.clone(), qa=new T.Quaternion(); t.alive=false; t.res=null; if(t.b&&world){ world.removeBody(t.b); wakeAll(); }
-    tw(.6,e=>{ if(t.alive) return; qa.setFromAxisAngle(ax,e*1.5); t.g.quaternion.copy(qa).multiply(q0); },k=>k*k,()=>{ tw(.22,e=>{ if(!t.alive) t.g.scale.setScalar(t.sc*(1-e)+.001); },ease.lin,()=>{ if(!t.alive) g.remove(t.g); }); });
+  function topple(t,ux,uz){ const ax=new V3(uz,0,-ux), q0=t.g.quaternion.clone(), qa=new T.Quaternion();
+    tw(.6,e=>{ if(t.alive) return; qa.setFromAxisAngle(ax,e*1.5); t.g.quaternion.copy(qa).multiply(q0); },k=>k*k,()=>{ tw(.22,e=>{ if(!t.alive) t.g.scale.setScalar(t.sc*(1-e)+.001); },ease.lin,()=>{ if(!t.alive) g.remove(t.g); }); }); }
+  function fell(t,fx,fz){ const dx=t.x-fx, dz=t.z-fz, l=Math.hypot(dx,dz)||1, ux=dx/l, uz=dz/l; t.alive=false; t.res=null; if(t.b&&world){ world.removeBody(t.b); wakeAll(); }
+    topple(t,ux,uz);
     if(seen(t.x,t.z)){ tone(300,.5,'sawtooth',.05,70); tone(90,.18,'sine',.3,50,.55); }
     const lg=BOUW.log(), L={g:lg,x:t.x-ux*.2,z:t.z-uz*.2,y:t.y,ux,uz,left:3}; lg.position.set(L.x,L.y,L.z); lg.rotation.y=Math.atan2(-uz,ux); lg.visible=false; g.add(lg); logs.push(L); after(.62,()=>{ if(logs.indexOf(L)>=0){ lg.visible=true; popIn(lg,.25); } }); }
   /* a block of wood off a log: it gets shorter from the far end, and with the last block it is gone */
@@ -1326,7 +1464,7 @@ const trein=(()=>{
     const o=e.body&&e.body.veh; if(o&&o.drv&&o.c&&v>5.2) o.c.crash=true; }
   /* a block that lies nowhere yet (it hangs on a hook, or is about to be put down) */
   function loose(sh,col){ const m=mesh(BLOK.geos[sh],mat(col)), b=new PH.Body({mass:.5,material:slipM}); BLOK.shapes[sh](b); b.linearDamping=.03; b.angularDamping=.3; b.allowSleep=true; b.sleepSpeedLimit=.12; b.sleepTimeLimit=.4; b.collisionFilterGroup=BK; b.collisionFilterMask=ALL; b.addEventListener('collide',onHit);
-    const r={kind:'b',m,b,sh,col,pt:0,claim:null}; b.blk=r; return r; }
+    const r={kind:'b',nid:++nidN,m,b,sh,col,pt:0,claim:null}; b.blk=r; return r; }
   function spawn(sh,x,y,z,rot,col){ let ci; do{ ci=(Math.random()*BLOK.cols.length)|0; }while(ci===lastC); if(col==null){ lastC=ci; col=BLOK.cols[ci]; }
     const r=loose(sh,col), m=r.m, b=r.b; g.add(m); m.position.set(x,y,z); b.position.set(x,y,z); if(rot) b.quaternion.setFromAxisAngle(V(0,1,0),PI/2); world.addBody(b);
     m.userData.blk=r; m.quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w); m.updateMatrixWorld(); blocks.push(r); popIn(m,.25); return r; }
@@ -1409,7 +1547,8 @@ const trein=(()=>{
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
-  return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; }, addMill, serialize, restore, reset, dig, COST,
+  return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; },
+    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, addMill, serialize, restore, reset, dig, COST,
     get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,folk,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
@@ -1429,21 +1568,21 @@ const trein=(()=>{
       const bs=held&&ptr?(overBin(ptr.cx,ptr.cy)?2:1):0; if(bs!==binSt){ binSt=bs; binUI(bs>0,bs>1); }
       if(bs===1&&ptr.mode===1){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
-      for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
+      if(NET!==2){ for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
         if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); halt(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
         for(const v of c.veh){ placeOn(v,c); if(v.spin){ v.spin*=Math.exp(-dt*7); if(v.spin<.02) v.spin=0; } }
         for(const e of c.ch) if(frameN-e[1].t>12) c.ch.delete(e[0]); }
-      meet();
+      meet(); }
       /* machines: the one you drive moves; the picture follows it */
-      bumpT-=dt; for(const m of machs){ const hd=held&&held.rec===m; if(m===driving&&!hd) steer(m,dt); else m.v=0; showM(m,dt); const o=m.g;
+      bumpT-=dt; for(const m of machs){ const hd=held&&held.rec===m; if(NET===2) netMach(m,dt); else if(m===driving&&!hd) steer(m,dt,stX,stZ); else if(m.by&&!hd) steer(m,dt,m.sx||0,m.sz||0); else m.v=0; showM(m,dt); const o=m.g;
         if(hd){ o.position.x+=(m.x-o.position.x)*.35; o.position.y+=(m.y-o.position.y)*.35; o.position.z+=(m.z-o.position.z)*.35; } else o.position.set(m.x,m.y,m.z); o.rotation.y=m.yaw; syncM(m); }
       if(driving&&!(held&&held.rec===driving)){ const kf=1-Math.exp(-dt*3.5), dx=driving.x-panX, dz=driving.z-panZ; if(dx*dx+dz*dz>.0004){ panX+=dx*kf; panZ+=dz*kf; applyCamera(); } }
       if(walking&&me&&!driving) stepMe(dt);
       for(const m of marks){ if(!m.g.visible) continue; const w=Math.sin(Tm*5)*AMP; m.ar.position.x=.32+w*.12; m.r.scale.setScalar(1+.1*w); }
       if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34/fastest; tone(R(150,175),.06,'triangle',.045,95); } }
       const k=1-Math.exp(-dt*18), kv=1-Math.exp(-dt*24); let top=0;
-      if(world){ world.step(H60,dt,4);
+      if(NET===2) top=netBlocks(dt); else if(world){ world.step(H60,dt,4);
         for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const p=r.b.position, q=r.b.quaternion;
           if(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8){ const x=clampN(p.x,MX-1.2), z=clampN(p.z,MZ-1.2); p.set(x,surface(x,z,r).y+2.5,z); r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); r.pt=0; r.b.wakeUp(); popIn(r.m,.25); }
           r.m.position.set(p.x,p.y,p.z); r.m.quaternion.set(q.x,q.y,q.z,q.w); if(p.y>top&&r.b.velocity.norm2()<1) top=p.y; }
@@ -1452,21 +1591,21 @@ const trein=(()=>{
       for(const f of boosts){ const m=f.g; m.position.x+=(f.x-m.position.x)*kv; m.position.y+=(f.y-m.position.y)*kv; m.position.z+=(f.z-m.position.z)*kv; let da=f.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(f.pitch-m.rotation.z)*kv; f.bolt.scale.setScalar(f.wp?1+.12*Math.sin(Tm*6)*AMP:1); }
       for(const s of props){ const m=s.g, b=s.busy; m.position.x+=(s.x-m.position.x)*kv; m.position.y+=(s.y-m.position.y)*kv; m.position.z+=(s.z-m.position.z)*kv; let da=s.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; s.num.rotation.y=(wide?0:PI/2)-m.rotation.y;
         if(b&&!(b.stop===s&&b.pause>0&&cons.indexOf(b)>=0&&b.veh[0].loco)) s.busy=null; showNum(s,s.busy?Math.max(1,Math.ceil(s.busy.pause)):s.sec); s.lamp.material.color.setHex(s.busy?SPOOR.lampCol.stop:s.wp&&s.sec?SPOOR.lampCol.go:SPOOR.lampCol.off); }
-      produce(dt); folkStep(dt);
-      for(const z of mills){ manStep(z,dt); const m=z.g, w=z.man, wg=w.g; m.position.x+=(z.x-m.position.x)*kv; m.position.y+=(z.y-m.position.y)*kv; m.position.z+=(z.z-m.position.z)*kv; w.bub.rotation.y=-wg.rotation.y;
+      if(NET!==2){ produce(dt); folkStep(dt); }
+      for(const z of mills){ if(NET===2) netMan(z,dt); else manStep(z,dt); const m=z.g, w=z.man, wg=w.g; m.position.x+=(z.x-m.position.x)*kv; m.position.y+=(z.y-m.position.y)*kv; m.position.z+=(z.z-m.position.z)*kv; w.bub.rotation.y=-wg.rotation.y;
         wg.position.set(w.x,(held&&held.rec===z?z.y:hAt(w.x,w.z))+Math.abs(Math.sin(w.step))*.05,w.z); let da=w.yaw-wg.rotation.y; da-=Math.round(da/TAU)*TAU; wg.rotation.y+=da*(1-Math.exp(-dt*14)); }
-      unload(); if(frameN%12===0) for(const d of dorpen) if(d.proj&&d.site) feed(d); if(stockDirty){ stockDirty=false; restack(); stockUI(stock); }
-      for(const v of vehs){ const m=v.g; if(v.offT>0&&(v.offT-=dt)<=0&&!v.drv) v.b.material=slipM;   /* after a moment off the end the wagons grip again, so nothing glides away along the rails */
+      if(NET!==2){ unload(); if(frameN%12===0) for(const d of dorpen) if(d.proj&&d.site) feed(d); } if(stockDirty){ stockDirty=false; restack(); stockUI(stock); }
+      if(NET===2) netVehs(dt); else for(const v of vehs){ const m=v.g; if(v.offT>0&&(v.offT-=dt)<=0&&!v.drv) v.b.material=slipM;   /* after a moment off the end the wagons grip again, so nothing glides away along the rails */
         if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
-      tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
+      avStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
-      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; }
+      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&kind!=='a'&&kind!=='m'){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
-      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
+      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(NET===2||(ptr.mode===1&&ptr.kind==='m'&&ptr.rec.by)) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
       if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
@@ -1550,7 +1689,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   /* the start screen is also the menu: creative or campaign (each a new world); during a game also play on and start again; sound and full screen always */
   const startEl=$('#start'), door=$('#start-door'), again=$('#start-again'), snd=$('#start-sound'), full=$('#start-full'); let started=false;
   const shut=()=>{ startEl.hidden=true; };
-  const play=m=>{ audio(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); };
+  const play=m=>{ audio(); MP.before(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); MP.after(); };
   /* saved games: a list in the browser (name, way of playing, when), each game on its own. The game you play saves itself every few seconds, when the menu opens and when the app goes to the background */
   const LST='treinbaan-lijst', SKEY='treinbaan-spel-', modesEl=startEl.querySelector('.modes'), savesEl=$('#saves'), lstEl=$('#saves-lst'), naamEl=$('#naam'), naamIn=$('#naam-in'), optsEl=startEl.querySelector('.in > .opts');
   const readList=()=>{ try{ const l=JSON.parse(localStorage.getItem(LST)||'[]'); return Array.isArray(l)?l:[]; }catch(e){ return []; } }, writeList=l=>{ try{ localStorage.setItem(LST,JSON.stringify(l)); }catch(e){} };
@@ -1566,7 +1705,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
         clearTimeout(sure); try{ localStorage.removeItem(SKEY+it.id); }catch(e){} writeList(readList().filter(x=>x.id!==it.id)); if(curSave&&curSave.id===it.id) curSave=null; sfx.boop(); showSaves(); });
       row.append(ld,del); lstEl.appendChild(row); } }
   function loadGame(it){ audio(); if(curSave&&curSave.id===it.id&&started){ shut(); sfx.tap(); return; } let D=null; try{ D=JSON.parse(localStorage.getItem(SKEY+it.id)||'null'); }catch(e){} if(!D){ writeList(readList().filter(x=>x.id!==it.id)); showSaves(); sfx.boing(); return; }
-    saveNow(); started=true; curSave={id:it.id,name:it.name,mode:D.mode}; document.body.classList.toggle('vrij',D.mode==='vrij'); trein.restore(D); shut(); tabTo('rails'); sfx.tada(); saveNow(); }
+    saveNow(); MP.before(); started=true; curSave={id:it.id,name:it.name,mode:D.mode}; document.body.classList.toggle('vrij',D.mode==='vrij'); trein.restore(D); shut(); tabTo('rails'); sfx.tada(); saveNow(); MP.after(); }
   /* a new game: first its name (with a name ready to use), then a fresh world */
   function askName(m){ audio(); sfx.tap(); newMode=m; const base=m==='vrij'?'Creatief':'Campagne', names=new Set(readList().map(x=>x.name)); let n=1; while(names.has(base+' '+n)) n++; naamIn.value=base+' '+n;
     modesEl.hidden=savesEl.hidden=optsEl.hidden=true; naamEl.hidden=false; try{ naamIn.focus(); naamIn.select(); }catch(e){} }
@@ -1582,15 +1721,97 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     const dots=COLS.map((c,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='kl'; b.style.background=c; b.setAttribute('role','radio'); b.setAttribute('aria-label','Kleur '+(i+1)); b.addEventListener('click',()=>{ sfx.tap(); prof.color=i; mark(); keep(); }); box.appendChild(b); return b; });
     const mark=()=>dots.forEach((b,i)=>{ b.classList.toggle('on',i===prof.color); b.setAttribute('aria-checked',i===prof.color?'true':'false'); });
     inp.value=prof.name; mark(); inp.addEventListener('input',()=>{ prof.name=inp.value.slice(0,14); keep(); }); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); }); keep(); window.__prof=()=>prof; }
+  /* playing together over the internet (PeerJS, the free public service). One player hosts: their game is the real one, the others join it from the lobby (up to four players). The host's game saves; a guest's copy does not */
+  const MP=(()=>{ const ROOM='treinbaan-blenderpedia-', ROOMS=8, MAXP=4, LIB='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js', COLS=['var(--red)','var(--orange)','var(--yellow)','var(--green)','var(--blue)','var(--purple)','var(--pink)'];
+    const segB=[...$('#samen').querySelectorAll('button')], noteEl=$('#snote'), lobEl=$('#lobby'), lobL=$('#lobby-lst'), lobE=$('#lobby-leeg'), chipEl=$('#spelers');
+    let want=0, role=0, peer=null, players=[], nextId=2, myId=0, hostC=null, hostName='', lob=new Map(), lobT=null, tick=null, n=0, lastHost=0, lastMe='', lastSt='', lc=new Set(), libP=null, rounds=0;
+    const now=()=>performance.now(), prof=()=>window.__prof(), opts=()=>Object.assign({debug:0},window.PEER_OPTS||{}), clean=x=>String(x||'').trim().slice(0,14)||'Speler', plist=()=>players.map(p=>[p.id,p.name,p.ci]);
+    const sendTo=(c,m)=>{ try{ if(c&&c.open) c.send(m); }catch(e){} }, toAll=(m,skip)=>{ for(const p of players) if(p.c&&p.c!==skip) sendTo(p.c,m); };
+    const noNet=()=>toast('Samen spelen lukt nu niet. Is er internet?');
+    function lib(){ if(window.Peer) return Promise.resolve(); if(libP) return libP; libP=new Promise((ok,no)=>{ const sc=document.createElement('script'); sc.src=LIB; sc.onload=ok; sc.onerror=()=>{ libP=null; sc.remove(); no(); }; document.head.appendChild(sc); }); return libP; }
+    function drop(p){ if(!p) return; setTimeout(()=>{ try{ p.destroy(); }catch(e){} },300); }
+    /* ----- the host ----- */
+    function host(){ if(role===1) return; if(role===2) quit(); note(); lib().then(()=>room(1)).catch(()=>{ noNet(); setWant(0); }); }
+    function room(k){ if(want!==1||role!==0||!started) return; if(k>ROOMS){ toast('Er zijn nu te veel open spellen. Probeer het straks nog eens.'); setWant(0); return; }
+      stopLobby(); const p=new Peer(ROOM+k,opts()); let up=false; peer=p;
+      p.on('open',()=>{ if(peer!==p||want!==1||!started){ if(peer===p) peer=null; drop(p); return; } up=true; role=1; myId=1; nextId=2; players=[{id:1,name:clean(prof().name),ci:prof().color,c:null,t:now()}];
+        trein.net.role(1); trein.net.news=(m,fx)=>toAll({t:'e',m,fx}); go(); chips(); note(); toast('Je spel is open! Anderen kunnen nu meedoen.'); });
+      p.on('connection',c=>{ c.on('data',d=>fromGuest(c,d)); c.on('close',()=>gone(c)); c.on('error',()=>gone(c)); });
+      p.on('error',e=>{ if(up||peer!==p) return; peer=null; drop(p); if(e&&e.type==='unavailable-id') room(k+1); else { noNet(); setWant(0); } });
+      p.on('disconnected',()=>{ if(role===1&&peer===p) setTimeout(()=>{ try{ if(peer===p&&!p.destroyed) p.reconnect(); }catch(e){} },2000); }); }
+    function info(){ return {t:'info',name:players[0].name,ci:players[0].ci,mode:trein.mode,pl:players.map(p=>p.name),full:players.length>=MAXP}; }
+    function fromGuest(c,d){ if(!d||typeof d!=='object'||role!==1) return; const p=players.find(q=>q.c===c); if(p) p.t=now();
+      if(d.t==='hi'){ lc.add(c); sendTo(c,info()); return; }
+      if(d.t==='join'){ if(p) return; if(players.length>=MAXP){ sendTo(c,{t:'vol'}); return; } flush(); lc.delete(c);
+        const q={id:nextId++,name:clean(d.name),ci:((d.ci|0)%7+7)%7,c,t:now()}; players.push(q); trein.net.players(plist(),1); sendTo(c,{t:'welcome',id:q.id,W:trein.net.all(),pl:plist()}); toAll({t:'pl',pl:plist()},c); lobbyInfo(); chips(); toast(q.name+' doet mee!'); sfx.pop(2); return; }
+      if(!p) return; const N=trein.net;
+      if(d.t==='me') N.me(p.id,d.a); else if(d.t==='st') N.stick(p.id,d.x,d.z); else if(d.t==='act') N.act(p.id); else if(d.t==='in') sendTo(c,{t:N.inn(p.id,d.m)?'inok':'inno',m:d.m}); else if(d.t==='out') N.outBy(p.id); else if(d.t==='bye') gone(c); }
+    /* before a new player comes in, the others get everything up to now (so all start from the same place) */
+    function flush(){ const S=trein.net.diff(); if(S) toAll({t:'s',S}); toAll({t:'f',F:trein.net.fast(false)}); }
+    function lobbyInfo(){ const m=info(); for(const c of lc) sendTo(c,m); }
+    function gone(c){ lc.delete(c); const p=players.find(q=>q.c===c); if(!p||role!==1) return; players=players.filter(q=>q!==p); try{ c.close(); }catch(e){} trein.net.players(plist(),1); toAll({t:'pl',pl:plist()}); lobbyInfo(); chips(); toast(p.name+' is weg.'); }
+    /* a new world on the host (a new game, a saved game, start again): everyone gets it */
+    function reworld(){ if(role!==1) return; trein.net.role(1); trein.net.players(plist(),1); for(const p of players) if(p.c) sendTo(p.c,{t:'welcome',id:p.id,W:trein.net.all(),pl:plist()}); lobbyInfo(); }
+    function stopHost(){ if(role!==1) return; toAll({t:'bye'}); const ps=players, p0=peer; for(const c of lc) try{ c.close(); }catch(e){} lc.clear(); role=0; players=[]; peer=null; trein.net.news=null; trein.net.role(0); clearInterval(tick); tick=null;
+      setTimeout(()=>{ for(const q of ps) try{ q.c&&q.c.close(); }catch(e){} drop(p0); },200); chips(); note(); }
+    /* ----- the lobby and the guest ----- */
+    function lobby(){ if(role!==0||peer){ render(); return; } rounds=0; render(); lib().then(()=>{ if(want!==2||role!==0||peer) return; const p=new Peer(ROOM+'g-'+Math.random().toString(36).slice(2,10),opts()); peer=p;
+        p.on('open',()=>{ if(peer!==p) return; probeAll(); clearInterval(lobT); lobT=setInterval(probeAll,5000); });
+        p.on('error',e=>{ if(peer!==p) return; if(e&&e.type==='peer-unavailable'){ const m=/(\d+)\s*$/.exec(e.message||''); if(m) unseen(+m[1]); } else if(e&&/network|server-error|socket/.test(e.type||'')&&role===0){ stopLobby(); peer=null; drop(p); rounds=Math.max(rounds,1); noNet(); render(); } });
+      }).catch(()=>{ rounds=Math.max(rounds,1); noNet(); render(); }); }
+    function probeAll(){ rounds++; for(let k=1;k<=ROOMS;k++) if(!lob.has(k)) probe(k); render(); }
+    function probe(k){ if(!peer||peer.destroyed||peer.disconnected) return; const c=peer.connect(ROOM+k,{reliable:true}), e={k,c,info:null,asked:false}; lob.set(k,e);
+      e.to=setTimeout(()=>{ if(!e.info) unseen(k); },9000);
+      c.on('open',()=>sendTo(c,{t:'hi'})); c.on('data',d=>fromHost(e,d)); c.on('error',()=>{});
+      c.on('close',()=>{ if(lob.get(k)===e){ lob.delete(k); render(); } if(role===2&&c===hostC) lost(hostName+' is gestopt.'); }); }
+    function unseen(k){ const e=lob.get(k); if(!e||(role===2&&e.c===hostC)) return; clearTimeout(e.to); lob.delete(k); try{ e.c.close(); }catch(x){} render(); }
+    function stopLobby(){ clearInterval(lobT); lobT=null; for(const e of lob.values()){ clearTimeout(e.to); if(e.c!==hostC) try{ e.c.close(); }catch(x){} } lob.clear(); }
+    function join(e){ if(!e.info||e.info.full||role!==0) return; audio(); sfx.tap(); e.asked=true; sendTo(e.c,{t:'join',name:clean(prof().name),ci:prof().color}); render(); setTimeout(()=>{ if(e.asked&&role===0){ e.asked=false; render(); } },10000); }
+    function fromHost(e,d){ if(!d||typeof d!=='object') return; const c=e.c;
+      if(d.t==='info'){ e.info=d; clearTimeout(e.to); render(); return; }
+      if(d.t==='vol'){ e.asked=false; toast('Dit spel is vol.'); render(); return; }
+      if(d.t==='welcome'){ if(role===1||(role===2&&c!==hostC)) return; const first=role!==2; if(first) saveNow(); role=2; hostC=c; myId=d.id; if(e.info) hostName=e.info.name; lastHost=now();
+        for(const [k,o] of lob) if(o!==e){ clearTimeout(o.to); try{ o.c.close(); }catch(x){} lob.delete(k); } clearInterval(lobT); lobT=null;
+        curSave=null; started=true; document.body.classList.add('gast'); document.body.classList.toggle('vrij',d.W.mode==='vrij'); trein.net.send=m=>sendTo(hostC,m); trein.net.join(d.W,d.pl,d.id); players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]}));
+        go(); chips(); if(first){ shut(); sfx.tada(); toast('Je speelt mee met '+hostName+'!'); } else toast(hostName+' begint een nieuw spel.'); return; }
+      if(role!==2||c!==hostC) return; lastHost=now(); const N=trein.net;
+      if(d.t==='f') N.F(d.F); else if(d.t==='s') N.S(d.S); else if(d.t==='e'){ toast(d.m); if(d.fx==='tada') sfx.tada(); }
+      else if(d.t==='pl'){ players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]})); N.players(d.pl,myId); chips(); render(); }
+      else if(d.t==='inok') N.inOk(d.m); else if(d.t==='inno'){ toast('Daar zit al iemand in.'); sfx.boing(); } else if(d.t==='bye') lost(hostName+' speelt nu alleen verder.'); }
+    /* stop playing along: on purpose (quit) or because the host is gone (lost) */
+    function quit(){ if(role!==2) return; sendTo(hostC,{t:'bye'}); end(); }
+    function end(){ const c=hostC, p0=peer; role=0; hostC=null; myId=0; players=[]; peer=null; trein.net.send=null; trein.net.role(0); document.body.classList.remove('gast'); clearInterval(tick); tick=null; stopLobby(); setTimeout(()=>{ try{ c&&c.close(); }catch(e){} drop(p0); },200); chips(); }
+    function lost(msg){ if(role!==2) return; end(); toast(msg); started=false; showSaves(); naamEl.hidden=true; modesEl.hidden=optsEl.hidden=false; door.hidden=again.hidden=true; startEl.hidden=false; setWant(2); }
+    /* about twelve times a second: the host tells, a guest answers (and both notice when the other is gone) */
+    function go(){ clearInterval(tick); n=0; tick=setInterval(()=>{ n++; const N=trein.net;
+        if(role===1){ if(players.length>1){ if(n%3===0){ const S=N.diff(); if(S) toAll({t:'s',S}); } toAll({t:'f',F:N.fast(false)}); } for(const p of players) if(p.c&&now()-p.t>12000) gone(p.c); }
+        else if(role===2){ const M=N.mine(), ms=M.me.join(); if(ms!==lastMe||n%10===0){ lastMe=ms; sendTo(hostC,{t:'me',a:M.me}); } const ss=M.st?M.st.join():''; if(ss!==lastSt){ lastSt=ss; if(M.st) sendTo(hostC,{t:'st',x:M.st[0]/1000,z:M.st[1]/1000}); }
+          if(now()-lastHost>10000) lost('De verbinding met '+hostName+' is weg.'); } },80); }
+    /* ----- what you see ----- */
+    function render(){ lobL.innerHTML=''; const rows=[...lob.values()].filter(e=>e.info).sort((a,b)=>a.k-b.k);
+      for(const e of rows){ const I=e.info, mine=role===2&&e.c===hostC, row=document.createElement('div'), ld=document.createElement('div'), bt=document.createElement('button'); row.className='slot'; ld.className='ld'+(mine?' now':'');
+        ld.innerHTML='<i></i><span></span>'; ld.querySelector('i').style.background=COLS[I.ci|0]||COLS[4]; const sp=ld.querySelector('span'); sp.textContent='Spel van '+I.name; const sm=document.createElement('small'); sm.textContent=(I.mode==='vrij'?'Creatief':'Campagne')+' · '+(mine?players.map(p=>p.name):I.pl||[]).join(', '); sp.appendChild(sm);
+        bt.type='button'; bt.className='mee'+(mine?' stop':''); bt.textContent=mine?'Stoppen':I.full?'Vol':e.asked?'…':'Meedoen'; bt.disabled=!mine&&(I.full||e.asked||role!==0);
+        bt.addEventListener('click',()=>{ if(mine){ audio(); sfx.boop(); quit(); started=false; door.hidden=again.hidden=true; lobby(); } else join(e); }); row.append(ld,bt); lobL.appendChild(row); }
+      lobE.hidden=rows.length>0; lobE.textContent=!peer&&role===0&&rounds?'Zoeken lukt nu niet.':rounds<2?'Zoeken naar spellen…':'Nog geen open spellen. Vraag iemand om op Host te tikken.'; }
+    function chips(){ chipEl.innerHTML=''; chipEl.hidden=role===0; if(role===0) return; for(const p of players){ const d=document.createElement('div'); d.className='sp'; d.innerHTML='<i></i><span></span>'; d.querySelector('i').style.background=COLS[p.ci]||COLS[4]; d.querySelector('span').textContent=p.name; chipEl.appendChild(d); } }
+    function note(){ noteEl.hidden=want!==1; noteEl.textContent=role===1?'Je spel is open. Anderen kunnen nu meedoen.':started&&role===0?'Je spel gaat open…':'Kies een spel. Anderen kunnen dan meedoen.'; }
+    /* the choice in the menu: alone, host or join */
+    function view(){ const L=want===2; lobEl.hidden=!L; note(); if(naamEl.hidden){ modesEl.hidden=L; if(L) savesEl.hidden=true; else showSaves(); } if(L) lobby(); else if(role===0){ stopLobby(); if(peer){ drop(peer); peer=null; } } }
+    function setWant(k){ want=k; segB.forEach((b,i)=>{ b.classList.toggle('on',i===k); b.setAttribute('aria-checked',i===k?'true':'false'); }); if(k!==1&&role===1) stopHost(); view(); }
+    segB.forEach((b,i)=>b.addEventListener('click',()=>{ audio(); sfx.tap(); setWant(i); if(i===1&&started&&role===0) host(); }));
+    window.addEventListener('pagehide',()=>{ if(role===1) toAll({t:'bye'}); else if(role===2) sendTo(hostC,{t:'bye'}); });
+    const api={ before(){ if(role===2) quit(); }, after(){ if(role===1) reworld(); else if(want===1) host(); }, menu(){ if(role===2) again.hidden=true; view(); }, get role(){ return role; }, get players(){ return players; }, setWant };
+    window.__mp=api; return api; })();
   door.addEventListener('click',()=>{ audio(); shut(); sfx.tap(); });
-  again.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.reset+'</svg>Opnieuw beginnen'; again.addEventListener('click',()=>{ audio(); shut(); trein.reset(); saveNow(); });
+  again.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.reset+'</svg>Opnieuw beginnen'; again.addEventListener('click',()=>{ audio(); shut(); trein.reset(); saveNow(); MP.after(); });
   const sndUI=()=>{ snd.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[muted?'mute':'sound']+'</svg>'+(muted?'Geluid uit':'Geluid aan'); snd.setAttribute('aria-pressed',muted?'false':'true'); }; sndUI();
   snd.addEventListener('click',()=>{ muted=!muted; try{ localStorage.setItem('treinbaan-stil',muted?'1':'0'); }catch(e){} sndUI(); audio(); sfx.tap(); });
   { /* full screen, where the browser can do that (an iPhone cannot) */
     const el=document.documentElement, go=el.requestFullscreen||el.webkitRequestFullscreen, stop=document.exitFullscreen||document.webkitExitFullscreen, isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
     const fullUI=()=>{ full.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[isFull()?'small':'full']+'</svg>'+(isFull()?'Klein scherm':'Volledig scherm'); };
     if(go&&stop){ full.hidden=false; fullUI(); full.addEventListener('click',()=>{ sfx.tap(); try{ const r=isFull()?stop.call(document):go.call(el); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }); ['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,fullUI)); } }
-  mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Menu: verder spelen, opnieuw beginnen, geluid en volledig scherm',on:()=>{ sfx.tap(); saveNow(); showSaves(); naamEl.hidden=true; modesEl.hidden=optsEl.hidden=false; door.hidden=again.hidden=!started; startEl.hidden=false; (started?door:$('#start-camp')).focus(); }});
+  mkBtn(tl,{id:'bMenu',icon:'menu',c:'var(--pink)',label:'Menu: verder spelen, opnieuw beginnen, geluid en volledig scherm',on:()=>{ sfx.tap(); saveNow(); showSaves(); naamEl.hidden=true; modesEl.hidden=optsEl.hidden=false; door.hidden=again.hidden=!started; startEl.hidden=false; MP.menu(); (started?door:$('#start-camp')).focus(); }});
   /* Rails: the pieces of track and the tunnel */
   [['recht','Recht stuk'],['bocht','Bocht'],['brug','Brug omhoog of omlaag'],['wissel','Wissel: tik erop om hem om te zetten'],['eind','Eindrails met stootblok: de trein stopt hier. Druk op de groene knop, dan rijdt hij terug']].forEach(([k,l])=>price(mkBtn(G.rails,{id:'spoor-'+k,svg:ST[k],c:'#f2c078',i:'var(--ink)',label:l,on:()=>trein.add(k)}),k));
   { const tb2=price(mkBtn(G.rails,{id:'spoor-tunnel',svg:ST.berg,c:'#f2c078',i:'var(--ink)',label:'Tunnel door de verhoging: tik een ingang en een uitgang aan',on:()=>trein.dig('rail')}),'tunnel'); tunBtn.rail=tb2; }
