@@ -539,9 +539,9 @@ const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:
   function player(col){ const g=new T.Group(); mesh(cyl(.17,.2,.1,14),postM,0,.05,0,g); mesh(cyl(.15,.19,.44,14),M(col),0,.32,0,g); mesh(sph(.15,14,10),skinM,0,.66,0,g); mesh(cyl(.16,.165,.08,14),M(col),0,.78,0,g); mesh(box(.15,.03,.26),M(col),.15,.76,0,g);
     mesh(sph(.022,6,5),postM,.14,.68,.06,g); mesh(sph(.022,6,5),postM,.14,.68,-.06,g); [-1,1].forEach(sd=>{ const a=mesh(cyl(.035,.035,.32,8),M(col),0,.38,sd*.2,g); a.rotation.x=sd*.25; }); g.scale.setScalar(1.25); return g; }
   /* a name over a doll or a machine: always on top, always facing you */
-  function nameTag(name,col){ const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const c=cv.getContext('2d'); c.font='800 64px "Baloo 2",Arial,sans-serif'; const w=Math.min(492,c.measureText(name).width+64), x0=(512-w)/2;
+  function nameTag(name,col,k){ k=k||1; const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const c=cv.getContext('2d'); c.font='800 64px "Baloo 2",Arial,sans-serif'; const w=Math.min(492,c.measureText(name).width+64), x0=(512-w)/2;
     c.fillStyle=hx(C.paper); c.strokeStyle=hx(col); c.lineWidth=12; c.beginPath(); if(c.roundRect) c.roundRect(x0,14,w,100,50); else c.rect(x0,14,w,100); c.fill(); c.stroke(); c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; c.fillText(name,256,68,w-40);
-    const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),depthTest:false,transparent:true,sizeAttenuation:false})); sp.scale.set(.17,.0425,1); sp.renderOrder=20; return sp; }
+    const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),depthTest:false,transparent:true,sizeAttenuation:false})); sp.scale.set(.17*k,.0425*k,1); sp.renderOrder=20; return sp; }
   SORTS.zaag=[1.3,.5];
   return {house,platform,zagerij,plot,sign,drawSign,person,player,nameTag,skinM,SORTS,B}; })();
 
@@ -580,7 +580,15 @@ const MACH=(()=>{ const ink=mat(C.ink), dark=mat(0x4a4466,{shininess:20}), glass
     mesh(roundBox(1.36,.08,.86,.03,.015),bedM,.68,.04,0,bed); [-1,1].forEach(s=>mesh(roundBox(1.36,.38,.07,.03,.015),bedM,.68,.23,s*.4,bed)); mesh(roundBox(.08,.46,.86,.03,.015),bedM,1.32,.27,0,bed); mesh(roundBox(.06,.3,.82,.03,.015),bedM,.04,.19,0,bed);
     const load=new T.Group(); load.position.set(.68,.08,0); bed.add(load);
     g.add(ghost(1.2)); return {g,bed,load,wheels:wh}; }
-  return {graaf,shovel,kiep}; })();
+  /* the pickup: a cab with an open bed behind it, four wheels; it only drives */
+  function pickup(){ const g=new T.Group(), body=mat(C.orange,{shininess:60}), lamp=mat(C.yellow), wh=[];
+    [.52,-.5].forEach(x=>[-1,1].forEach(s=>wh.push(wheel(x,.25,s*.38,.25,.18,g))));
+    mesh(roundBox(1.74,.3,.74,.1,.04),body,0,.45,0,g);
+    mesh(roundBox(.74,.42,.72,.12,.04),body,.16,.78,0,g); mesh(box(.04,.24,.6),glass,.52,.82,0,g); mesh(box(.56,.22,.74),glass,.16,.82,0,g); mesh(roundBox(.78,.05,.76,.03,.02),dark,.16,1.0,0,g);
+    [-1,1].forEach(s=>mesh(roundBox(.66,.18,.06,.03,.015),body,-.5,.68,s*.34,g)); mesh(roundBox(.06,.18,.74,.03,.015),body,-.84,.68,0,g); mesh(box(.62,.02,.62),dark,-.5,.61,0,g);
+    [-1,1].forEach(s=>mesh(box(.04,.08,.14),lamp,.88,.5,s*.24,g));
+    const load=new T.Group(); g.add(load); g.add(ghost(1.0)); return {g,load,wheels:wh}; }
+  return {graaf,shovel,kiep,pickup}; })();
 
 /* ---------- trein (houten treinbaan: rails slepen en vastklikken, blokken erbij bouwen, de trein kan botsen en ontsporen) ---------- */
 const trein=(()=>{
@@ -848,7 +856,7 @@ const trein=(()=>{
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
     if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
-    me.name=name; me.ci=ci; me.body=DORP.player(PCOL[ci]); me.g.add(me.body); me.tag=DORP.nameTag(name,PCOL[ci]); (driving?driving.g:me.g).add(me.tag); me.tag.position.y=driving?2.7:1.75; if(fresh) placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
+    me.name=name; me.ci=ci; me.body=DORP.player(PCOL[ci]); me.g.add(me.body); me.tag=DORP.nameTag(name,PCOL[ci],.6); (driving?driving.g:me.g).add(me.tag); me.tag.position.y=driving?2.7:1.75; if(fresh) placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
   /* is there room for the doll here (the same things a machine bumps into) */
   const meFree=(x,z)=>!hitsAt(me,x,z,.3);
   function placeMe(x,z){ me.up=inPlat(x,z,0); me.y=me.up?RISE:0; for(let r=0;r<=8;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(inPlat(sx,sz,0)===me.up&&meFree(sx,sz)){ me.x=sx; me.z=sz; me.g.position.set(sx,me.y,sz); me.g.rotation.y=me.yaw; return; } } me.x=x; me.z=z; me.g.position.set(x,me.y,z); }
@@ -865,7 +873,7 @@ const trein=(()=>{
     const kf=1-Math.exp(-dt*3.5), px=me.x-panX, pz=me.z-panZ; if(px*px+pz*pz>.0004){ panX+=px*kf; panZ+=pz*kf; applyCamera(); }
     if((nearT-=dt)<=0){ nearT=.2; nearUI(!!nearMach()); } }
   /* ----- playing together. The host's game is the real one; a guest sees a copy of it. What is there (track, vehicles, machines, blocks, villages, forest) comes in parts (sections) when it changes; how things move comes about twelve times a second. Everything that moves has a number (nid), the same in both games. NET: 0 alone, 1 host, 2 guest ----- */
-  const Q2=v=>Math.round(v*100), Q3=v=>Math.round(v*1000), PKEY={graaf:['sw','d','y','cu'],shovel:['arm','bk'],kiep:['bed']};
+  const Q2=v=>Math.round(v*100), Q3=v=>Math.round(v*1000), PKEY={graaf:['sw','d','y','cu'],shovel:['arm','bk'],kiep:['bed'],pickup:[]};
   const netOut=msg=>{ if(netSend) netSend(msg); };
   function news(msg,fx){ toast(msg); if(NET===1&&netNews) netNews(msg,fx||''); }
   /* the host: everything that is there, in sections */
@@ -956,7 +964,7 @@ const trein=(()=>{
   /* the others: a doll with a name for every other player; in a machine only the name shows, over the machine */
   function avSet(list,mine){ for(const a of [...avs.values()]) if(!list.some(q=>q[0]===a.pid)) avDrop(a);
     for(const [pid,name,ci] of list){ if(pid===mine) continue; let a=avs.get(pid); if(a&&(a.name!==name||a.ci!==ci)){ avDrop(a); a=null; }
-      if(!a){ a={pid,name,ci,g:new T.Group(),tag:DORP.nameTag(name,PCOL[ci%PCOL.length]),x:0,z:0,y:0,yaw:0,st:0,tx:0,tz:0,ty:0,tyaw:0,step:0,fresh:true}; a.g.add(DORP.player(PCOL[ci%PCOL.length])); a.g.add(a.tag); a.tag.position.y=1.75; a.g.visible=false; g.add(a.g); avs.set(pid,a); } } }
+      if(!a){ a={pid,name,ci,g:new T.Group(),tag:DORP.nameTag(name,PCOL[ci%PCOL.length],.75),x:0,z:0,y:0,yaw:0,st:0,tx:0,tz:0,ty:0,tyaw:0,step:0,fresh:true}; a.g.add(DORP.player(PCOL[ci%PCOL.length])); a.g.add(a.tag); a.tag.position.y=1.75; a.g.visible=false; g.add(a.g); avs.set(pid,a); } } }
   function avDrop(a){ if(a.tag.parent) a.tag.parent.remove(a.tag); a.tag.material.map.dispose(); g.remove(a.g); avs.delete(a.pid); if(NET===1) freeBy(a.pid); }
   function avTo(a,x,z,yaw,st,up){ a.tx=x; a.tz=z; a.tyaw=yaw; a.ty=up?RISE:0; a.st=st; if(a.fresh){ a.fresh=false; a.x=x; a.z=z; a.y=a.ty; a.yaw=yaw; if(!st) popIn(a.g,.3); } }
   function avStep(dt){ if(!avs.size) return; const k=1-Math.exp(-dt*12);
@@ -1339,13 +1347,26 @@ const trein=(()=>{
     fix(p); bore(t); rebuild(); settle(); if(NET===2) tSend({t:'gm',s:h.s0,to:p.spot}); }
 
   /* ----- machines you drive yourself. Each has a size (rad), a top speed, how fast it turns and gets going, and its box for the physics. The excavator rides on tracks and turns on the spot ----- */
-  const MS={graaf:{rad:.8,off:.45,speed:1.1,turn:1.1,acc:2.5,tank:true,box:[.78,.5,.5],col:'var(--yellow)',ink:true,word:'Graven'},shovel:{rad:.78,off:.55,speed:4.2,turn:2.6,acc:9,box:[.88,.55,.45],col:'var(--orange)',ink:true,word:'Scheppen'},kiep:{rad:.78,off:.62,speed:3.6,turn:2.2,acc:7,box:[1.02,.55,.45],col:'var(--blue)',word:'Kiepen'}}, MAXMACH=2;
+  const MS={graaf:{rad:.8,off:.45,speed:1.1,turn:1.1,acc:2.5,tank:true,box:[.78,.5,.5],col:'var(--yellow)',ink:true,word:'Graven'},shovel:{rad:.78,off:.55,speed:3.0,turn:2.6,acc:9,box:[.88,.55,.45],col:'var(--orange)',ink:true,word:'Scheppen'},kiep:{rad:.78,off:.62,speed:3.6,turn:2.2,acc:7,box:[1.02,.55,.45],col:'var(--blue)',word:'Kiepen'},pickup:{rad:.72,off:.5,speed:4.8,turn:2.8,acc:8,box:[.88,.45,.4],col:'var(--orange)',word:'Rijden',any:true}}, MAXMACH=2;
   const wrapA=a=>a-Math.round(a/TAU)*TAU;
+  const TRK=900, TRL=14, TRF=4, TRW={graaf:[.4,.26],shovel:[.42,.17],kiep:[.42,.16],pickup:[.38,.14]}, trkL=[], trkO=new T.Object3D();
+  const trk=(()=>{ const q=new T.PlaneGeometry(1,1); q.rotateX(-PI/2); const m=new T.InstancedMesh(q,new T.MeshBasicMaterial({color:0x3a3020,transparent:true,opacity:.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),TRK);
+    m.instanceMatrix.setUsage(T.DynamicDrawUsage); m.frustumCulled=false; m.renderOrder=1; trkO.scale.set(0,0,0); trkO.updateMatrix(); for(let i=0;i<TRK;i++) m.setMatrixAt(i,trkO.matrix); g.add(m); return m; })();
+  let trkI=0, trkT=0;
+  function trkPut(x,y,z,yaw,w){ const i=trkI; trkI=(trkI+1)%TRK; trkL[i]={x,y,z,yaw,w,t:trkT}; trkO.position.set(x,y,z); trkO.rotation.set(0,yaw,0); trkO.scale.set(.3,1,w); trkO.updateMatrix(); trk.setMatrixAt(i,trkO.matrix); trk.instanceMatrix.needsUpdate=true; }
+  function trkStep(dt){ trkT+=dt;
+    for(const m of machs){ if(m.tk==null||held&&held.rec===m){ m.tk=m.dist; continue; } if(Math.abs(m.dist-m.tk)<.28) continue; m.tk=m.dist; const W=TRW[m.sort]||[.4,.16], c=Math.cos(m.yaw), s=Math.sin(m.yaw), y=m.y+.012;
+      for(const sd of [-1,1]) trkPut(m.x+s*W[0]*sd,y,m.z+c*W[0]*sd,m.yaw,W[1]); }
+    if((frameN&3)!==0) return; let any=false;
+    for(let i=0;i<TRK;i++){ const q=trkL[i]; if(!q) continue; const age=trkT-q.t; if(age<TRL-TRF) continue; const k=age>=TRL?0:(TRL-age)/TRF; if(!k) trkL[i]=null;
+      trkO.position.set(q.x,q.y,q.z); trkO.rotation.set(0,q.yaw,0); trkO.scale.set(.3*(k?1:0),1,q.w*k); trkO.updateMatrix(); trk.setMatrixAt(i,trkO.matrix); any=true; }
+    if(any) trk.instanceMatrix.needsUpdate=true; }
+  function trkClear(){ trkO.scale.set(0,0,0); trkO.updateMatrix(); for(let i=0;i<TRK;i++){ trkL[i]=null; trk.setMatrixAt(i,trkO.matrix); } trk.instanceMatrix.needsUpdate=true; machs.forEach(m=>{ m.tk=null; }); }
   /* the physics sees a machine as a box that is moved by hand (kinematic): it shoves blocks and loose wagons out of the way */
   function syncM(m){ if(!m.b) return; const S=MS[m.sort]; m.b.position.set(m.x,m.y+S.box[1],m.z); m.b.quaternion.setFromAxisAngle(V(0,1,0),m.yaw); m.b.velocity.set(Math.cos(m.yaw)*m.v,0,-Math.sin(m.yaw)*m.v); }
   function machBody(m,on){ if(!world) return; if(m.b){ world.removeBody(m.b); m.b=null; wakeAll(); } if(!on) return; const S=MS[m.sort], b=new PH.Body({mass:0,type:PH.Body.KINEMATIC}); b.addShape(new PH.Box(V(S.box[0],S.box[1],S.box[2]))); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); m.b=b; syncM(m); wakeAll(); }
   /* may a machine stand here: inside the field, on its own level (not up the side of the high ground, not over its rim), clear of trees, rocks, buildings, sensors and the other machines. Three circles along its length */
-  function hitsAt(m,x,z,r){ if(Math.abs(x)>MX-r||Math.abs(z)>MZ-r) return true; if(m.up?!inPlat(x,z,PV-r):inPlat(x,z,PV+r)) return true;
+  function hitsAt(m,x,z,r){ if(Math.abs(x)>MX-r||Math.abs(z)>MZ-r) return true; if(!(m.sort&&MS[m.sort].any)&&(m.up?!inPlat(x,z,PV-r):inPlat(x,z,PV+r))) return true;
     for(const t of trees) if(t.alive&&Math.abs(t.y-m.y)<.6&&Math.hypot(t.x-x,t.z-z)<r+.3) return true;
     for(const q of rocks) if(q.left&&Math.abs(q.y-m.y)<.6&&Math.hypot(q.x-x,q.z-z)<r+q.rad*.75) return true;
     for(const L of logs) if(Math.abs(L.y-m.y)<.6&&Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<r+.45) return true;
@@ -1367,7 +1388,7 @@ const trein=(()=>{
   function leave(quiet){ if(!driving&&!walking) return; if(driving){ const m=driving; m.v=0; driving=null; if(NET===2) netOut({t:'out'}); if(me) outOf(m); } walking=false; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
   function out(){ if(driving){ const m=driving; m.v=0; driving=null; stX=stZ=0; if(NET===2) netOut({t:'out'}); if(me) outOf(m); sfx.boop(); stroll(); } else if(walking) leave(); }
   /* ----- machine work. A machine's pose is a few numbers (excavator: swing, reach, height, curl; loader: arm, bucket; truck: bed); a little film of poses plays its work, with moments where something happens ----- */
-  const REST={graaf:{sw:0,d:1.3,y:-.35,cu:0},shovel:{arm:-.42,bk:.42},kiep:{bed:0}}, CARRY={arm:-.12,bk:1.0}, KCAP=8, LC=3, cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const REST={graaf:{sw:0,d:1.3,y:-.35,cu:0},shovel:{arm:-.42,bk:.42},kiep:{bed:0},pickup:{}}, CARRY={arm:-.12,bk:1.0}, KCAP=9, LC=3, cl=(v,a,b)=>Math.max(a,Math.min(b,v));
   function play(m,keys,evs,then){ let cur=Object.assign({},m.pose); const ks=[{t:0,p:cur}]; for(const k of keys){ const p=Object.assign({},cur,k.p); if(p.sw!=null) p.sw=cur.sw+wrapA(p.sw-cur.sw); ks.push({t:k.t,p}); cur=p; }
     m.kf={ks,evs:(evs||[]).map(e=>({t:e.t,fn:e.fn,done:false})),t:0,then:then||null}; }
   function film(m,dt){ const K=m.kf; if(!K) return; K.t+=dt; for(const e of K.evs) if(!e.done&&K.t>=e.t){ e.done=true; e.fn(); if(m.kf!==K) return; }
@@ -1378,7 +1399,7 @@ const trein=(()=>{
   /* what lies in a bucket or a bed: small blocks of stone (or wood) */
   const loadGeo=roundBox(.3,.24,.3,.05,.02);
   function showLoad(m){ const L=m.M.load, list=m.sort==='kiep'?m.load:m.carry; while(L.children.length) L.remove(L.children[0]);
-    list.forEach((sh,i)=>{ let x=0, y=0, z=0; if(m.sort==='kiep'){ x=-.48+(i%4)*.32; z=(i>>2)&1?.17:-.17; y=.12; } else if(m.sort==='shovel'){ z=(i-1)*.32; y=.1; } mesh(loadGeo,BOUW.blockMat(sh),x,y,z,L); }); }
+    list.forEach((sh,i)=>{ let x=0, y=0, z=0; if(m.sort==='kiep'){ if(i<8){ x=-.48+(i%4)*.32; z=(i>>2)&1?.17:-.17; y=.12; } else y=.36; } else if(m.sort==='shovel'){ z=(i-1)*.32; y=.1; } mesh(loadGeo,BOUW.blockMat(sh),x,y,z,L); }); }
   const bedAt=(k,o)=>o.set(k.x-Math.cos(k.yaw)*.34,k.y+.95,k.z+Math.sin(k.yaw)*.34);
   const frontAt=(m,d,o)=>o.set(m.x+Math.cos(m.yaw)*d,m.y,m.z-Math.sin(m.yaw)*d);
   const dropRaw=(sh,x,y,z)=>spawn(sh,x,y,z,false,sh==='steen'?BOUW.STONE:C.brown);
@@ -1441,7 +1462,7 @@ const trein=(()=>{
   /* the work button */
   function act(){ const m=driving; if(!m){ if(walking&&me){ const n=nearMach(); if(n){ if(NET===2) netOut({t:'in',m:n.nid}); else getIn(n); } else { pop(me.g,.08); sfx.boing(); } } return; }
     if(NET===2){ netOut({t:'act'}); pop(m.g,.04); return; } actOn(m); }
-  function actOn(m){ if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
+  function actOn(m){ if(m.sort==='pickup') return; if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
     if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else tipAct(m); }
   /* one step for the machine you drive: it turns towards the way you push the stick (pull back and a loader or truck backs up), and rides as far as nothing is in the way */
   /* is there a road right under x,z (on the low ground) */
@@ -1450,6 +1471,7 @@ const trein=(()=>{
     if(mag>.3&&m.sort==='graaf'&&(m.work||m.busy)&&!m.stopping) stopDig(m);
     if(mag>.15&&!m.busy){ const want=Math.atan2(-sz,sx); let df=wrapA(want-m.yaw), back=false; if(!S.tank&&Math.abs(df)>2.3){ back=true; df=wrapA(want+PI-m.yaw); }
       const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*fast*mag*Math.max(0,Math.cos(df)); }
+    if(S.any){ m.up=inPlat(m.x,m.z,0); m.y+=((m.up?RISE:0)-m.y)*Math.min(1,dt*9); }
     m.v+=clampN(vt-m.v,S.acc*fast*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
     const dx=Math.cos(m.yaw)*m.v*dt, dz=-Math.sin(m.yaw)*m.v*dt;
     if(!blockedAt(m,m.x+dx,m.z+dz,m.yaw)){ m.x+=dx; m.z+=dz; } else if(!blockedAt(m,m.x+dx,m.z,m.yaw)) m.x+=dx; else if(!blockedAt(m,m.x,m.z+dz,m.yaw)) m.z+=dz; else { if(Math.abs(m.v)>.8&&bumpT<=0){ bumpT=.4; tone(110,.1,'triangle',.18,70); } m.v=0; return; }
@@ -1459,7 +1481,7 @@ const trein=(()=>{
     if(m.sort==='graaf'){ M.top.rotation.y=p.sw; const L1=1.15, L2=.85, c=cl(Math.hypot(p.d,p.y),.35,L1+L2-.02), a=Math.atan2(p.y,p.d), A=Math.acos(cl((L1*L1+c*c-L2*L2)/(2*L1*c),-1,1)), B=Math.acos(cl((L1*L1+L2*L2-c*c)/(2*L1*L2),-1,1)), b1=a+A, b2=-(PI-B);
       M.boom.rotation.z=b1; M.stick.rotation.z=b2; M.bucket.rotation.z=-PI/2-(b1+b2)+p.cu*1.1; }
     else if(m.sort==='shovel'){ M.arm.rotation.z=p.arm; M.bucket.rotation.z=p.bk; }
-    else M.bed.rotation.z=p.bed;
+    else if(M.bed) M.bed.rotation.z=p.bed;
     for(const wh of M.wheels) wh.rotation.z=-m.dist/.3; }
 
   /* ----- the factory and its hand ----- */
@@ -1596,7 +1618,7 @@ const trein=(()=>{
       else { setFree(v,clampN(F.x,MX-.5),clampN(F.z,MZ-.4),h.yaw); sfx.plop(); } } }
   /* the forest and the rocks: all of them back (campaign), or none at all (creative) */
   /* everything that was put down goes away */
-  function wipe(){ if(held&&held.kind==='b') world.addBody(held.rec.b); mills.slice().forEach(removeMill);
+  function wipe(){ trkClear(); if(held&&held.kind==='b') world.addBody(held.rec.b); mills.slice().forEach(removeMill);
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g)); if(driving) leave(true); machs.forEach(m=>{ machBody(m,false); g.remove(m.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); logs.forEach(L=>g.remove(L.g)); logs=[]; tunnels=[]; lastP=null; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; machs=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
@@ -1656,14 +1678,14 @@ const trein=(()=>{
       if(NET===2) netVehs(dt); else for(const v of vehs){ const m=v.g; if(v.offT>0&&(v.offT-=dt)<=0&&!v.drv) v.b.material=slipM;   /* after a moment off the end the wagons grip again, so nothing glides away along the rails */
         if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
-      avStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
+      avStep(dt); trkStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||kind==='p'||kind==='s'||kind==='f')){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
-      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&ptr.rec.by) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
+      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&(ptr.rec.by||mode==='camp')) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
       if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s'){ if(NET===2) xSend({t:'stap',a:[p.rec.x,p.rec.z]}); tapSensor(p.rec); } else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
@@ -1719,12 +1741,13 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     mach:'<rect x="2.500" y="16" width="11" height="4" rx="2"/><path d="M4.500 16v-4.500h6V16M10.500 11.500l5-5.500 5 7"/><path d="M20.500 13v3.500h-3"/>',
     graaf:'<rect x="2" y="16.500" width="12" height="4" rx="2" fill="#2a2157"/><rect x="3.500" y="10.500" width="8" height="6" rx="1" fill="#ffd22e"/><rect x="5" y="11.800" width="3.200" height="2.600" rx=".500" fill="#bfe6ff"/><path d="M11 12l5.500-6.500 4 6" fill="none" stroke="#ffd22e" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.500 11.500h3.500l-1 3h-3z" fill="#2a2157"/>',
     shovel:'<circle cx="7" cy="18" r="2.800" fill="#2a2157"/><circle cx="15" cy="18" r="2.800" fill="#2a2157"/><rect x="3" y="11" width="13" height="5" rx="1.200" fill="#ff9a1f"/><rect x="6" y="6" width="5.500" height="5.500" rx="1" fill="#ff9a1f"/><rect x="7" y="7" width="3.500" height="3" rx=".500" fill="#bfe6ff"/><path d="M15.500 12.500 19 15" stroke="#ff9a1f" stroke-width="2" stroke-linecap="round"/><path d="M18 13.500h4.500v5h-5z" fill="#4a4466"/>',
+    pickup:'<path d="M2.500 12.500h7.500V9.500a1.500 1.500 0 0 1 1.500-1.500h4.300a1.500 1.500 0 0 1 1.200.600l2.300 3.200 2.200.500a1 1 0 0 1 .800 1v3H2.500z" fill="#ff9a1f"/><path d="M12 9.300h3.800l1.900 2.700H12z" fill="#bfe6ff"/><circle cx="6.500" cy="17.500" r="2.400" fill="#2a2157"/><circle cx="17" cy="17.500" r="2.400" fill="#2a2157"/>',
     kiep:'<rect x="2" y="9" width="12" height="7" rx="1" fill="#ff4d5a"/><rect x="14.500" y="10" width="6.500" height="6" rx="1.200" fill="#2f9bff"/><rect x="17" y="11" width="3" height="2.500" rx=".500" fill="#bfe6ff"/><circle cx="6" cy="17.500" r="2.400" fill="#2a2157"/><circle cx="11" cy="17.500" r="2.400" fill="#2a2157"/><circle cx="18" cy="17.500" r="2.400" fill="#2a2157"/>',
     graven:'<path d="M12 2.500v10"/><path d="M9.500 3h5"/><path d="M7.500 12.500h9v3.500a4.500 4.500 0 0 1-9 0z" fill="currentColor"/>',
     scheppen:'<path d="M3.500 11h13v6.500H6.500z"/><circle cx="8.500" cy="8.800" r="1.700" fill="currentColor"/><circle cx="12.500" cy="8.300" r="1.700" fill="currentColor"/><path d="M16.500 11 21 7.500"/>',
     kiepen:'<path d="M3.500 19h17"/><path d="M5.500 16 15 7.500l4 4.500-9.500 4z"/><circle cx="7" cy="20" r=".5"/>',
-    uit:'<path d="M14 4h5.500v16H14"/><path d="M10 8l-4.500 4 4.500 4M5.500 12H15"/>',
-    instap:'<path d="M13 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/><path d="M3 12h11M10 8l4 4-4 4"/>',
+    uit:'<path d="M9 4.500 4 9.500l5 5"/><path d="M4.500 9.500h9.500a5.500 5.500 0 0 1 0 11H9"/>',
+    instap:'<circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="2.300" fill="currentColor"/><path d="M3.800 10.800h5.900M14.300 10.800h5.900M12 14.300v6"/>',
     eind:'<rect x="2.500" y="12" width="12.500" height="7" rx="1.500"/><path d="M19.500 7.500v13" stroke-width="3.400"/><path d="M15 15.500h4.500"/>',
     sensor:'<rect x="4.500" y="9" width="15" height="11.500" rx="2.500"/><path d="M12 9V5.500"/><circle cx="12" cy="4" r="1.700" fill="currentColor"/><path d="M12 12v3.200l2.200 1.300" stroke-width="2"/>'};
   /* the drawer at the bottom: four tabs with a word under them; the buttons of the open tab sit beside them (wide screen) or below them (narrow screen), always on one row */
@@ -1890,12 +1913,13 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Slaat steen van rotsen, hakt bomen om voor hout en schept van hopen',on:()=>trein.addMachine('graaf')});
   mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept van hopen en losse blokjes en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
   mkBtn(G.mach,{id:'mach-kiep',cls:'btn face',svg:ST.kiep,label:'Kiepwagen: tik erop om in te stappen. Brengt steen naar de fabriek',on:()=>trein.addMachine('kiep')});
+  mkBtn(G.mach,{id:'mach-pickup',cls:'btn face',svg:ST.pickup,label:'Pickup: loop erheen en stap in. Rijdt overal, ook de verhoging op',on:()=>trein.addMachine('pickup')});
   /* a locked vehicle (campaign): grey with a lock; you earn it by building up the villages */
-  lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto',wissel:'spoor-wissel',brug:'spoor-brug',tunnel:'spoor-tunnel',overweg:'spoor-overweg',wtunnel:'spoor-wtunnel',sensor:'spoor-sensor',boost:'spoor-boost'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
+  lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',pickup:'mach-pickup',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto',wissel:'spoor-wissel',brug:'spoor-brug',tunnel:'spoor-tunnel',overweg:'spoor-overweg',wtunnel:'spoor-wtunnel',sensor:'spoor-sensor',boost:'spoor-boost'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
   /* the driving pad: push the stick the way you want to go; the big button does the work, the small one gets you out */
-  { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)'],lopen:['var(--green)','instap','Instappen','var(--paper)']}; let sid=null;
+  { const rij=$('#rij'), stk=$('#stick'), knob=$('#knob'), doe=$('#rij-doe'), uit=$('#rij-uit'), MSV={pickup:['var(--orange)',null,'',''],graaf:['var(--yellow)','graven','Graven','var(--ink)'],shovel:['var(--orange)','scheppen','Scheppen','var(--ink)'],kiep:['var(--blue)','kiepen','Kiepen','var(--paper)'],lopen:['var(--green)','instap','Instappen','var(--paper)']}; let sid=null;
     uit.style.setProperty('--c','var(--purple)'); uit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST.uit+'</svg>'; uit.setAttribute('aria-label','Uitstappen'); uit.title='Uitstappen';
-    driveUI=(on,sort)=>{ rij.hidden=!on; bot.hidden=on; doe.classList.remove('off'); if(on){ uit.setAttribute('aria-label',sort==='lopen'?'Stoppen met lopen':'Uitstappen'); uit.title=uit.getAttribute('aria-label'); const v=MSV[sort]; stk.style.setProperty('--kc',v[0]); doe.style.setProperty('--c',v[0]); doe.style.setProperty('--i',v[3]); doe.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ST[v[1]]+'</svg>'; doe.setAttribute('aria-label',v[2]); doe.title=v[2]; } knob.style.transform=''; applyCamera(); };
+    driveUI=(on,sort)=>{ rij.hidden=!on; bot.hidden=on; doe.classList.remove('off'); if(on){ uit.setAttribute('aria-label',sort==='lopen'?'Stoppen met lopen':'Uitstappen'); uit.title=uit.getAttribute('aria-label'); const v=MSV[sort]; stk.style.setProperty('--kc',v[0]); doe.hidden=!v[1]; doe.style.setProperty('--c',v[0]); doe.style.setProperty('--i',v[3]); doe.innerHTML=v[1]?'<svg viewBox="0 0 24 24" aria-hidden="true">'+ST[v[1]]+'</svg>':''; doe.setAttribute('aria-label',v[2]); doe.title=v[2]; } knob.style.transform=''; applyCamera(); };
     const mv=e=>{ const r=stk.getBoundingClientRect(), R=r.width/2; let x=(e.clientX-r.left-R)/(R*.7), y=(e.clientY-r.top-R)/(R*.7); const l=Math.hypot(x,y); if(l>1){ x/=l; y/=l; } knob.style.transform='translate('+(x*R*.56)+'px,'+(y*R*.56)+'px)'; trein.stick(x,y); };
     stk.addEventListener('pointerdown',e=>{ audio(); sid=e.pointerId; try{ stk.setPointerCapture(sid); }catch(err){} mv(e); });
     stk.addEventListener('pointermove',e=>{ if(e.pointerId===sid) mv(e); });
