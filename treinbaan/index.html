@@ -178,6 +178,7 @@ body.vrij #hud,body.vrij .cost{display:none}
     <div class="opts">
       <button type="button" class="go" id="start-door" hidden>Verder spelen</button>
       <button type="button" class="pill" id="start-again" hidden></button>
+      <button type="button" class="pill" id="start-music"></button>
       <button type="button" class="pill" id="start-sound"></button>
       <button type="button" class="pill" id="start-full" hidden></button>
     </div>
@@ -235,29 +236,161 @@ function pop(o,amp=.22,dur=.32){ const s=o.userData.s0||(o.userData.s0=o.scale.c
 function popIn(o,dur=.4){ const s=o.userData.s0||(o.userData.s0=o.scale.clone()); tw(dur,e=>{ o.scale.copy(s).multiplyScalar(Math.max(.001,e)); },ease.back); }
 
 /* ---------- sound ---------- */
-let actx=null, muted=false;
-try{ muted=localStorage.getItem('treinbaan-stil')==='1'; }catch(e){}
+let actx=null, muted=false, musicOff=false, SND=null;
+try{ muted=localStorage.getItem('treinbaan-stil')==='1'; musicOff=localStorage.getItem('treinbaan-muziek')==='0'; }catch(e){}
 let unmuteEl=null;
 function audio(){ if(!actx){ try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} const A=window.AudioContext||window.webkitAudioContext; if(A){ try{ actx=new A(); }catch(e){} }
-    if(!navigator.audioSession&&/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){ try{ unmuteEl=new Audio('data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'); unmuteEl.loop=true; unmuteEl.setAttribute('playsinline',''); const p=unmuteEl.play(); if(p&&p.catch) p.catch(()=>{}); document.addEventListener('visibilitychange',()=>{ if(!unmuteEl) return; if(document.hidden) unmuteEl.pause(); else { const q=unmuteEl.play(); if(q&&q.catch) q.catch(()=>{}); } }); }catch(e){} } } if(actx&&actx.state==='suspended'){ const p=actx.resume(); if(p&&p.catch) p.catch(()=>{}); } return actx; }
+    if(!navigator.audioSession&&/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){ try{ unmuteEl=new Audio('data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'); unmuteEl.loop=true; unmuteEl.setAttribute('playsinline',''); const p=unmuteEl.play(); if(p&&p.catch) p.catch(()=>{}); document.addEventListener('visibilitychange',()=>{ if(!unmuteEl) return; if(document.hidden) unmuteEl.pause(); else { const q=unmuteEl.play(); if(q&&q.catch) q.catch(()=>{}); } }); }catch(e){} } } if(actx&&actx.state==='suspended'){ const p=actx.resume(); if(p&&p.catch) p.catch(()=>{}); } if(actx&&SND&&!SND.ready) SND.init(actx); return actx; }
 function tone(f,dur=.15,type='sine',vol=.2,f2=0,delay=0){
   if(muted) return; const a=audio(); if(!a) return;
   const t=a.currentTime+delay, o=a.createOscillator(), g=a.createGain();
   o.type=type; o.frequency.setValueAtTime(f,t); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t+dur);
   g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.015); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+.05);
+  o.connect(g); g.connect(SND&&SND.ready?SND.fx:a.destination); o.start(t); o.stop(t+dur+.05);
 }
 const NOTE=[262,294,330,349,392,440,494,523,587,659];
 const sfx={
-  pop:i=>{ const n=NOTE[(i||0)%NOTE.length]; tone(n*2,.12,'triangle',.2,n*3); },
-  note:i=>tone(NOTE[(i||0)%NOTE.length],.35,'triangle',.24),
-  plop:()=>tone(220,.16,'sine',.3,90),
-  boing:()=>tone(180,.3,'sine',.25,430),
-  boop:()=>tone(300,.14,'sine',.18,240),
-  tap:()=>tone(520,.08,'sine',.15,720),
-  tada:()=>[0,2,4,7].forEach((n,i)=>tone(NOTE[n]*2,.42,'triangle',.2,0,i*.11)),
-  crash:()=>{ for(let i=0;i<6;i++) tone(R(120,320),.25,'square',.05,60,i*.04); }
+  pop:i=>fxp('mar',[72,74,77,79,81,84,86,89][(i||0)%8],.8),
+  note:i=>fxp('mar',[65,67,69,72,74,77,79,81,84,86][(i||0)%10],1),
+  plop:()=>fxp('thud',.55),
+  boing:()=>{ fxp('wood',.7,.62); fxp('wood',.55,.5,.12); },
+  boop:()=>fxp('wood',.55,.72),
+  tap:()=>fxp('wood',.38,1.5),
+  tada:()=>{ fxp('arp',[77,81,84,89],.1,1.1); fxp('bell',1397,.5,.32); },
+  crash:()=>fxp('clatter',1)
 };
+/* ---------- music and the sounds of the world. Everything is made here, no sound files.
+   The music: a calm tune on marimba over soft piano chords in F major (76 beats a minute). It goes A A' B A' (16 bars) and keeps changing a little: the marimba's tune is made new now and then, so it stays familiar without being the same.
+   The world: wind all the time, birds where there are trees, the click-clack of a train on the rails when one rides in the picture, murmur and a hammer near a village, a whistle when a train leaves a station.
+   "Geluid" switches the effects and the world, "Muziek" the music ---------- */
+SND=(()=>{ let a=null, comp, fx, fxIn, amb, mus, musIn, ready=false, engs=new Map(), noise=null, wind=null, windF=null, mur=null, sceneS={birds:0,vil:0,build:false,tk:0,ts:0}, nextBird=0, nextHam=0, nextWind=0, nextMur=0, phase=0, lastTick=0, nextT=0, step=0, motifA=null, motifB=null, gone=false;
+  const mtof=m=>440*Math.pow(2,(m-69)/12), rnd=(x,y)=>x+Math.random()*(y-x);
+  function init(ctx){ if(ready) return; a=ctx;
+    try{ comp=a.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=12; comp.ratio.value=3; comp.attack.value=.01; comp.release.value=.25;
+      const master=a.createGain(); master.gain.value=.9; comp.connect(master); master.connect(a.destination);
+      fx=a.createGain(); fx.connect(comp); fxIn=a.createGain(); fxIn.connect(fx); amb=a.createGain(); amb.connect(comp); mus=a.createGain(); mus.connect(comp); musIn=a.createGain(); musIn.connect(mus);
+      /* a little room for the music: noise that dies away */
+      const len=a.sampleRate*2.2|0, ir=a.createBuffer(2,len,a.sampleRate); for(let c=0;c<2;c++){ const d=ir.getChannelData(c); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3); }
+      const verb=a.createConvolver(); verb.buffer=ir; const send=a.createGain(); send.gain.value=.32; musIn.connect(send); send.connect(verb); verb.connect(mus);
+      const l2=a.sampleRate*1.1|0, ir2=a.createBuffer(2,l2,a.sampleRate); for(let c=0;c<2;c++){ const d=ir2.getChannelData(c); for(let i=0;i<l2;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/l2,4); }
+      const verb2=a.createConvolver(); verb2.buffer=ir2; const send2=a.createGain(); send2.gain.value=.16; fxIn.connect(send2); send2.connect(verb2); verb2.connect(fx);
+      noise=a.createBuffer(1,a.sampleRate*2,a.sampleRate); const nd=noise.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+      /* wind: noise through a soft band that slowly moves */
+      const ws=a.createBufferSource(); ws.buffer=noise; ws.loop=true; windF=a.createBiquadFilter(); windF.type='bandpass'; windF.frequency.value=500; windF.Q.value=.7; wind=a.createGain(); wind.gain.value=0; ws.connect(windF); windF.connect(wind); wind.connect(amb); ws.start();
+      /* village murmur: noise in two voice-like bands, going up and down like talking */
+      const ms=a.createBufferSource(); ms.buffer=noise; ms.loop=true; ms.loopStart=.7; mur=a.createGain(); mur.gain.value=0;
+      [480,1150].forEach(f=>{ const b=a.createBiquadFilter(); b.type='bandpass'; b.frequency.value=f; b.Q.value=2.2; ms.connect(b); b.connect(mur); }); mur.connect(amb); ms.start();
+    }catch(e){ return; }
+    ready=true; apply(); mus.gain.setValueAtTime(0,a.currentTime); if(!musicOff) mus.gain.setTargetAtTime(.55,a.currentTime+.3,1.4); nextT=a.currentTime+.4;
+    setInterval(tick,100); document.addEventListener('visibilitychange',()=>{ gone=document.hidden; if(!ready) return; const t=a.currentTime; mus.gain.setTargetAtTime(gone||musicOff?0:.55,t,.3); amb.gain.setTargetAtTime(gone||muted?0:.9,t,.3); fx.gain.setTargetAtTime(gone||muted?0:1,t,.1); if(!gone) nextT=Math.max(nextT,t+.3); }); }
+  function apply(){ if(!ready) return; const t=a.currentTime; fx.gain.setTargetAtTime(muted||gone?0:1,t,.05); amb.gain.setTargetAtTime(muted||gone?0:.9,t,.2); mus.gain.setTargetAtTime(musicOff||gone?0:.55,t,.6); if(!musicOff) nextT=Math.max(nextT,t+.2); }
+  /* ----- the instruments ----- */
+  function env(g,t,v,att,dec){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+att); g.gain.exponentialRampToValueAtTime(.0001,t+att+dec); }
+  function osc(f,type,t,dur,v,att,dec,out){ const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); env(g,t,v,att,dec); o.connect(g); g.connect(out); o.start(t); o.stop(t+att+dec+.05); return o; }
+  /* marimba: a round tone, its bright partial (four times as high) dies at once, a tiny tick of the mallet */
+  function marimba(m,t,v,out){ const f=mtof(m); out=out||musIn; osc(f,'sine',t,0,v,.004,.9,out); osc(f*3.93,'sine',t,0,v*.22,.002,.13,out); osc(f*9.2,'sine',t,0,v*.05,.001,.03,out); }
+  /* piano: a few partials, a soft hammer, a long decay; darker as it dies away */
+  function piano(m,t,v,dec){ const f=mtof(m), lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(2600,t); lp.frequency.exponentialRampToValueAtTime(700,t+dec); lp.connect(musIn);
+    [[1,1],[2,.38],[3,.16],[4,.07]].forEach(([k,w])=>osc(f*k*(1+k*k*.0004),'sine',t,0,v*w,.006,dec*(1.15-k*.12),lp)); }
+  /* ----- the tune ----- */
+  const CH={F:[41,[57,60,64]],Am:[45,[55,60,64]],Bb:[46,[57,62,65]],C6:[48,[55,57,64]],Cs:[48,[55,60,65]],Dm:[38,[57,60,65]],Gm:[43,[53,58,62]]};
+  const FORM=[['F','Am','Bb','C6'],['F','Am','Bb','Cs'],['Dm','Bb','Gm','Cs'],['F','Am','Bb','Cs']], SCALE=[60,62,65,67,69,72,74,77,79,81,84];
+  const RHY=[[0,2,3,6,8,10,12],[0,3,4,6,8,11,14],[0,2,4,7,10,12],[1,2,4,6,8,9,12],[0,4,6,7,8,12,14]];
+  const pcs=c=>new Set([CH[c][0],...CH[c][1]].map(m=>m%12));
+  /* a motif of two bars: a rhythm and notes that step up and down the scale, landing on the chord on the beat */
+  function motif(chords,lo){ const r=RHY[Math.random()*RHY.length|0], out=[]; let i=lo+(Math.random()*3|0);
+    for(const st of r){ i=Math.max(0,Math.min(SCALE.length-1,i+[-2,-1,-1,1,1,2,0][Math.random()*7|0])); const c=chords[st<8?0:1]; if(st%4===0&&!pcs(c).has(SCALE[i]%12)){ if(i+1<SCALE.length&&pcs(c).has(SCALE[i+1]%12)) i++; else if(i>0&&pcs(c).has(SCALE[i-1]%12)) i--; } out.push([st,SCALE[i]]); } return out; }
+  function vary(m,chords){ const out=m.map(x=>x.slice()); for(let k=Math.max(0,out.length-3);k<out.length;k++){ const c=chords[out[k][0]<8?0:1], opts=SCALE.filter(n=>pcs(c).has(n%12)&&Math.abs(n-out[k][1])<=5); if(opts.length) out[k][1]=opts[Math.random()*opts.length|0]; } return out; }
+  let phr=null;
+  function playStep(st,t){ const bar=st>>3, e=st&7, sec=(bar>>2)%4, inBar=bar&3, form=FORM[sec], chord=form[inBar], C=CH[chord];
+    if(st%128===0){ if(!motifA||Math.random()<.4) motifA=motif([form[0],form[1]],3); if(!motifB||Math.random()<.6) motifB=motif(['Dm','Bb'],5); }
+    if(e===0&&inBar===0){ const M=sec===2?motifB:motifA, F2=FORM[sec]; phr=[M,sec===0?M:vary(M,[F2[2],F2[3]])]; }
+    const rest=(bar%32)>=30;   /* every 32 bars two bars of only piano: a breath */
+    if(e===0){ piano(C[0],t,.11,3.2); C[1].forEach((m,k)=>piano(m,t+.025*k+rnd(0,.01),.05,2.6)); }
+    else if(e===4&&Math.random()<.55) C[1].forEach((m,k)=>piano(m,t+.02*k,.03,1.8));
+    else if((e===3||e===6)&&Math.random()<.35) piano(C[1][Math.random()*3|0]+12,t,.025,1.4);
+    if(!rest&&phr){ const half=inBar>>1, loc=(inBar&1)*8+e, M=phr[half]; for(const [s0,m] of M) if(s0===loc) marimba(m,t+rnd(-.008,.008),rnd(.13,.19)); } }
+  /* ----- the world ----- */
+  function sweep(f1,f2,t,d,v,out){ const o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+d); env(g,t,v,.005,d); o.connect(g); g.connect(out); o.start(t); o.stop(t+d+.05); }
+  function panned(v){ const g=a.createGain(); g.gain.value=v; if(a.createStereoPanner){ const p=a.createStereoPanner(); p.pan.value=rnd(-.8,.8); g.connect(p); p.connect(amb); } else g.connect(amb); return g; }
+  function bird(t){ const out=panned(1), k=Math.random();
+    if(k<.4){ const n=2+(Math.random()*2|0), f=rnd(2800,4000); for(let i=0;i<n;i++) sweep(f,f*.78,t+i*.13,.07,.03,out); }
+    else if(k<.7){ const n=6+(Math.random()*6|0), f=rnd(3500,4400); for(let i=0;i<n;i++) sweep(f*(i%2?1.08:1),f*(i%2?1:.95),t+i*.045,.035,.022,out); }
+    else { const f=rnd(1700,2200); sweep(f,f*1.3,t,.16,.035,out); sweep(f*1.3,f*1.1,t+.17,.24,.03,out); } }
+  function click(t,v){ const s=a.createBufferSource(), b=a.createBiquadFilter(), g=a.createGain(); s.buffer=noise; b.type='bandpass'; b.frequency.value=2600; b.Q.value=1.2; env(g,t,v,.002,.03); s.connect(b); b.connect(g); g.connect(amb); s.start(t,Math.random()*1.5,.06);
+    sweep(120,70,t,.06,v*.9,amb); }
+  function hammer(t,v){ const n=2+(Math.random()*2|0); for(let i=0;i<n;i++) sweep(1000,650,t+i*.2,.05,v,amb); }
+  function whistle(v){ if(!ready||muted) return; const t=a.currentTime+.02; [[740,0,.42],[932,0,.42],[740,.5,.32],[932,.5,.32]].forEach(([f,d,l])=>{ const o=a.createOscillator(), g=a.createGain(), lfo=a.createOscillator(), lg=a.createGain(); o.frequency.value=f; lfo.frequency.value=5.5; lg.gain.value=f*.006; lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.setValueAtTime(.0001,t+d); g.gain.exponentialRampToValueAtTime(v,t+d+.06); g.gain.setValueAtTime(v,t+d+l-.08); g.gain.exponentialRampToValueAtTime(.0001,t+d+l); o.connect(g); g.connect(fxIn); o.start(t+d); lfo.start(t+d); o.stop(t+d+l+.05); lfo.stop(t+d+l+.05); }); }
+  /* ten times a second: the next notes of the tune, and what the world sounds like now */
+  function tick(){ if(!ready||gone) return; const now=a.currentTime, dt=Math.min(.3,now-(lastTick||now)); lastTick=now;
+    if(!musicOff){ if(nextT<now) nextT=now+.05; while(nextT<now+.4){ playStep(step,nextT); step++; nextT+=60/76/2; } }
+    if(muted) return; const S=sceneS;
+    if(now>=nextWind){ nextWind=now+rnd(2.5,4.5); windF.frequency.setTargetAtTime(rnd(320,820),now,1.6); wind.gain.setTargetAtTime(rnd(.018,.045),now,1.6); }
+    if(now>=nextBird){ if(nextBird) bird(now+.05); nextBird=now+rnd(2.5,7)/(.25+S.birds*1.2); }
+    if(now>=nextMur){ nextMur=now+rnd(.1,.22); mur.gain.setTargetAtTime(S.vil*rnd(.2,1)*.05,now,.06); }
+    if(S.vil>.15&&S.build&&now>=nextHam){ if(nextHam) hammer(now+.05,.045*S.vil); nextHam=now+rnd(2,5); }
+    if(S.tk>0&&S.ts>.3){ phase+=S.ts*dt/2; if(phase>=1){ phase-=Math.floor(phase); const v=.05*S.tk, gap=Math.min(.3,.55/S.ts); click(now+.05,v); click(now+.05+gap,v*.85); } } else phase=0; }
+  /* ----- the sounds of things: wood and stone, thuds, steps, a tree that goes over, bells, a horn ----- */
+  const T0=d=>a.currentTime+.005+(d||0);
+  function nz(t,dur,f,q,v,type){ const s=a.createBufferSource(), b=a.createBiquadFilter(), g=a.createGain(); s.buffer=noise; b.type=type||'bandpass'; b.frequency.value=f; b.Q.value=q; env(g,t,v,.002,dur); s.connect(b); b.connect(g); g.connect(fxIn); s.start(t,Math.random()*1.5,dur+.06); }
+  function sn(f1,f2,t,dur,v){ const o=a.createOscillator(), g=a.createGain(); o.frequency.setValueAtTime(f1,t); if(f2!==f1) o.frequency.exponentialRampToValueAtTime(f2,t+dur); env(g,t,v,.003,dur); o.connect(g); g.connect(fxIn); o.start(t); o.stop(t+dur+.05); }
+  const PLAY={
+    wood:(v=1,p=1,d)=>{ const t=T0(d); nz(t,.05,1150*p,5,.32*v); sn(520*p,470*p,t,.08,.22*v); },
+    stone:(v=1,p=1,d)=>{ const t=T0(d); nz(t,.035,2700*p,2,.38*v); nz(t,.07,800,1.4,.14*v); sn(160,110,t,.06,.22*v); },
+    knock:(mat,v=1,d)=>mat==='steen'?PLAY.stone(v,rnd(.9,1.1),d):PLAY.wood(v,rnd(.85,1.15),d),
+    thud:(v=1,d)=>{ const t=T0(d); sn(100,52,t,.18,.5*v); nz(t,.12,260,.7,.22*v,'lowpass'); },
+    click:(v=1,d)=>{ PLAY.wood(.55*v,1.7,d); PLAY.wood(.4*v,1.35,(d||0)+.04); },
+    step:(v=1,d)=>{ const t=T0(d); nz(t,.07,rnd(380,520),.8,.18*v,'lowpass'); nz(t,.03,2400,1,.025*v); },
+    chop:(v=1,d)=>{ const t=T0(d); PLAY.wood(v,.75,d); nz(t,.05,1800,1,.18*v); sn(220,150,t,.09,.25*v); },
+    crack:(v=1,d)=>{ const t=T0(d); nz(t,.05,3200,1.5,.32*v); PLAY.stone(.8*v,.8,(d||0)+.01); },
+    creak:(v=1,d)=>{ const t=T0(d), o=a.createOscillator(), b=a.createBiquadFilter(), g=a.createGain(), l=a.createOscillator(), lg=a.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(170,t); o.frequency.exponentialRampToValueAtTime(90,t+.55); l.frequency.value=13; lg.gain.value=18; l.connect(lg); lg.connect(o.frequency);
+      b.type='bandpass'; b.frequency.value=700; b.Q.value=5; env(g,t,.12*v,.05,.5); o.connect(b); b.connect(g); g.connect(fxIn); o.start(t); l.start(t); o.stop(t+.62); l.stop(t+.62); },
+    fall:(v=1)=>{ PLAY.creak(v); nz(T0(.35),.45,3200,.6,.08*v); PLAY.thud(1.1*v,.6); PLAY.wood(.7*v,.6,.62); },
+    whoosh:(v=1,d)=>{ const t=T0(d), s=a.createBufferSource(), b=a.createBiquadFilter(), g=a.createGain(); s.buffer=noise; b.type='bandpass'; b.Q.value=1.6; b.frequency.setValueAtTime(400,t); b.frequency.exponentialRampToValueAtTime(3200,t+.35); env(g,t,.25*v,.08,.3); s.connect(b); b.connect(g); g.connect(fxIn); s.start(t,Math.random(),.5); },
+    bell:(f=988,v=1,d)=>{ const t=T0(d), c=a.createOscillator(), m=a.createOscillator(), mg=a.createGain(), g=a.createGain(); c.frequency.value=f; m.frequency.value=f*3.5; mg.gain.setValueAtTime(f*2.2,t); mg.gain.exponentialRampToValueAtTime(f*.05,t+.9); m.connect(mg); mg.connect(c.frequency); env(g,t,.1*v,.003,1.1); c.connect(g); g.connect(fxIn); c.start(t); m.start(t); c.stop(t+1.2); m.stop(t+1.2); },
+    mar:(m=72,v=1,d)=>marimba(m,T0(d),.2*v,fxIn),
+    arp:(list,gap=.1,v=1)=>list.forEach((m,i)=>marimba(m,T0(i*gap),.2*v,fxIn)),
+    horn:(v=1)=>{ const t=T0(); [[0,.13],[.18,.2]].forEach(([d,l])=>[370,466].forEach(f=>{ const o=a.createOscillator(), b=a.createBiquadFilter(), g=a.createGain(); o.type='sawtooth'; o.frequency.value=f; b.type='lowpass'; b.frequency.value=1300; g.gain.setValueAtTime(.0001,t+d); g.gain.exponentialRampToValueAtTime(.05*v,t+d+.02); g.gain.setValueAtTime(.05*v,t+d+l-.03); g.gain.exponentialRampToValueAtTime(.0001,t+d+l); o.connect(b); b.connect(g); g.connect(fxIn); o.start(t+d); o.stop(t+d+l+.05); })); },
+    clatter:(v=1)=>{ for(let i=0;i<7;i++) PLAY.wood(v*rnd(.4,.9),rnd(.7,1.3),i*rnd(.03,.08)); PLAY.thud(.6*v); },
+    whistle:(v=.08)=>whistle(v) };
+  /* ----- engines. A machine with someone in it runs: when someone gets in it starts (the starter turns, it coughs once and revs up), it goes faster and louder when it drives or works, it hisses while the arm, bucket or bed moves, and when the driver gets out it slows down and stops. Each kind its own: the excavator deep and slow, the pickup quick and light ----- */
+  const EK={graaf:{f:22,v:.13},shovel:{f:27,v:.11},kiep:{f:31,v:.11},pickup:{f:42,v:.09}};
+  function mkEng(kind){ const P=EK[kind]||EK.kiep, t=a.currentTime, out=a.createGain(); out.gain.value=0; out.connect(fxIn);
+    const lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=P.f*14; lp.Q.value=.8; lp.connect(out);
+    const am=a.createGain(); am.gain.value=.55; am.connect(lp);
+    const saw=a.createOscillator(); saw.type='sawtooth'; saw.frequency.value=P.f; const sg=a.createGain(); sg.gain.value=.45; saw.connect(sg); sg.connect(am);
+    const sub=a.createOscillator(); sub.type='triangle'; sub.frequency.value=P.f/2; const ug=a.createGain(); ug.gain.value=.7; sub.connect(ug); ug.connect(am);
+    const ns=a.createBufferSource(); ns.buffer=noise; ns.loop=true; const nb=a.createBiquadFilter(); nb.type='bandpass'; nb.frequency.value=P.f*5; nb.Q.value=1.3; const ng=a.createGain(); ng.gain.value=.6; ns.connect(nb); nb.connect(ng); ng.connect(am);
+    const lfo=a.createOscillator(); lfo.frequency.value=P.f; const lg=a.createGain(); lg.gain.value=.42; lfo.connect(lg); lg.connect(am.gain);
+    const hs=a.createBufferSource(); hs.buffer=noise; hs.loop=true; hs.loopStart=.4; const hb=a.createBiquadFilter(); hb.type='bandpass'; hb.frequency.value=1250; hb.Q.value=3; const hw=a.createOscillator(); hw.frequency.value=380; const hwg=a.createGain(); hwg.gain.value=.22; const hg=a.createGain(); hg.gain.value=0; hs.connect(hb); hb.connect(hg); hw.connect(hwg); hwg.connect(hg); hg.connect(out);
+    const nodes=[saw,sub,ns,lfo,hs,hw]; nodes.forEach(n=>n.start(t));
+    return {P,out,lp,saw,sub,nb,lfo,hg,hw,nodes,st:'off',t0:t}; }
+  function setF(E,f,t,tau){ E.saw.frequency.setTargetAtTime(f,t,tau); E.sub.frequency.setTargetAtTime(f/2,t,tau); E.lfo.frequency.setTargetAtTime(f,t,tau); E.nb.frequency.setTargetAtTime(f*5,t,tau); E.lp.frequency.setTargetAtTime(Math.min(1200,f*14),t,tau); }
+  function engStart(E,k){ const t=a.currentTime, P=E.P; E.st='start'; E.t0=t;
+    /* the starter: a whirring that goes round a few times */
+    const o=a.createOscillator(), b=a.createBiquadFilter(), g=a.createGain(), l=a.createOscillator(), lg=a.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(130,t); o.frequency.linearRampToValueAtTime(175,t+.55); l.frequency.value=7.5; lg.gain.value=30; l.connect(lg); lg.connect(o.frequency);
+    b.type='bandpass'; b.frequency.value=900; b.Q.value=2; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.07*k,t+.05); g.gain.setValueAtTime(.07*k,t+.5); g.gain.exponentialRampToValueAtTime(.0001,t+.62); o.connect(b); b.connect(g); g.connect(fxIn); o.start(t); l.start(t); o.stop(t+.7); l.stop(t+.7);
+    nz(t+.55,.08,300,.8,.25*k,'lowpass');
+    setF(E,P.f*1.8,t+.58,.06); setF(E,P.f,t+.9,.35); E.out.gain.setValueAtTime(0,t); E.out.gain.setTargetAtTime(P.v*k*1.25,t+.57,.05); E.out.gain.setTargetAtTime(P.v*k*.8,t+1,.4); }
+  function engStop(E){ const t=a.currentTime; E.st='stop'; E.t0=t; setF(E,E.P.f*.55,t,.35); E.out.gain.setTargetAtTime(0,t+.15,.3); E.hg.gain.setTargetAtTime(0,t,.1);
+    nz(t+.5,.06,280,.8,.08,'lowpass'); nz(t+.75,.06,240,.8,.05,'lowpass'); }
+  function engKill(E){ try{ E.nodes.forEach(n=>n.stop()); E.out.disconnect(); }catch(e){} }
+  /* the game tells, ten times a second, which machines have someone in them and how they go (k: how loud it is for you, by distance) */
+  let onPrev=new Set();
+  function engines(list){ if(!ready) return; const t=a.currentTime, seen=new Set();
+    for(const q of list){ seen.add(q.id); let E=engs.get(q.id);
+      if(q.on&&(!E||E.st==='stop')&&q.k>.02){ if(E) engKill(E); E=mkEng(q.kind); engs.set(q.id,E); if(!onPrev.has(q.id)) engStart(E,Math.max(.4,q.k)); else E.st='run'; continue; }
+      if(!E) continue;
+      if(!q.on&&E.st!=='stop'){ engStop(E); continue; }
+      if(E.st==='stop'){ if(t-E.t0>1.6){ engKill(E); engs.delete(q.id); } continue; }
+      if(E.st==='start'&&t-E.t0<1.3) continue; E.st='run';
+      const sp=Math.min(1,q.sp), busy=q.busy?1:0; setF(E,E.P.f*(1+.85*sp+.3*busy),t,.15); E.out.gain.setTargetAtTime(E.P.v*q.k*(.75+.45*sp+.2*busy),t,.15); E.hg.gain.setTargetAtTime(busy*.06*q.k,t,.12); E.hw.frequency.setTargetAtTime(360+busy*rnd(0,60),t,.2); }
+    for(const [id,E] of engs) if(!seen.has(id)){ if(E.st!=='stop') engStop(E); else if(t-E.t0>1.6){ engKill(E); engs.delete(id); } }
+    onPrev=new Set(list.filter(q=>q.on).map(q=>q.id)); }
+  return { get ready(){ return ready; }, get fx(){ return fxIn; }, get out(){ return comp; }, init, apply, whistle, engines, world(S){ sceneS=S; }, play(n,...x){ if(ready&&!muted&&PLAY[n]) PLAY[n](...x); } }; })();
+/* a sound of the game: wakes the sound up if needed (it may only start after a tap) */
+function fxp(n,...x){ if(muted||!SND) return; audio(); SND.play(n,...x); }
 
 /* ---------- world ---------- */
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
@@ -746,7 +879,7 @@ const trein=(()=>{
   function halt(c){ const l=c.veh[0];
     for(const d of dorpen){ if(!d.station) continue; const mx=d.sx+3, dist=Math.hypot(l.tp.x-mx,l.tp.z-d.sz);
       if(c.seenD.has(d)){ if(dist>4) c.seenD.delete(d); continue; }
-      if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ tone(784,.12,'sine',.12); tone(659,.2,'sine',.12,0,.13); } serve(c,d); } } }
+      if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ fxp('bell',784,.9); fxp('bell',659,.8,.15); } serve(c,d); } } }
   function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ if(!(d.kind==='bos'&&earn(['brug','sensor'],'De trein is in '+d.name+'! Je krijgt de brug en de sensor.'))) news('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
     const tick=()=>{ if(c.stop!==d||cons.indexOf(c)<0||c.pause<=0) return; if(swap(c,d)){ c.pause=Math.max(c.pause,1); after(.35,tick); } }; after(.6,tick); }
   /* travellers: people of the start village who want to go to the other village and back. They wait on the platform; a train with a passenger coach that stops there takes them along (four to a coach) and lets them off at the station they want. There they stay a while, then wait to go home again; at home they rest before the next trip. st: 'wait' (at a station), 'ride' (in coach v), 'away' (in a village, until t runs out) */
@@ -767,14 +900,14 @@ const trein=(()=>{
   /* one traveller off or on; true when someone moved */
   function board(c,d){ for(const v of c.veh){ if(v.sort!=='pass') continue; const f=riders(v).find(q=>q.dest===d); if(!f) continue;
       f.st='away'; f.at=d; f.v=null; seatHeads(v); const home=d===f.home; f.dest=home?other(d):f.home; f.t=home?30+Math.random()*20:20+Math.random()*10; pop(v.g,.06);
-      burst(cv.set(v.tp.x,v.tp.y+.5,v.tp.z),10,2.6); tone(523,.1,'triangle',.14); tone(784,.16,'triangle',.12,0,.1);
+      burst(cv.set(v.tp.x,v.tp.y+.5,v.tp.z),10,2.6); fxp('mar',72,.8); fxp('mar',79,.7,.1);
       if(!d.guests&&!home){ d.guests=true; news('De eerste reizigers zijn in '+d.name+'!','tada'); sfx.tada(); } return true; }
     const wait=folk.filter(q=>q.st==='wait'&&q.at===d&&q.dest); if(!wait.length) return false;
-    for(const v of c.veh){ if(v.sort!=='pass'||riders(v).length>=SEATS) continue; const f=wait[0]; f.st='ride'; f.v=v; seatHeads(v); lineUp(); pop(v.g,.06); tone(440,.08,'square',.05); return true; }
+    for(const v of c.veh){ if(v.sort!=='pass'||riders(v).length>=SEATS) continue; const f=wait[0]; f.st='ride'; f.v=v; seatHeads(v); lineUp(); pop(v.g,.06); fxp('wood',.4,1.8); return true; }
     return false; }
   /* one block in or out; true when something moved */
   function swap(c,d){ if(board(c,d)) return true; if(d.proj&&d.need) for(const v of c.veh){ if(v.sort!=='goed') continue; const i=v.load.findIndex(l=>d.need[l.sh]>0); if(i<0) continue;
-      const l=v.load.splice(i,1)[0]; v.inner.remove(l.m); l.m.material.dispose(); relay(v); pop(v.g,.08); d.need[l.sh]--; burst(cv.set(v.tp.x,v.tp.y+.4,v.tp.z),4,1.8,l.sh==='steen'?0xaab2c2:C.brown); tone(660,.08,'triangle',.14); tone(880,.12,'triangle',.12,0,.07);
+      const l=v.load.splice(i,1)[0]; v.inner.remove(l.m); l.m.material.dispose(); relay(v); pop(v.g,.08); d.need[l.sh]--; burst(cv.set(v.tp.x,v.tp.y+.4,v.tp.z),4,1.8,l.sh==='steen'?0xaab2c2:C.brown); fxp('mar',76,.8); fxp('mar',81,.7,.07);
       DORP.drawSign(d.site.sign,d.proj==='station'?'Station':'Nieuw huis',d.need); pop(d.site.sign.g,.12); if(!d.need.hout&&!d.need.steen) finish(d); return true; }
     if(d.kind==='bos'&&d.stock>0) for(const v of c.veh){ if(v.sort!=='goed'||v.load.length>=CAP) continue; addLoad(v,'hout',C.brown); d.stock--; showStock(d); pop(v.g,.08); sfx.plop(); return true; }
     return false; }
@@ -807,7 +940,7 @@ const trein=(()=>{
   function feed(d){ const R=d.site.r; let took=false;
     for(const r of blocks.slice()){ if(!raw(r.sh)||!(d.need[r.sh]>0)||(held&&held.rec===r)||r.claim) continue; const p=r.b.position; if(!inMill(R,p.x,p.z,.15)||p.y>1.6||r.b.velocity.norm2()>1) continue;
       d.need[r.sh]--; took=true; burst(cv.set(p.x,p.y+.3,p.z),5,2,r.sh==='steen'?0xaab2c2:C.brown); removeBlock(r,true); wakeAll(); }
-    if(took){ DORP.drawSign(d.site.sign,d.proj==='station'?'Station':'Nieuw huis',d.need); pop(d.site.sign.g,.12); tone(660,.08,'triangle',.14); tone(880,.12,'triangle',.12,0,.07); if(!d.need.hout&&!d.need.steen) finish(d); } }
+    if(took){ DORP.drawSign(d.site.sign,d.proj==='station'?'Station':'Nieuw huis',d.need); pop(d.site.sign.g,.12); fxp('mar',76,.8); fxp('mar',81,.7,.07); if(!d.need.hout&&!d.need.steen) finish(d); } }
   function finish(d){ const S=d.site, R=S.r; dropSite(d);
     /* loose blocks and machines that stand where the building comes go aside */
     for(const r of blocks){ const p=r.b.position; if(inMill(R,p.x,p.z,.3)){ p.z=R.z-R.hd-.6; p.y=Math.max(p.y,.6); r.b.velocity.set(0,0,0); r.b.wakeUp(); } }
@@ -838,7 +971,7 @@ const trein=(()=>{
   function heapBody(h){ if(h.b&&world){ world.removeBody(h.b); h.b=null; } if(h.n>0) h.b=staticBox(h.x,h.y+(h.n>9?.36:.18),h.z,.72,h.n>9?.36:.18,.72); }
   /* take up to k blocks off a heap; how many came */
   function takeHeap(h,k){ let got=0; while(got<k&&h.n>0){ h.n--; got++; const o=h.ms[h.n]; tw(.2,e=>{ o.scale.setScalar(Math.max(.001,1-e)); },ease.lin,()=>{ o.visible=false; o.scale.setScalar(1); }); }
-    if(got&&seen(h.x,h.z)){ tone(R(150,190),.1,'square',.05,80); burst(cv.set(h.x,h.y+.6,h.z),4,1.8,h.sh==='steen'?0xaab2c2:C.brown); }
+    if(got&&seen(h.x,h.z)){ fxp('knock',h.sh,.6); burst(cv.set(h.x,h.y+.6,h.z),4,1.8,h.sh==='steen'?0xaab2c2:C.brown); }
     if((h.n===9||h.n===0)&&got) heapBody(h); if(!h.n){ const hg=h.g; after(.25,()=>g.remove(hg)); heaps=heaps.filter(x=>x!==h); wakeAll(); } return got; }
   const heapAt=(x,z,pad)=>heaps.some(h=>Math.abs(h.x-x)<.72+pad&&Math.abs(h.z-z)<.72+pad);
   function clearHeaps(){ for(const h of heaps){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); } heaps=[]; heapN=0; }
@@ -853,7 +986,12 @@ const trein=(()=>{
   function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
-  let me=null, walking=false, hintM=false, nearT=0;
+  let me=null, walking=false, hintM=false, nearT=0, ambT=0, engT2=0;
+  /* what the world sounds like here: trees in the picture (birds), the nearest village (murmur, a hammer while it builds), the nearest train that rides (click-clack, faster when it goes faster) */
+  function ambScene(dt){ let n=0; const rx=vw*.6+3, rz=vd*.6+3; for(const t of trees) if(t.alive&&Math.abs(t.x-panX)<rx&&Math.abs(t.z-panZ)<rz) n++;
+    let vil=0, build=false; for(const d of dorpen){ const k=Math.max(0,1-Math.hypot(d.x-panX,d.z-panZ)/24); if(k>vil){ vil=k; build=!!d.site; } }
+    let tk=0, ts=0; for(const v of vehs){ if(!v.loco) continue; const p=v.g.position, l=v.lp||(v.lp=p.clone()), sp=Math.hypot(p.x-l.x,p.z-l.z)/dt; l.copy(p); if(sp<.3||sp>14) continue; const k=Math.max(0,1-Math.hypot(p.x-panX,p.z-panZ)/(vw*.5+6)); if(k>tk){ tk=k; ts=sp; } }
+    return {birds:Math.min(1,n/30),vil,build,tk,ts}; }
   let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], edgeO=null, pendAdd=null, holdT={p:0,t:0,x:0}, late={}, known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
@@ -864,13 +1002,13 @@ const trein=(()=>{
   function placeMe(x,z){ me.up=inPlat(x,z,0); me.y=me.up?RISE:0; for(let r=0;r<=8;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(inPlat(sx,sz,0)===me.up&&meFree(sx,sz)){ me.x=sx; me.z=sz; me.g.position.set(sx,me.y,sz); me.g.rotation.y=me.yaw; return; } } me.x=x; me.z=z; me.g.position.set(x,me.y,z); }
   /* the machine you can get into from where you stand */
   function nearMach(){ let best=null, bd=1e9; for(const m of machs){ if(m===driving||m.by||m.up!==me.up||(held&&held.rec===m)) continue; const d=Math.hypot(m.x-me.x,m.z-me.z)-MS[m.sort].rad; if(d<1.5&&d<bd){ bd=d; best=m; } } return best; }
-  function stroll(){ if(driving||!me) return; walking=true; stX=stZ=0; driveUI(true,'lopen'); nearUI(!!nearMach()); pop(me.g,.1); tone(520,.08,'triangle',.12); tone(660,.1,'triangle',.1,0,.08); }
+  function stroll(){ if(driving||!me) return; walking=true; stX=stZ=0; driveUI(true,'lopen'); nearUI(!!nearMach()); pop(me.g,.1); fxp('step'); fxp('step',1,.24); }
   /* out of a machine: the doll stands beside it */
   function outOf(m){ const r=MS[m.sort].rad+.7; me.up=m.up; me.y=m.y; let done=false; for(const a of [PI/2,-PI/2,PI,0,PI*.75,-PI*.75,PI/4,-PI/4]){ const x=m.x+Math.cos(m.yaw+a)*r, z=m.z-Math.sin(m.yaw+a)*r; if(meFree(x,z)){ me.x=x; me.z=z; done=true; break; } } if(!done) placeMe(m.x,m.z+r);
     me.g.position.set(me.x,me.y,me.z); me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; popIn(me.g,.25); }
   function stepMe(dt){ const mag=Math.min(1,Math.hypot(stX,stZ)); let moved=false;
     if(mag>.15){ const sp=3.4*mag*dt, dx=stX/mag*sp, dz=stZ/mag*sp; me.yaw=Math.atan2(-dz,dx); if(meFree(me.x+dx,me.z+dz)){ me.x+=dx; me.z+=dz; moved=true; } else if(meFree(me.x+dx,me.z)){ me.x+=dx; moved=true; } else if(meFree(me.x,me.z+dz)){ me.z+=dz; moved=true; } }
-    if(moved){ me.step+=dt*12; me.x=clampN(me.x,MX-.4); me.z=clampN(me.z,MZ-.4); } else me.step=0;
+    if(moved){ const s0=Math.floor(me.step/PI); me.step+=dt*12; if(Math.floor(me.step/PI)!==s0) fxp('step',.9); me.x=clampN(me.x,MX-.4); me.z=clampN(me.z,MZ-.4); } else me.step=0;
     me.g.position.set(me.x,me.y+Math.abs(Math.sin(me.step))*.06,me.z); let da=me.yaw-me.g.rotation.y; da-=Math.round(da/TAU)*TAU; me.g.rotation.y+=da*(1-Math.exp(-dt*14));
     const kf=1-Math.exp(-dt*3.5), px=me.x-panX, pz=me.z-panZ; if(px*px+pz*pz>.0004){ panX+=px*kf; panZ+=pz*kf; applyCamera(); }
     if((nearT-=dt)<=0){ nearT=.2; nearUI(!!nearMach()); } }
@@ -1190,29 +1328,29 @@ const trein=(()=>{
     if(room<=.002){
       if(blocker){ let rel=-1; if(motor(blocker)){ const ol=blocker.dir>0?blocker.veh[0]:blocker.veh[blocker.veh.length-1]; rel=hd.x*Math.cos(ol.yaw)*blocker.dir-hd.z*Math.sin(ol.yaw)*blocker.dir; }
         if(rel<=.2||(blocker.block===c&&c.id>blocker.id)) turn(c); else c.block=blocker; }
-      else if(hit==='end'&&P1.p.type==='eind'&&P1.u>.5){ if(c.buf!==P1.p){ c.buf=P1.p; c.fresh=true; const j=P1.p.g.userData.juk; if(j) pop(j,.08,.25); tone(150,.14,'triangle',.2,90); } }   /* against the buffer: it waits there */
+      else if(hit==='end'&&P1.p.type==='eind'&&P1.u>.5){ if(c.buf!==P1.p){ c.buf=P1.p; c.fresh=true; const j=P1.p.g.userData.juk; if(j) pop(j,.08,.25); fxp('thud',.8); fxp('wood',.6,.7); } }   /* against the buffer: it waits there */
       else if(hit==='end'){ ptAt(P1,cv); if(c.net==='rail'&&!hidPt(cv.x,cv.y-TH,cv.z)) c.off=true; else { cp(P1,tail.pos); if(walk(P1,-c.dir*(K.half+.05),c)<=1e-6) turn(c); } }
       return false; }
     for(const v of c.veh) walk(v.pos,c.dir*room,c); c.buf=null; return true; }
   /* a sensor block beside the rails: the engine stops next to it for the time the block shows */
   function sense(c){ const l=c.veh[0]; for(const s of props){ if(!s.wp) continue; const d=Math.hypot(l.tp.x-s.wp.x,l.tp.z-s.wp.z);
-      if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; c.fresh=true; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
+      if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; c.fresh=true; s.busy=c; fxp('bell',880,.7); fxp('bell',1175,.6,.14); } } }   /* set to 0 the train just rides on */
   /* a speed boost on the rails: the engine that rides over it goes twice as fast for three seconds, the last half second slowing back to its own speed (both ways, also riding backwards) */
   function zoom(c){ const l=c.veh[0]; for(const f of boosts){ if(!f.wp) continue; const d=Math.hypot(l.tp.x-f.wp.x,l.tp.z-f.wp.z);
-      if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ tone(260,.32,'sawtooth',.05,1300); tone(520,.26,'triangle',.12,1560,.04); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
+      if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ fxp('whoosh',.8); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
   /* the button beside the buffer: it goes down and up again, and a train standing against the buffer rides back the way it came */
   function press(p){ const k=p.g.userData.knob; if(k) tw(.24,e=>{ k.position.y=.27-.07*Math.sin(e*PI); },e=>e); klik();
-    let any=false; for(const c of cons) if(c.buf===p){ c.buf=null; turn(c); any=true; } if(any) toot(); else tone(880,.12,'sine',.1); }
+    let any=false; for(const c of cons) if(c.buf===p){ c.buf=null; turn(c); any=true; } if(any) toot(); else fxp('wood',.4,1.5); }
   /* how many blocks the train is leaning on: the ones it touches and everything piled against those. One or two it shoves along; running into a heap throws it off the rails */
   function heapOf(c){ const ct=world.contacts, seen=new Set(); let grew=true; for(const q of ct){ const a=q.bi, b=q.bj; if(a.veh&&a.veh.c===c&&b.blk) seen.add(b); else if(b.veh&&b.veh.c===c&&a.blk) seen.add(a); }
     if(!seen.size) return 0; while(grew&&seen.size<HEAP){ grew=false; for(const q of ct){ const a=q.bi, b=q.bj; if(!a.blk||!b.blk) continue; if(seen.has(a)&&!seen.has(b)){ seen.add(b); grew=true; } else if(seen.has(b)&&!seen.has(a)){ seen.add(a); grew=true; } } } return seen.size; }
   /* off the rails: every vehicle of the train tumbles away and stays where it lands until someone puts it back */
-  function derail(c){ cons=cons.filter(x=>x!==c); sfx.crash(); tone(140,.3,'sawtooth',.08,60);
+  function derail(c){ cons=cons.filter(x=>x!==c); sfx.crash(); fxp('thud',1);
     c.veh.forEach((v,k)=>{ v.c=null; v.drv=false; if(!v.inW){ stage(v); return; } const b=v.b, fx=Math.cos(v.yaw), fz=-Math.sin(v.yaw), side=Math.random()<.5?-1:1, sd=R(1.2,2.6)*side, go=c.dir*v.K.speed*.7, w=R(7,11)*side;
       b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; b.velocity.set(fx*go-fz*sd,R(4,5.5),fz*go+fx*sd); b.angularVelocity.set(fx*w,R(-3,3),fz*w); b.wakeUp(); if(!k) burst(v.g.position,12,3.4,C.yellow); }); }
 
   /* off the end of the track: the train slides on at its own speed (the rails are slippery), tips over the end nose first and the wagons pile up behind; everything stays where it lands */
-  function runOff(c){ cons=cons.filter(x=>x!==c); sfx.crash(); tone(140,.3,'sawtooth',.08,60); const sp=KN.rail.speed*c.fast*c.dir;
+  function runOff(c){ cons=cons.filter(x=>x!==c); sfx.crash(); fxp('thud',1); const sp=KN.rail.speed*c.fast*c.dir;
     c.veh.forEach((v,k)=>{ v.c=null; v.drv=false; if(!v.inW){ stage(v); return; } const b=v.b, ch=Math.cos(v.pitch), fx=Math.cos(v.yaw)*ch, fy=Math.sin(v.pitch), fz=-Math.sin(v.yaw)*ch, sd=R(-.25,.25), w=R(1,1.6)*c.dir;
       b.material=offM; v.offT=1.2; b.fixedRotation=false; b.updateMassProperties(); b.collisionFilterGroup=FR; b.collisionFilterMask=ALL; b.velocity.set(fx*sp-fz*sd,fy*sp+.25,fz*sp+fx*sd); b.angularVelocity.set(fz*w,R(-1.4,1.4),-fx*w); b.wakeUp();
       if(!k) burst(v.g.position,12,3.4,C.yellow); }); }
@@ -1223,11 +1361,11 @@ const trein=(()=>{
   function meet(){ for(const c of cons.slice()){ if(c.net!=='road') continue; const v=c.veh[0]; let done=false;
       for(const o of cons){ if(o.net!=='rail'||done) continue; for(const w of o.veh){ if(Math.abs(w.tp.y-v.tp.y)>.6||apart(v,w)) continue; const dx=v.tp.x-w.tp.x, dz=v.tp.z-w.tp.z, cy=Math.cos(w.yaw), sy=Math.sin(w.yaw); if(Math.abs(dx*cy-dz*sy)<.8&&Math.abs(dx*sy+dz*cy)<.66){ knock(c,v,o,w); done=true; break; } } } } }
   /* the booms of a level crossing: tap to close them, tap again to open */
-  function gate(p){ p.shut=!p.shut; const a0=p.gates[0].rotation.z, a1r=p.shut?0:1.36; tw(.4,e=>{ const a=a0+(a1r-a0)*e; p.gates[0].rotation.z=a; p.gates[1].rotation.z=a; },ease.inOut); if(p.shut){ for(let i=0;i<4;i++) tone(i&1?784:988,.16,'sine',.14,0,i*.17); } else tone(660,.14,'sine',.12,880); }
+  function gate(p){ p.shut=!p.shut; const a0=p.gates[0].rotation.z, a1r=p.shut?0:1.36; tw(.4,e=>{ const a=a0+(a1r-a0)*e; p.gates[0].rotation.z=a; p.gates[1].rotation.z=a; },ease.inOut); if(p.shut){ for(let i=0;i<4;i++) fxp('bell',i&1?1175:1397,.8,i*.3); } else fxp('wood',.45,1.2); }
 
-  const klik=()=>{ tone(1100,.03,'square',.05); tone(240,.09,'triangle',.22,170); };
-  const honk=()=>{ tone(440,.1,'square',.07); tone(554,.1,'square',.06); tone(440,.16,'square',.07,0,.15); tone(554,.16,'square',.06,0,.15); };
-  const toot=()=>{ tone(784,.14,'sine',.16); tone(988,.14,'sine',.11); tone(784,.3,'sine',.16,0,.2); tone(988,.3,'sine',.11,0,.2); };
+  const klik=()=>fxp('click');
+  const honk=()=>fxp('horn');
+  const toot=()=>fxp('whistle',.08);
 
   /* the dots a piece of this net may start on */
   function eachDot(net,fn){ const a=net==='road'?BX-1:BX, b=net==='road'?BZ-1:BZ; for(let x=-a;x<=a;x+=2) for(let z=-b;z<=b;z+=2) fn(x,z); }
@@ -1276,7 +1414,7 @@ const trein=(()=>{
   function showNum(s,n){ if(s.shown!==n){ s.shown=n; s.plate.material=SPOOR.numMat(n); } }
   function addSensor(){ if(NET===2){ if(locked.has('sensor')){ sfx.boing(); return; } netOut({t:'sens',e:lowEdge()}); sfx.pop(6); return; } if(locked.has('sensor')||props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
     m.g.userData.rec=s; m.g.position.set(s.x,s.y,s.z); g.add(m.g); props.push(s); propBody(s,true); bind(); popIn(m.g,.3); sfx.pop(6); }
-  function tapSensor(s){ s.sec=SECS[(SECS.indexOf(s.sec)+1)%SECS.length]; if(s.busy) s.busy.pause=Math.min(s.busy.pause,s.sec); pop(s.g,.2); tone(520+s.sec*30,.1,'triangle',.2); }
+  function tapSensor(s){ s.sec=SECS[(SECS.indexOf(s.sec)+1)%SECS.length]; if(s.busy) s.busy.pause=Math.min(s.busy.pause,s.sec); pop(s.g,.2); fxp('mar',[72,74,77,79,81,84][Math.max(0,SECS.indexOf(s.sec))%6],.9); }
 
   /* ----- the goods wagon's load ----- */
   function addLoad(v,sh,col){ const i=v.load.length, ms=msOf(sh), m=mesh(BLOK.geos[sh],mat(col),SLX[i],.33+(i>2?.21:0)+BLOK.bottom[sh]*ms,0,v.inner); m.scale.setScalar(ms); v.load.push({sh,col,m}); }
@@ -1290,7 +1428,7 @@ const trein=(()=>{
     if(!best||!world){ sfx.boing(); return true; }
     const wd=v.load.map(l=>raw(l.sh)?.56:1.04), tot=wd.reduce((a,b)=>a+b,0); let run=-tot/2;
     v.load.forEach((l,i)=>{ v.inner.remove(l.m); l.m.material.dispose(); const o=run+wd[i]/2, x=clampN(best.x+fx*o,MX-.6), z=clampN(best.z+fz*o,MZ-.6); run+=wd[i]; spawn(l.sh,x,Math.max(surface(x,z,null,l.sh,0).y,at.y-.5)+BLOK.bottom[l.sh]+.35,z,false,l.col); });
-    v.load=[]; pop(v.g,.2); sfx.plop(); tone(196,.2,'triangle',.2,120,.06); return true; }
+    v.load=[]; pop(v.g,.2); fxp('clatter',.8); return true; }
 
   /* ----- tunnels through the high ground: point at a way in and a way out, the train goes through unseen ----- */
   /* the places for a gate: every dot just outside a side of a table that does not lie against the edge of the world, corners left out. pl is the table, ix,iz is where it meets the way inside, dx,dz points into the hill, mx,mz is where its marker stands */
@@ -1382,10 +1520,10 @@ const trein=(()=>{
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
   function addMachine(sort){ if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
   function newMach(sort,x,z,yaw,pad,quiet,exact){ const M=MACH[sort](), m={kind:'m',nid:++nidN,by:0,sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
-    if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
+    if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); fxp('thud',.8); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
   /* get in (tap a machine), get out (the button) */
-  function getIn(m){ if(driving===m){ pop(m.g,.06); tone(330,.12,'square',.06); tone(392,.16,'square',.05,0,.12); return; } if(driving) leave(true); driving=m; walking=false; stX=stZ=0; if(me){ me.g.visible=false; m.g.add(me.tag); me.tag.position.y=2.7; } driveUI(true,m.sort); busyUI(m.work||m.busy); tone(70,.4,'sawtooth',.06,140); pop(m.g,.06); }
+  function getIn(m){ if(driving===m){ pop(m.g,.06); fxp('horn',.6); return; } if(driving) leave(true); driving=m; walking=false; stX=stZ=0; if(me){ me.g.visible=false; m.g.add(me.tag); me.tag.position.y=2.7; } driveUI(true,m.sort); busyUI(m.work||m.busy); pop(m.g,.06); }
   /* leave: back to building (out of the machine and off your feet); out: one step back (machine → walking → building) */
   function leave(quiet){ if(!driving&&!walking) return; if(driving){ const m=driving; m.v=0; driving=null; if(NET===2) netOut({t:'out'}); if(me) outOf(m); } walking=false; stX=stZ=0; driveUI(false); if(!quiet) sfx.boop(); }
   function out(){ if(driving){ const m=driving; m.v=0; driving=null; stX=stZ=0; if(NET===2) netOut({t:'out'}); if(me) outOf(m); sfx.boop(); stroll(); } else if(walking) leave(); }
@@ -1418,8 +1556,8 @@ const trein=(()=>{
   function digOnce(m){ const J=reachJob(m); if(!J){ m.work=false; workUI(m); if(!m.dug) nope(m); return; }
     const ac=Math.atan2(-(J.z-m.z),J.x-m.x), D=J.D, base=m.y+.97, yc=J.y-base+.3;
     if(J.kind==='tree'){ const t=J.t, sw=wrapA(ac-m.yaw), dh=cl(D-.36,.7,1.95), yh=J.y-base;   /* three blows against the trunk, then it goes over */
-      const blow=()=>{ if(!t.alive) return; if(seen(t.x,t.z)){ tone(R(170,210),.07,'triangle',.16,80); burst(cv.set(t.x,t.y+.5,t.z),3,1.8,C.brown); } tw(.22,(e,k)=>{ if(t.alive) t.g.rotation.z=Math.sin(k*PI*3)*.07*(1-k); },ease.lin); };
-      m.busy=true; m.dug=true; workUI(m); tone(70,.3,'sawtooth',.05,110);
+      const blow=()=>{ if(!t.alive) return; if(seen(t.x,t.z)){ fxp('chop'); burst(cv.set(t.x,t.y+.5,t.z),3,1.8,C.brown); } tw(.22,(e,k)=>{ if(t.alive) t.g.rotation.z=Math.sin(k*PI*3)*.07*(1-k); },ease.lin); };
+      m.busy=true; m.dug=true; workUI(m);
       play(m,[{t:.6,p:{sw,d:dh-.4,y:yh,cu:.3}},{t:.8,p:{d:dh}},{t:1.05,p:{d:dh-.4}},{t:1.25,p:{d:dh}},{t:1.5,p:{d:dh-.4}},{t:1.7,p:{d:dh}},{t:2.3,p:REST.graaf}],
         [{t:.8,fn:blow},{t:1.25,fn:blow},{t:1.7,fn:()=>{ if(t.alive) fell(t,m.x,m.z); }}],
         ()=>{ m.busy=false; if(m.work) digOnce(m); else workUI(m); });
@@ -1428,7 +1566,7 @@ const trein=(()=>{
     for(const w of wagonsNear(m.x,m.z,m.y,1.05,2.35,2.3)) if(!tgt||w.d<tgt.D){ tgt={w:w.v,c:w.c,x:w.v.tp.x,z:w.v.tp.z,y:w.v.tp.y+.25,D:w.d}; break; }   /* (a train at a sensor has to stay until the block is in) */
     if(!tgt){ const d=dropAt(m,ac); if(!d){ m.work=false; workUI(m); nope(m); return; } tgt={k:null,x:d.x,z:d.z,y:d.y+.3,D:1.8}; }
     const sc=wrapA(ac-m.yaw), st=wrapA(Math.atan2(-(tgt.z-m.z),tgt.x-m.x)-m.yaw), dc=cl(D-.36,.7,1.95), dt=cl(tgt.D-.36,.7,1.95), yt=tgt.y-base+.55, sh=J.kind==='log'?'hout':'steen';
-    m.busy=true; m.dug=true; workUI(m); tone(70,.3,'sawtooth',.05,110);
+    m.busy=true; m.dug=true; workUI(m);
     play(m,[{t:.55,p:{sw:sc,d:dc,y:yc+.55,cu:-.4}},{t:.8,p:{y:yc,cu:-.4}},{t:1.05,p:{cu:1}},{t:1.3,p:{y:yc+1}},{t:1.85,p:{sw:st,d:dt,y:yt+.5}},{t:2.08,p:{cu:-.9}},{t:2.5,p:REST.graaf}],
       [{t:.98,fn:()=>{ const one=()=>J.kind==='rock'?chip(J.r):J.kind==='heap'?takeHeap(J.h,1)>0:cutLog(J.L); for(let k=0;k<2;k++) if(one()) m.carry.push(J.kind==='heap'?J.h.sh:sh); showLoad(m); }},
        {t:2,fn:()=>{ if(!m.carry.length) return; const k=tgt.k, w=tgt.w;
@@ -1444,23 +1582,23 @@ const trein=(()=>{
     if(!m.carry.length){ const take=[]; let hp=null, hd=1.25; for(const h of heaps){ if(Math.abs(h.y-m.y)>.6) continue; const d=Math.hypot(h.x-fx,h.z-fz); if(d<hd){ hd=d; hp=h; } } if(hp) for(let k=0;k<Math.min(LC,hp.n);k++) take.push({heap:hp});
       for(const r of blocks){ if(take.length>=LC) break; if(!raw(r.sh)||r.claim||(held&&held.rec===r)) continue; const p=r.b.position; if(Math.hypot(p.x-fx,p.z-fz)<1.0&&p.y<m.y+1.2) take.push({r}); }
       if(!take.length){ nope(m); return; }
-      m.busy=true; workUI(m); tone(90,.2,'sawtooth',.05,140);
+      m.busy=true; workUI(m);
       play(m,[{t:.3,p:{arm:-.62,bk:.62}},{t:.6,p:{arm:-.55,bk:1.15}},{t:.95,p:CARRY}],[{t:.5,fn:()=>{ for(const x of take){ if(x.heap){ if(takeHeap(x.heap,1)) m.carry.push(x.heap.sh); } else if(blocks.indexOf(x.r)>=0){ m.carry.push(x.r.sh); removeBlock(x.r,true); wakeAll(); } } showLoad(m); if(m.carry.length) sfx.plop(); }}],
         ()=>{ m.busy=false; workUI(m); if(!m.carry.length) play(m,[{t:.3,p:REST.shovel}]); });
       return; }
     let k=null, bd=1.7; for(const q of machs){ if(q.sort!=='kiep'||q===m||q.up!==m.up||q.load.length>=KCAP) continue; bedAt(q,a2); const d=Math.hypot(a2.x-fx,a2.z-fz); if(d<bd){ bd=d; k=q; } }
     const wg=wagonsNear(fx,fz,m.y,-1,1.7,1)[0], W=wg&&wg.d<bd?wg:null; if(W) k=null;
-    m.busy=true; workUI(m); tone(140,.25,'sawtooth',.04,90);
+    m.busy=true; workUI(m);
     play(m,[{t:.45,p:{arm:k||W?.8:-.2,bk:.9}},{t:.75,p:{bk:-.5}},{t:1.25,p:REST.shovel}],[{t:.65,fn:()=>{ if(k&&machs.indexOf(k)>=0){ while(m.carry.length&&k.load.length<KCAP) k.load.push(m.carry.shift()); showLoad(k); pop(k.g,.04); }
         else if(W&&W.v.c===W.c&&cons.indexOf(W.c)>=0){ while(m.carry.length&&W.v.load.length<CAP){ const sh=m.carry.shift(); addLoad(W.v,sh,rawCol(sh)); } pop(W.v.g,.06); }
         frontAt(m,1.35,a1); const px=Math.sin(m.yaw), pz=Math.cos(m.yaw); m.carry.forEach((sh,j)=>dropRaw(sh,a1.x+px*(j-1)*.45,hAt(a1.x,a1.z)+.6+j*.1,a1.z+pz*(j-1)*.45)); m.carry=[]; showLoad(m); sfx.plop(); }}],
       ()=>{ m.busy=false; workUI(m); }); }
   /* the dump truck: the bed tips up and everything slides out behind it as loose blocks; beside the rails and road factory the factory hand comes for them and stacks them in the store (there they count) */
   function tipAct(m){ if(!m.load.length){ nope(m); play(m,[{t:.4,p:{bed:.25}},{t:.8,p:{bed:0}}]); return; }
-    m.busy=true; workUI(m); tone(70,.9,'sawtooth',.05,120);
+    m.busy=true; workUI(m);
     play(m,[{t:.8,p:{bed:.95}},{t:1.7,p:{bed:.95}},{t:2.3,p:{bed:0}}],[{t:.85,fn:()=>{ const c=Math.cos(m.yaw), sn=Math.sin(m.yaw);
         m.load.forEach((sh,j)=>{ const o=(j%4-1.5)*.42, back=1.55+(j>>2)*.45, x=clampN(m.x-c*back+sn*o,MX-.6), z=clampN(m.z+sn*back+c*o,MZ-.6); dropRaw(sh,x,hAt(x,z)+.5+(j>>2)*.3,z); });
-        m.load=[]; showLoad(m); sfx.plop(); tone(196,.25,'triangle',.2,110,.08); }}],()=>{ m.busy=false; workUI(m); }); }
+        m.load=[]; showLoad(m); fxp('clatter',.9); }}],()=>{ m.busy=false; workUI(m); }); }
   /* the work button */
   function act(){ const m=driving; if(!m){ if(walking&&me){ const n=nearMach(); if(n){ if(NET===2) netOut({t:'in',m:n.nid}); else getIn(n); } else { pop(me.g,.08); sfx.boing(); } } return; }
     if(NET===2){ netOut({t:'act'}); pop(m.g,.04); return; } actOn(m); }
@@ -1475,8 +1613,8 @@ const trein=(()=>{
       const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*fast*mag*Math.max(0,Math.cos(df)); }
     m.v+=clampN(vt-m.v,S.acc*fast*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
     const dx=Math.cos(m.yaw)*m.v*dt, dz=-Math.sin(m.yaw)*m.v*dt;
-    if(!blockedAt(m,m.x+dx,m.z+dz,m.yaw)){ m.x+=dx; m.z+=dz; } else if(!blockedAt(m,m.x+dx,m.z,m.yaw)) m.x+=dx; else if(!blockedAt(m,m.x,m.z+dz,m.yaw)) m.z+=dz; else { if(Math.abs(m.v)>.8&&bumpT<=0){ bumpT=.4; tone(110,.1,'triangle',.18,70); } m.v=0; return; }
-    m.dist+=m.v*dt; engT-=dt; if(engT<=0){ engT=m.sort==='graaf'?.22:.14; tone(m.sort==='graaf'?62:88,.07,'sawtooth',.025,55); } }
+    if(!blockedAt(m,m.x+dx,m.z+dz,m.yaw)){ m.x+=dx; m.z+=dz; } else if(!blockedAt(m,m.x+dx,m.z,m.yaw)) m.x+=dx; else if(!blockedAt(m,m.x,m.z+dz,m.yaw)) m.z+=dz; else { if(Math.abs(m.v)>.8&&bumpT<=0){ bumpT=.4; fxp('thud',.9); } m.v=0; return; }
+    m.dist+=m.v*dt; }
   /* what you see of a machine: wheels that turn, and its arm, bucket or bed in the pose of the moment (the excavator's arm finds its own angles to put the bucket where the pose says) */
   function showM(m,dt){ film(m,dt); const M=m.M, p=m.pose;
     if(m.sort==='graaf'){ M.top.rotation.y=p.sw; const L1=1.15, L2=.85, c=cl(Math.hypot(p.d,p.y),.35,L1+L2-.02), a=Math.atan2(p.y,p.d), A=Math.acos(cl((L1*L1+c*c-L2*L2)/(2*L1*c),-1,1)), B=Math.acos(cl((L1*L1+L2*L2-c*c)/(2*L1*L2),-1,1)), b1=a+A, b2=-(PI-B);
@@ -1515,14 +1653,14 @@ const trein=(()=>{
     tw(.6,e=>{ if(t.alive) return; qa.setFromAxisAngle(ax,e*1.5); t.g.quaternion.copy(qa).multiply(q0); },k=>k*k,()=>{ tw(.22,e=>{ if(!t.alive) t.g.scale.setScalar(t.sc*(1-e)+.001); },ease.lin,()=>{ if(!t.alive) g.remove(t.g); }); }); }
   function fell(t,fx,fz){ const dx=t.x-fx, dz=t.z-fz, l=Math.hypot(dx,dz)||1, ux=dx/l, uz=dz/l; t.alive=false; t.res=null; if(t.b&&world){ world.removeBody(t.b); wakeAll(); }
     topple(t,ux,uz);
-    if(seen(t.x,t.z)){ tone(300,.5,'sawtooth',.05,70); tone(90,.18,'sine',.3,50,.55); }
+    if(seen(t.x,t.z)) fxp('fall');
     const lg=BOUW.log(), L={g:lg,x:t.x-ux*.2,z:t.z-uz*.2,y:t.y,ux,uz,left:3}; lg.position.set(L.x,L.y,L.z); lg.rotation.y=Math.atan2(-uz,ux); lg.visible=false; g.add(lg); logs.push(L); after(.62,()=>{ if(logs.indexOf(L)>=0){ lg.visible=true; popIn(lg,.25); } }); }
   /* a block of wood off a log: it gets shorter from the far end, and with the last block it is gone */
-  function cutLog(L){ if(logs.indexOf(L)<0||L.left<=0) return false; L.left--; if(seen(L.x,L.z)){ tone(R(200,240),.06,'triangle',.14,90); burst(cv.set(L.x+L.ux*.3,L.y+.3,L.z+L.uz*.3),4,1.8,C.brown); }
+  function cutLog(L){ if(logs.indexOf(L)<0||L.left<=0) return false; L.left--; if(seen(L.x,L.z)){ fxp('chop',.8); burst(cv.set(L.x+L.ux*.3,L.y+.3,L.z+L.uz*.3),4,1.8,C.brown); }
     if(L.left>0) L.g.scale.x=L.left/3; else { g.remove(L.g); logs=logs.filter(x=>x!==L); } return true; }
   const stride=(w,tx,tz,dt)=>{ const dx=tx-w.x, dz=tz-w.z, d=Math.hypot(dx,dz), st=3*dt; if(d<=st){ w.x=tx; w.z=tz; return true; } w.x+=dx/d*st; w.z+=dz/d*st; w.yaw=Math.atan2(-dz,dx); w.step+=dt*12; return false; };
   /* a rock gives up a block: it shrinks, and with the last block it is gone */
-  function chip(r){ if(!r.left) return false; r.left--; if(seen(r.x,r.z)){ tone(R(420,520),.05,'square',.06); tone(160,.1,'triangle',.2,90,.03); burst(cv.set(r.x,r.y+.6,r.z),5,2,0xaab2c2); }
+  function chip(r){ if(!r.left) return false; r.left--; if(seen(r.x,r.z)){ fxp('crack'); burst(cv.set(r.x,r.y+.6,r.z),5,2,0xaab2c2); }
     if(r.left>0){ rockSize(r); pop(r.g,.08,.2); } else { r.res=null; const s0=r.g.scale.x; tw(.25,e=>{ if(!r.left) r.g.scale.setScalar(s0*(1-e)+.001); },ease.lin,()=>{ if(!r.left) g.remove(r.g); }); if(r.b&&world){ world.removeBody(r.b); wakeAll(); } } return true; }
   function manStep(m,dt){ const w=m.man; if(held&&held.rec===m){ homeOf(m,w); w.bub.visible=false; return; } fabStep(m,dt); }
   /* the factory hand: he fetches loose blocks of wood and stone that lie near the factory, one at a time, and stacks them in the store. Only then do they count */
@@ -1530,8 +1668,8 @@ const trein=(()=>{
     if(w.st==='home'){ homeOf(m,a2); if(stride(w,a2.x,a2.z,dt)) w.yaw=-PI/2; if(w.t>=.25){ let best=null, bd=RFAB;
         for(const r of blocks){ if(!raw(r.sh)||r.claim||r.pt>0||(held&&held.rec===r)||stock[r.sh]>=FCAP||r.b.velocity.norm2()>.5) continue; const q=r.b.position, d=Math.hypot(q.x-m.x,q.z-m.z); if(d<bd){ bd=d; best=r; } } if(best){ w.job=best; w.st='go'; } } }
     else if(w.st==='go'){ const r=w.job; if(!r||blocks.indexOf(r)<0||r.claim||(held&&held.rec===r)){ w.job=null; w.t=0; w.st='home'; } else { const q=r.b.position, dx=w.x-q.x, dz=w.z-q.z, l=Math.hypot(dx,dz)||1;
-        if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.kind=r.sh; w.carry=true; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) tone(700,.05,'triangle',.1); w.st='carry'; } } }
-    else if(w.st==='carry'){ if(stride(w,m.x+.02,m.z+(w.kind==='hout'?-.82:.72),dt)){ w.yaw=0; w.carry=false; if(mills.indexOf(m)>=0) gain(w.kind); if(seen(m.x,m.z)){ sfx.plop(); tone(659,.1,'triangle',.14,0,.05); } w.t=.1; w.st='home'; } }
+        if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.kind=r.sh; w.carry=true; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) fxp('knock',r.sh,.5); w.st='carry'; } } }
+    else if(w.st==='carry'){ if(stride(w,m.x+.02,m.z+(w.kind==='hout'?-.82:.72),dt)){ w.yaw=0; w.carry=false; if(mills.indexOf(m)>=0) gain(w.kind); if(seen(m.x,m.z)){ fxp('knock',w.kind,.7); fxp('mar',76,.5,.06); } w.t=.1; w.st='home'; } }
     w.pack.visible=w.carry; }
   /* a train that comes to a stand beside the factory (at a sensor or against a buffer; wagons without an engine any time) tips its goods wagons by itself, on the factory's side, as long as the store has room. Beside a building plot that still wants wood or stone it tips onto the plot */
   function unload(){ const f=mills.find(m=>m.sort==='fab'&&!(held&&held.rec===m));
@@ -1541,7 +1679,7 @@ const trein=(()=>{
         for(const d of dorpen){ if(!d.site||!d.need||d.station) continue; const R=d.site.r; if(inMill(R,v.tp.x,v.tp.z,1.6)&&v.load.some(l=>d.need[l.sh]>0)){ tip(v,{x:R.x,z:R.z}); break; } } } } }
 
   /* ----- loose blocks of wood and stone: drag to move one, slide a finger over it to shove it ----- */
-  function onHit(e){ if(cur!=='trein'||!e.contact) return; const v=Math.abs(e.contact.getImpactVelocityAlongNormal()); if(v>1.8&&Tm-lastTok>.07){ lastTok=Tm; tone(R(130,190),.07,'triangle',Math.min(.2,v*.025),85); }
+  function onHit(e){ if(cur!=='trein'||!e.contact) return; const v=Math.abs(e.contact.getImpactVelocityAlongNormal()); if(v>1.8&&Tm-lastTok>.07){ lastTok=Tm; const rb=e.target&&e.target.blk; if(rb&&seen(rb.b.position.x,rb.b.position.z)) fxp('knock',rb.sh,Math.min(1,v*.12)); }
     const o=e.body&&e.body.veh; if(o&&o.drv&&o.c&&v>5.2) o.c.crash=true; }
   /* a block that lies nowhere yet (it hangs on a hook, or is about to be put down) */
   function loose(sh,col){ const m=mesh(BLOK.geos[sh],mat(col)), b=new PH.Body({mass:.5,material:slipM}); BLOK.shapes[sh](b); b.linearDamping=.03; b.angularDamping=.3; b.allowSleep=true; b.sleepSpeedLimit=.12; b.sleepTimeLimit=.4; b.collisionFilterGroup=BK; b.collisionFilterMask=ALL; b.addEventListener('collide',onHit);
@@ -1570,7 +1708,7 @@ const trein=(()=>{
     camera.getWorldDirection(fw); fw.y=0; fw.normalize(); rt.crossVectors(fw,YAX).normalize();
     let wx=(rt.x*vx-fw.x*vy)*upp, wz=(rt.z*vx-fw.z*vy)*upp, sp=Math.hypot(wx,wz); if(sp<.6) return; if(sp>7){ wx*=7/sp; wz*=7/sp; }
     if(NET===2) netOut({t:'push',n:r.nid,w:[R3(wx),R3(wz)],p:[R3(h.point.x),R3(h.point.y),R3(h.point.z)]}); else { wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(h.point.x,h.point.y,h.point.z)); }
-    if(now-pushSnd>110){ pushSnd=now; tone(R(150,210),.08,'triangle',.16,90); burst(h.point,3,1.6,r.col); } }
+    if(now-pushSnd>110){ pushSnd=now; fxp('knock',r.sh,.5); burst(h.point,3,1.6,r.col); } }
 
   function grab(r){ if(r.kind==='p'){ const gate=isGate(r); if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,k0:pk(r),s0:r.spot,cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r,r.tun.net).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
     else if(r.kind==='v'){ dismount(r); te.setFromQuaternion(r.g.quaternion,'YZX'); r.yaw=te.y; r.pitch=0; r.tp.copy(r.g.position); r.g.rotation.set(0,te.y,0); held={kind:'v',rec:r,cand:null,yaw:te.y}; }
@@ -1651,7 +1789,7 @@ const trein=(()=>{
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
       if(NET!==2){ for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
-        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); halt(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop) tone(988,.12,'sine',.12); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
+        if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); halt(c); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.stop){ if(c.stop.sx!=null){ if(seen(c.veh[0].tp.x,c.veh[0].tp.z)) SND.whistle(.05); } else fxp('bell',1175,.5); } c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
         for(const v of c.veh){ placeOn(v,c); if(v.spin){ v.spin*=Math.exp(-dt*7); if(v.spin<.02) v.spin=0; } }
         for(const e of c.ch) if(frameN-e[1].t>12) c.ch.delete(e[0]); }
       meet(); }
@@ -1661,7 +1799,6 @@ const trein=(()=>{
       if(driving&&!(held&&held.rec===driving)){ const kf=1-Math.exp(-dt*3.5), dx=driving.x-panX, dz=driving.z-panZ; if(dx*dx+dz*dz>.0004){ panX+=dx*kf; panZ+=dz*kf; applyCamera(); } }
       if(walking&&me&&!driving) stepMe(dt);
       for(const m of marks){ if(!m.g.visible) continue; const w=Math.sin(Tm*5)*AMP; m.ar.position.x=.32+w*.12; m.r.scale.setScalar(1+.1*w); }
-      if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34/fastest; tone(R(150,175),.06,'triangle',.045,95); } }
       const k=1-Math.exp(-dt*18), kv=1-Math.exp(-dt*24); let top=0;
       if(NET===2){ top=netBlocks(dt); netLate(); } else if(world){ world.step(H60,dt,4);
         for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const p=r.b.position, q=r.b.quaternion;
@@ -1679,7 +1816,8 @@ const trein=(()=>{
       if(NET===2) netVehs(dt); else for(const v of vehs){ const m=v.g; if(v.offT>0&&(v.offT-=dt)<=0&&!v.drv) v.b.material=slipM;   /* after a moment off the end the wagons grip again, so nothing glides away along the rails */
         if(v.inW){ const p=v.b.position, q=v.b.quaternion; if(!v.drv&&(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8)){ stage(v); popIn(m,.25); } m.position.set(p.x,p.y,p.z); m.quaternion.set(q.x,q.y,q.z,q.w); continue; }
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
-      avStep(dt); trkStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
+      avStep(dt); trkStep(dt); if((ambT-=dt)<=0){ ambT=.25; if(SND) SND.world(ambScene(.25)); }
+      if((engT2-=dt)<=0){ engT2=.1; if(SND&&SND.ready&&!muted){ const L=[]; for(const m of machs){ const p=m.g.position, lp=m.lpE||(m.lpE=p.clone()), sp=Math.hypot(p.x-lp.x,p.z-lp.z)/.1; lp.copy(p); const own=m===driving, k=own?1:Math.max(0,1-Math.hypot(m.x-panX,m.z-panZ)/(vw*.5+8)); L.push({id:m.nid,kind:m.sort,on:own||!!m.by,sp:sp/(MS[m.sort].speed||3),busy:!!(m.busy||m.work),k}); } SND.engines(L); } } tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||kind==='p'||kind==='s'||kind==='f')){ rec=null; kind='mat'; }
@@ -1689,7 +1827,7 @@ const trein=(()=>{
       if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&(ptr.rec.by||mode==='camp')) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s'){ if(NET===2) xSend({t:'stap',a:[p.rec.x,p.rec.z]}); tapSensor(p.rec); } else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s'){ if(NET===2) xSend({t:'stap',a:[p.rec.x,p.rec.z]}); tapSensor(p.rec); } else if(p.kind==='f'){ pop(p.rec.g,.2); fxp('whoosh',.4); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
@@ -1712,6 +1850,8 @@ function applyCamera(){
 const ICON={
   sound:'<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
   mute:'<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="m16 9.5 5 5m0-5-5 5"/>',
+  music:'<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.500" cy="17.500" r="2.500"/><circle cx="16.500" cy="15.500" r="2.500"/>',
+  musicOff:'<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.500" cy="17.500" r="2.500"/><circle cx="16.500" cy="15.500" r="2.500"/><path d="m3.500 3.500 17 17"/>',
   reset:'<path d="M19 12a7 7 0 1 1-2.2-5.1"/><path d="M19.5 4v4h-4"/>',
   bin:'<path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13M10 11v5.500M14 11v5.500"/>',
   menu:'<rect x="4" y="4" width="6.500" height="6.500" rx="1.500"/><rect x="13.500" y="4" width="6.500" height="6.500" rx="1.500"/><rect x="4" y="13.500" width="6.500" height="6.500" rx="1.500"/><rect x="13.500" y="13.500" width="6.500" height="6.500" rx="1.500"/>',
@@ -1887,8 +2027,10 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
     window.__mp=api; return api; })();
   door.addEventListener('click',()=>{ audio(); shut(); sfx.tap(); });
   again.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.reset+'</svg>Opnieuw beginnen'; again.addEventListener('click',()=>{ audio(); shut(); trein.reset(); saveNow(); MP.after(); });
-  const sndUI=()=>{ snd.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[muted?'mute':'sound']+'</svg>'+(muted?'Geluid uit':'Geluid aan'); snd.setAttribute('aria-pressed',muted?'false':'true'); }; sndUI();
-  snd.addEventListener('click',()=>{ muted=!muted; try{ localStorage.setItem('treinbaan-stil',muted?'1':'0'); }catch(e){} sndUI(); audio(); sfx.tap(); });
+  const sndUI=()=>{ snd.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[muted?'mute':'sound']+'</svg>'+(muted?'Geluiden uit':'Geluiden aan'); snd.setAttribute('aria-pressed',muted?'false':'true'); }; sndUI();
+  snd.addEventListener('click',()=>{ muted=!muted; try{ localStorage.setItem('treinbaan-stil',muted?'1':'0'); }catch(e){} sndUI(); audio(); if(SND) SND.apply(); sfx.tap(); });
+  { const mb=$('#start-music'), mUI=()=>{ mb.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[musicOff?'musicOff':'music']+'</svg>'+(musicOff?'Muziek uit':'Muziek aan'); mb.setAttribute('aria-pressed',musicOff?'false':'true'); }; mUI();
+    mb.addEventListener('click',()=>{ musicOff=!musicOff; try{ localStorage.setItem('treinbaan-muziek',musicOff?'0':'1'); }catch(e){} mUI(); audio(); if(SND) SND.apply(); sfx.tap(); }); }
   { /* full screen, where the browser can do that (an iPhone cannot) */
     const el=document.documentElement, go=el.requestFullscreen||el.webkitRequestFullscreen, stop=document.exitFullscreen||document.webkitExitFullscreen, isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
     const fullUI=()=>{ full.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[isFull()?'small':'full']+'</svg>'+(isFull()?'Klein scherm':'Volledig scherm'); };
