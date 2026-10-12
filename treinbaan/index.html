@@ -488,8 +488,11 @@ const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:
       if(need[k]>0){ c.fillStyle=hx(C.ink); c.textAlign='left'; c.font='800 66px "Baloo 2",Arial,sans-serif'; c.fillText(String(need[k]),x+6,y+2); }
       else { c.strokeStyle=hx(C.green); c.lineWidth=16; c.lineCap='round'; c.beginPath(); c.moveTo(x+10,y); c.lineTo(x+32,y+22); c.lineTo(x+72,y-24); c.stroke(); } });
     S.tex.needsUpdate=true; }
+  /* a traveller: a little peg doll in a coloured coat with a hat */
+  const skinM=mat(0xf6cfa0,{shininess:16}), headG=sph(.085,12,9);
+  function person(i){ const g=new T.Group(), c=walls[i%walls.length], h=roofs[(i*3+1)%roofs.length]; mesh(cyl(.09,.11,.05,12),postM,0,.025,0,g); mesh(cyl(.08,.1,.26,12),M(c===C.paper?C.blue:c),0,.18,0,g); mesh(headG,skinM,0,.39,0,g); mesh(cyl(.09,.095,.05,12),M(h),0,.47,0,g); return g; }
   SORTS.zaag=[1.3,.5];
-  return {house,platform,zagerij,plot,sign,drawSign,SORTS,B}; })();
+  return {house,platform,zagerij,plot,sign,drawSign,person,skinM,SORTS,B}; })();
 
 const MACH=(()=>{ const ink=mat(C.ink), dark=mat(0x4a4466,{shininess:20}), glass=mat(0xbfe6ff), steel=mat(0xb4bccb,{shininess:70,specular:0x555555}), hub=mat(C.paper);
   /* a wheel that turns: a tyre, a hub and a spoke you can see go round */
@@ -565,7 +568,7 @@ const trein=(()=>{
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], heaps=[], dorpen=[], vrects=[], locked=new Set(), mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], heaps=[], folk=[], folkN=0, dorpen=[], vrects=[], locked=new Set(), mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]];
@@ -685,8 +688,31 @@ const trein=(()=>{
       if(dist<.3&&c.pause<=0&&Math.abs(l.tp.y-TH-l.K.vh)<.6){ c.seenD.add(d); c.pause=3.5; c.stop=d; if(seen(mx,d.sz)){ tone(784,.12,'sine',.12); tone(659,.2,'sine',.12,0,.13); } serve(c,d); } } }
   function serve(c,d){ if(!d.visited){ d.visited=true; if(d.kind!=='woon'||d.proj!=='station'){ toast('De trein is in '+d.name+'!'); burst(cv.set(d.sx+3,1.4,d.sz-1),20,3.5); } }
     const tick=()=>{ if(c.stop!==d||cons.indexOf(c)<0||c.pause<=0) return; if(swap(c,d)){ c.pause=Math.max(c.pause,1); after(.35,tick); } }; after(.6,tick); }
+  /* travellers: people of the start village who want to go to the other village and back. They wait on the platform; a train with a passenger coach that stops there takes them along (four to a coach) and lets them off at the station they want. There they stay a while, then wait to go home again; at home they rest before the next trip. st: 'wait' (at a station), 'ride' (in coach v), 'away' (in a village, until t runs out) */
+  const SEATS=4, other=d=>dorpen.find(q=>q!==d&&q.station);
+  function addFolk(d,n){ for(let k=0;k<n;k++){ const pg=DORP.person(folkN++); pg.visible=false; g.add(pg); folk.push({home:d,dest:other(d),at:d,st:'away',t:1+k*.6,g:pg,v:null}); } }
+  function clearFolk(){ for(const f of folk) g.remove(f.g); folk=[]; for(const v of vehs) if(v.heads){ v.heads.forEach(h=>v.inner.remove(h)); v.heads=null; } }
+  const riders=v=>folk.filter(f=>f.st==='ride'&&f.v===v);
+  /* the heads in the windows of a coach */
+  function seatHeads(v){ if(!v.heads){ v.heads=[]; [-.3,-.1,.1,.3].forEach(x=>[-1,1].forEach(sd=>{ const h=new T.Mesh(headG2,DORP.skinM); h.position.set(x,.5,sd*.215); h.visible=false; v.inner.add(h); v.heads.push(h); })); }
+    const n=riders(v).length; v.heads.forEach((h,i)=>{ h.visible=(i>>1)<n; }); }
+  const headG2=sph(.06,10,8);
+  /* where the waiting people stand: in a row behind the yellow line, a second row when it is full */
+  function lineUp(){ const at=new Map(); for(const f of folk){ if(f.st!=='wait'){ f.g.visible=false; continue; } const d=f.at, k=at.get(d)||0; at.set(d,k+1); f.g.visible=true; f.g.position.set(d.sx+.5+(k%12)*.45,.3,d.sz-1.25-((k/12)|0)*.4); f.g.rotation.y=PI/2*0; } }
+  function folkStep(dt){ let moved=false;
+    for(const f of folk){ if(f.st==='ride'&&(vehs.indexOf(f.v)<0||f.v.sort!=='pass')){ f.st='wait'; f.at=f.home; f.dest=other(f.home); f.v=null; moved=true; }   /* the coach is gone: they are back home */
+      else if(f.st==='away'&&(f.t-=dt)<=0){ if(!f.dest) f.dest=other(f.home); if(f.dest&&f.at.station){ f.st='wait'; moved=true; popIn(f.g,.25); } else f.t=5; } }
+    if(moved) lineUp(); }
+  /* one traveller off or on; true when someone moved */
+  function board(c,d){ for(const v of c.veh){ if(v.sort!=='pass') continue; const f=riders(v).find(q=>q.dest===d); if(!f) continue;
+      f.st='away'; f.at=d; f.v=null; seatHeads(v); const home=d===f.home; f.dest=home?other(d):f.home; f.t=home?30+Math.random()*20:20+Math.random()*10; pop(v.g,.06);
+      burst(cv.set(v.tp.x,v.tp.y+.5,v.tp.z),10,2.6); tone(523,.1,'triangle',.14); tone(784,.16,'triangle',.12,0,.1);
+      if(!d.guests&&!home){ d.guests=true; toast('De eerste reizigers zijn in '+d.name+'!'); sfx.tada(); } return true; }
+    const wait=folk.filter(q=>q.st==='wait'&&q.at===d&&q.dest); if(!wait.length) return false;
+    for(const v of c.veh){ if(v.sort!=='pass'||riders(v).length>=SEATS) continue; const f=wait[0]; f.st='ride'; f.v=v; seatHeads(v); lineUp(); pop(v.g,.06); tone(440,.08,'square',.05); return true; }
+    return false; }
   /* one block in or out; true when something moved */
-  function swap(c,d){ if(d.proj&&d.need) for(const v of c.veh){ if(v.sort!=='goed') continue; const i=v.load.findIndex(l=>d.need[l.sh]>0); if(i<0) continue;
+  function swap(c,d){ if(board(c,d)) return true; if(d.proj&&d.need) for(const v of c.veh){ if(v.sort!=='goed') continue; const i=v.load.findIndex(l=>d.need[l.sh]>0); if(i<0) continue;
       const l=v.load.splice(i,1)[0]; v.inner.remove(l.m); l.m.material.dispose(); relay(v); pop(v.g,.08); d.need[l.sh]--; burst(cv.set(v.tp.x,v.tp.y+.4,v.tp.z),4,1.8,l.sh==='steen'?0xaab2c2:C.brown); tone(660,.08,'triangle',.14); tone(880,.12,'triangle',.12,0,.07);
       DORP.drawSign(d.site.sign,d.proj==='station'?'Station':'Nieuw huis',d.need); pop(d.site.sign.g,.12); if(!d.need.hout&&!d.need.steen) finish(d); return true; }
     if(d.kind==='bos'&&d.stock>0) for(const v of c.veh){ if(v.sort!=='goed'||v.load.length>=CAP) continue; addLoad(v,'hout',C.brown); d.stock--; showStock(d); pop(v.g,.08); sfx.plop(); return true; }
@@ -720,7 +746,8 @@ const trein=(()=>{
     if(d.proj==='station'){ vrects=vrects.filter(x=>x!==d.trackR); d.platR.soft=false; buildStation(d); d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); rebuild(); settle();
       locked.delete('graaf'); lockUI(locked); const e=newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); toast(d.name+' heeft een station! Je krijgt een graafmachine.'); setProject(d,'huis',Math.random); }
     else { const hg=DORP.house(S.sort,Math.random); villObj(d,hg,R.x,R.z,R.hw-.3,R.hd-.3,S.sort==='huis'||S.sort==='breed'||S.sort==='poort'?.8:1.2); popIn(hg,.4); d.houses++;
-      toast('Er staat een nieuw huis in '+d.name+'!'); setProject(d,d.houses<HOUSES?'huis':null,Math.random); } }
+      addFolk(d,2); if(locked.has('pass')){ locked.delete('pass'); locked.delete('auto'); lockUI(locked); toast('Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon en de auto.'); } else toast('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
+      setProject(d,d.houses<HOUSES?'huis':null,Math.random); } }
   const hello=()=>{ const d=dorpen.find(q=>q.proj==='station'); if(d) after(1.2,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast(d.name+' wil een station! Breng hout en steen naar het bouwterrein.'); }); };
   function placeVillages(rs){ const pick=l=>l[(rs()*l.length)|0];
     /* the start village, to the west of the start, its station on the line of the first track */
@@ -764,7 +791,7 @@ const trein=(()=>{
   /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
   function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
     for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
-    clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?['graaf','pass','auto']:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
+    clearFolk(); clearVillages(); clearHeaps(); setSize(on); locked=new Set(on?['graaf','pass','auto']:[]); lockUI(locked); if(on) placeVillages(rs); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ startSet(); placeHeaps(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -1257,7 +1284,7 @@ const trein=(()=>{
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving; }, addMill, reset, dig, COST,
-    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
+    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,folk,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
     /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
@@ -1298,7 +1325,7 @@ const trein=(()=>{
       for(const f of boosts){ const m=f.g; m.position.x+=(f.x-m.position.x)*kv; m.position.y+=(f.y-m.position.y)*kv; m.position.z+=(f.z-m.position.z)*kv; let da=f.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(f.pitch-m.rotation.z)*kv; f.bolt.scale.setScalar(f.wp?1+.12*Math.sin(Tm*6)*AMP:1); }
       for(const s of props){ const m=s.g, b=s.busy; m.position.x+=(s.x-m.position.x)*kv; m.position.y+=(s.y-m.position.y)*kv; m.position.z+=(s.z-m.position.z)*kv; let da=s.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; s.num.rotation.y=(wide?0:PI/2)-m.rotation.y;
         if(b&&!(b.stop===s&&b.pause>0&&cons.indexOf(b)>=0&&b.veh[0].loco)) s.busy=null; showNum(s,s.busy?Math.max(1,Math.ceil(s.busy.pause)):s.sec); s.lamp.material.color.setHex(s.busy?SPOOR.lampCol.stop:s.wp&&s.sec?SPOOR.lampCol.go:SPOOR.lampCol.off); }
-      produce(dt);
+      produce(dt); folkStep(dt);
       for(const z of mills){ manStep(z,dt); const m=z.g, w=z.man, wg=w.g; m.position.x+=(z.x-m.position.x)*kv; m.position.y+=(z.y-m.position.y)*kv; m.position.z+=(z.z-m.position.z)*kv; w.bub.rotation.y=-wg.rotation.y;
         wg.position.set(w.x,(held&&held.rec===z?z.y:hAt(w.x,w.z))+Math.abs(Math.sin(w.step))*.05,w.z); let da=w.yaw-wg.rotation.y; da-=Math.round(da/TAU)*TAU; wg.rotation.y+=da*(1-Math.exp(-dt*14)); }
       unload(); if(frameN%12===0) for(const d of dorpen) if(d.proj&&d.site) feed(d); if(stockDirty){ stockDirty=false; restack(); stockUI(stock); }
