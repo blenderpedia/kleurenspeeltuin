@@ -480,9 +480,9 @@ const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:
   function plot(hw,hd){ const g=new T.Group(), p=mesh(roundBox(hw*2,.04,hd*2,.12,.02),dirtM,0,.02,0,g); p.castShadow=false;
     [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ mesh(cyl(.035,.045,.6,8),stakeM,a*(hw-.1),.3,b*(hd-.1),g); mesh(box(.2,.13,.02),flagM,a*(hw-.1)+.1,.52,b*(hd-.1),g); }); return g; }
   /* the board on a building plot: what is built (a station or a house) and how much wood and stone it still needs; a tick when a kind is done */
-  function sign(){ const cv=document.createElement('canvas'); cv.width=512; cv.height=220; const tex=new T.CanvasTexture(cv), g=new T.Group(), bd=new T.Mesh(new T.PlaneGeometry(2,.86),new T.MeshBasicMaterial({map:tex})); bd.position.y=1.3; g.add(bd);
-    [-.85,.85].forEach(x=>mesh(cyl(.04,.04,1.3,8),postM,x,.65,-.03,g)); return {g,tex,cv}; }
-  function drawSign(S,what,need){ const c=S.cv.getContext('2d'), W=512, H=220; c.fillStyle=hx(C.paper); c.fillRect(0,0,W,H); c.lineWidth=14; c.strokeStyle=hx(C.orange); c.strokeRect(7,7,W-14,H-14);
+  function sign(){ const cv=document.createElement('canvas'); cv.width=1024; cv.height=440; const tex=new T.CanvasTexture(cv), g=new T.Group(), bd=new T.Mesh(new T.PlaneGeometry(3.6,1.55),new T.MeshBasicMaterial({map:tex})); bd.position.y=2.05; bd.rotation.x=-.5; g.add(bd);
+    [-1.5,1.5].forEach(x=>mesh(cyl(.06,.06,1.5,8),postM,x,.75,-.03,g)); return {g,tex,cv}; }
+  function drawSign(S,what,need){ const c=S.cv.getContext('2d'), W=512, H=220; c.setTransform(2,0,0,2,0,0); c.fillStyle=hx(C.paper); c.fillRect(0,0,W,H); c.lineWidth=14; c.strokeStyle=hx(C.orange); c.strokeRect(7,7,W-14,H-14);
     c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; c.font='800 52px "Baloo 2",Arial,sans-serif'; c.fillText(what,W/2,52);
     [['hout',C.brown,0xc98a55,130],['steen',0x8791a6,0xb4bccb,330]].forEach(([k,c1,c2,x])=>{ const y=145; c.fillStyle=hx(c1); c.fillRect(x-62,y-30,56,56); c.fillStyle=hx(c2); c.fillRect(x-62,y-30,56,16);
       if(need[k]>0){ c.fillStyle=hx(C.ink); c.textAlign='left'; c.font='800 66px "Baloo 2",Arial,sans-serif'; c.fillText(String(need[k]),x+6,y+2); }
@@ -732,7 +732,7 @@ const trein=(()=>{
         if(z+hd>d.sz-2.1||d.objs.some(o=>o.r&&Math.abs(o.r.x-x)<o.r.hw+hw+.9&&Math.abs(o.r.z-z)<o.r.hd+hd+.9)) continue;
         const R={x,z,hw:hw+.3,hd:hd+.3}; d.site={r:R,sort,plot:villObj(d,DORP.plot(R.hw,R.hd),x,z,R.hw,R.hd,0)}; popIn(d.site.plot.g,.3); }
       if(!d.site){ d.proj=null; return; } }
-    const S=DORP.sign(), R=d.site.r; S.g.position.set(R.x+(proj==='station'?R.hw-1.1:0),0,R.z+R.hd+.15); g.add(S.g); d.site.sign=S; DORP.drawSign(S,proj==='station'?'Station':'Nieuw huis',d.need); popIn(S.g,.3); }
+    const S=DORP.sign(), R=d.site.r; S.g.position.set(R.x,0,R.z-R.hd-.25); if(proj!=='station') S.g.scale.setScalar(.75); g.add(S.g); d.site.sign=S; DORP.drawSign(S,proj==='station'?'Station':'Nieuw huis',d.need); popIn(S.g,.3); }
   /* blocks on a site: taken one by one while the village needs that kind; when nothing is needed any more, the building goes up */
   function feed(d){ const R=d.site.r; let took=false;
     for(const r of blocks.slice()){ if(!raw(r.sh)||!(d.need[r.sh]>0)||(held&&held.rec===r)||r.claim) continue; const p=r.b.position; if(!inMill(R,p.x,p.z,.15)||p.y>1.6||r.b.velocity.norm2()>1) continue;
@@ -743,12 +743,15 @@ const trein=(()=>{
     for(const r of blocks){ const p=r.b.position; if(inMill(R,p.x,p.z,.3)){ p.z=R.z-R.hd-.6; p.y=Math.max(p.y,.6); r.b.velocity.set(0,0,0); r.b.wakeUp(); } }
     for(const m of machs) if(!m.up&&inMill(R,m.x,m.z,MS[m.sort].rad)){ machBody(m,false); placeM(m,R.x,R.z-R.hd-2,.3); machBody(m,true); }
     sfx.tada(); burst(cv.set(R.x,1.2,R.z),30,4.5);
-    if(d.proj==='station'){ vrects=vrects.filter(x=>x!==d.trackR); d.platR.soft=false; buildStation(d); d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); rebuild(); settle();
-      locked.delete('graaf'); lockUI(locked); const e=newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); toast(d.name+' heeft een station! Je krijgt een graafmachine.'); setProject(d,'huis',Math.random); }
+    if(d.proj==='station'){ vrects=vrects.filter(x=>x!==d.trackR); d.platR.soft=false;
+      for(const p of pieces.slice()){ if(p.fixed) continue; mid(p,a1); if(Math.abs(a1.z-d.sz)<.5&&a1.x>d.sx-.1&&a1.x<d.sx+6.1){ evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } }
+      buildStation(d); if(!pieces.some(p=>!p.fixed&&p.ends&&p.ends.some(e=>e.x===d.sx&&e.z===d.sz))){ const b=layPiece('eind',d.sx,d.sz,2); popIn(b.g,.3); } d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); rebuild(); settle();
+      locked.delete('graaf'); lockUI(locked); const e=newMach('graaf',R.x+R.hw+2.5,R.z-2.5,PI,.4); toast(d.name+' heeft een station! Je krijgt een graafmachine.'); after(7,()=>{ if(dorpen.indexOf(d)>=0) toast('Wil je verder bouwen? Sleep een stootblok naar de prullenbak en leg nieuwe rails.'); }); setProject(d,'huis',Math.random); }
     else { const hg=DORP.house(S.sort,Math.random); villObj(d,hg,R.x,R.z,R.hw-.3,R.hd-.3,S.sort==='huis'||S.sort==='breed'||S.sort==='poort'?.8:1.2); popIn(hg,.4); d.houses++;
       addFolk(d,2); if(locked.has('pass')){ locked.delete('pass'); locked.delete('auto'); lockUI(locked); toast('Er komen bewoners in '+d.name+'! Je krijgt een passagierswagon en de auto.'); } else toast('Er staat een nieuw huis in '+d.name+'! Er komen 2 bewoners bij.');
       setProject(d,d.houses<HOUSES?'huis':null,Math.random); } }
-  const hello=()=>{ const d=dorpen.find(q=>q.proj==='station'); if(d) after(1.2,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast(d.name+' wil een station! Breng hout en steen naar het bouwterrein.'); }); };
+  const hello=()=>{ const d=dorpen.find(q=>q.proj==='station'); if(!d) return; after(1.2,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast(d.name+' wil een station! Het vraagt 8 hout en 6 steen.'); });
+    after(7.5,()=>{ if(dorpen.indexOf(d)>=0&&d.proj==='station') toast('Schep met de shovel hout en steen in de wagon. Tik dan op de groene knop: de trein brengt het naar '+d.name+'.'); }); };
   function placeVillages(rs){ const pick=l=>l[(rs()*l.length)|0];
     /* the start village, to the west of the start, its station on the line of the first track */
     const a=newVillage('woon',-22,-.6,pick(NAMES.woon)); a.sx=-27; a.sz=4;
@@ -773,8 +776,8 @@ const trein=(()=>{
       if(inPlat(x,z,PV+2)||inVill(x,z,2)||inStart(x,z,2)||heapAt(x,z,3)) continue; addHeap(Math.round(x*2)/2,Math.round(z*2)/2,rs()<.5?'hout':'steen',6+((rs()*5)|0)); } }
   /* the start: the factory (it stays put), a short track with a buffer at each end and on it an engine with a goods wagon, a loader and a dump truck */
   function startSet(){ addMill('fab',[4.5,.5]); const f=mills[mills.length-1]; if(f) f.fixed=true;
-    layPiece('eind',-7,4,2); for(let x=-7;x<=5;x+=2) layPiece('recht',x,4,0); layPiece('eind',7,4,0); rebuild();
-    const p=pieces.find(q=>q.type==='recht'&&q.x===-3&&q.z===4); for(const sort of ['loc','goed']){ addTrain(sort,true); mount(vehs[vehs.length-1],{p,si:0,u:.5,d:-1}); }
+    const a=dorpen.find(q=>q.kind==='woon'), x0=a?a.sx+6:-7; layPiece('eind',x0,4,2); for(let x=x0;x<=5;x+=2) layPiece('recht',x,4,0); layPiece('eind',7,4,0); rebuild();
+    const p=pieces.find(q=>q.type==='recht'&&q.x===3&&q.z===4); for(const sort of ['loc','goed']){ addTrain(sort,true); mount(vehs[vehs.length-1],{p,si:0,u:.5,d:1}); }
     newMach('shovel',-4.5,7.6,PI/2); newMach('kiep',-1.2,7.8,PI/2); }
   /* the forest: clumps of trees around an open middle, also up on the tables but not along their rims (so there is room for a tunnel gate) */
   function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci), y=hAt(x,z); tg.position.set(x,y,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={x,z,y,sc,g:tg,yaw:tg.rotation.y,alive:true,res:null,b:null};
@@ -867,13 +870,13 @@ const trein=(()=>{
     if(room<=.002){
       if(blocker){ let rel=-1; if(motor(blocker)){ const ol=blocker.dir>0?blocker.veh[0]:blocker.veh[blocker.veh.length-1]; rel=hd.x*Math.cos(ol.yaw)*blocker.dir-hd.z*Math.sin(ol.yaw)*blocker.dir; }
         if(rel<=.2||(blocker.block===c&&c.id>blocker.id)) turn(c); else c.block=blocker; }
-      else if(hit==='end'&&P1.p.type==='eind'&&P1.u>.5){ if(c.buf!==P1.p){ c.buf=P1.p; const j=P1.p.g.userData.juk; if(j) pop(j,.08,.25); tone(150,.14,'triangle',.2,90); } }   /* against the buffer: it waits there */
+      else if(hit==='end'&&P1.p.type==='eind'&&P1.u>.5){ if(c.buf!==P1.p){ c.buf=P1.p; c.fresh=true; const j=P1.p.g.userData.juk; if(j) pop(j,.08,.25); tone(150,.14,'triangle',.2,90); } }   /* against the buffer: it waits there */
       else if(hit==='end'){ ptAt(P1,cv); if(c.net==='rail'&&!hidPt(cv.x,cv.y-TH,cv.z)) c.off=true; else { cp(P1,tail.pos); if(walk(P1,-c.dir*(K.half+.05),c)<=1e-6) turn(c); } }
       return false; }
     for(const v of c.veh) walk(v.pos,c.dir*room,c); c.buf=null; return true; }
   /* a sensor block beside the rails: the engine stops next to it for the time the block shows */
   function sense(c){ const l=c.veh[0]; for(const s of props){ if(!s.wp) continue; const d=Math.hypot(l.tp.x-s.wp.x,l.tp.z-s.wp.z);
-      if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
+      if(c.seen.has(s)){ if(d>1) c.seen.delete(s); } else if(d<.25&&Math.abs(l.tp.y-s.wp.y-TH-l.K.vh)<.6&&c.pause<=0){ c.seen.add(s); if(!s.sec) continue; c.pause=s.sec; c.stop=s; c.fresh=true; s.busy=c; tone(660,.16,'sine',.16); tone(880,.22,'sine',.14,0,.14); } } }   /* set to 0 the train just rides on */
   /* a speed boost on the rails: the engine that rides over it goes twice as fast for three seconds, the last half second slowing back to its own speed (both ways, also riding backwards) */
   function zoom(c){ const l=c.veh[0]; for(const f of boosts){ if(!f.wp) continue; const d=Math.hypot(l.tp.x-f.wp.x,l.tp.z-f.wp.z);
       if(c.seenB.has(f)){ if(d>1) c.seenB.delete(f); } else if(d<.35&&Math.abs(l.tp.y-f.wp.y-TH-l.K.vh)<.6){ c.seenB.add(f); c.boost=BOOST; pop(f.g,.3); if(seen(f.x,f.z)){ tone(260,.32,'sawtooth',.05,1300); tone(520,.26,'triangle',.12,1560,.04); burst(cv.set(f.x,f.y+.3,f.z),10,2.6,C.yellow); } } } }
@@ -1191,9 +1194,12 @@ const trein=(()=>{
         if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.kind=r.sh; w.carry=true; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) tone(700,.05,'triangle',.1); w.st='carry'; } } }
     else if(w.st==='carry'){ if(stride(w,m.x+.02,m.z+(w.kind==='hout'?-.82:.72),dt)){ w.yaw=0; w.carry=false; if(mills.indexOf(m)>=0) gain(w.kind); if(seen(m.x,m.z)){ sfx.plop(); tone(659,.1,'triangle',.14,0,.05); } w.t=.1; w.st='home'; } }
     w.pack.visible=w.carry; }
-  /* a train that stands still beside the factory (at a sensor, against a buffer, or without an engine) tips its goods wagons by itself, on the factory's side, as long as the store has room */
-  function unload(){ const f=mills.find(m=>m.sort==='fab'); if(!f||(held&&held.rec===f)) return; for(const c of cons){ if(c.net!=='rail'||!still(c,.3)) continue; for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length||Math.abs(v.tp.x-f.x)>f.hw+2.5||Math.abs(v.tp.z-f.z)>f.hd+2.5) continue;
-        if(v.load.some(l=>raw(l.sh)&&stock[l.sh]<FCAP)) tip(v,f); } } }
+  /* a train that comes to a stand beside the factory (at a sensor or against a buffer; wagons without an engine any time) tips its goods wagons by itself, on the factory's side, as long as the store has room. Beside a building plot that still wants wood or stone it tips onto the plot */
+  function unload(){ const f=mills.find(m=>m.sort==='fab'&&!(held&&held.rec===m));
+    for(const c of cons){ if(c.net!=='rail'||!still(c,.3)||(motor(c)&&!c.fresh)) continue; c.fresh=false;
+      for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length) continue;
+        if(f&&Math.abs(v.tp.x-f.x)<f.hw+2.5&&Math.abs(v.tp.z-f.z)<f.hd+2.5){ if(v.load.some(l=>raw(l.sh)&&stock[l.sh]<FCAP)) tip(v,f); continue; }
+        for(const d of dorpen){ if(!d.site||!d.need||d.station) continue; const R=d.site.r; if(inMill(R,v.tp.x,v.tp.z,1.6)&&v.load.some(l=>d.need[l.sh]>0)){ tip(v,{x:R.x,z:R.z}); break; } } } } }
 
   /* ----- loose blocks of wood and stone: drag to move one, slide a finger over it to shove it ----- */
   function onHit(e){ if(cur!=='trein'||!e.contact) return; const v=Math.abs(e.contact.getImpactVelocityAlongNormal()); if(v>1.8&&Tm-lastTok>.07){ lastTok=Tm; tone(R(130,190),.07,'triangle',Math.min(.2,v*.025),85); }
@@ -1278,7 +1284,7 @@ const trein=(()=>{
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g)); if(driving) leave(true); machs.forEach(m=>{ machBody(m,false); g.remove(m.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); logs.forEach(L=>g.remove(L.g)); logs=[]; tunnels=[]; lastP=null; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; machs=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
-  function reset(){ wipe(); gen(mode==='camp'); if(mode==='camp') hello(); panX=mode==='camp'?-4:0; panZ=mode==='camp'?3:0; applyCamera(); sfx.boing(); }
+  function reset(){ wipe(); gen(mode==='camp'); if(mode==='camp') hello(); panX=mode==='camp'?2:0; panZ=mode==='camp'?4:0; applyCamera(); sfx.boing(); }
 
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
@@ -1293,7 +1299,7 @@ const trein=(()=>{
     get pan(){ return [panX,panZ]; },
     get mode(){ return mode; },
     /* choose how to play ('camp' or 'vrij'): a fresh world either way */
-    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); if(mode==='camp') hello(); panX=mode==='camp'?-4:0; panZ=mode==='camp'?3:0; applyCamera(); },
+    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); if(mode==='camp') hello(); panX=mode==='camp'?2:0; panZ=mode==='camp'?4:0; applyCamera(); },
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
