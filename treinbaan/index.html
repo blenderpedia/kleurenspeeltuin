@@ -225,6 +225,8 @@ body.menu #toast{z-index:6}
 @media (min-width:641px){body.menu #toast{top:24px;left:calc(50% + clamp(175px,19vw,230px) + 8px);max-width:min(calc(100vw - clamp(350px,38vw,460px) - 64px),560px)}}
 @media (max-width:640px){#start{background:rgba(14,26,48,.3)}#start .in{left:10px;right:10px;top:10px;bottom:10px;width:auto;padding:22px 18px 18px;gap:16px;outline-offset:-7px}}
 @media (prefers-reduced-motion:reduce){#start .kop.rij .loc{animation:none}#start .mode{transition:none}}
+/* campaign: the machines come with the story, not from a button */
+body:not(.vrij) #tab-mach{display:none}
 /* creative: no stock, no prices, no buildings */
 body.vrij #hud,body.vrij .cost{display:none}
 @media (prefers-reduced-motion:reduce){.mode,.go{transition:none}}
@@ -344,7 +346,7 @@ const sfx={
    The world: wind all the time, birds where there are trees, the click-clack of a train on the rails when one rides in the picture, murmur and a hammer near a village, a whistle when a train leaves a station.
    "Geluid" switches the effects and the world, "Muziek" the music ---------- */
 SND=(()=>{ let a=null, comp, fx, fxIn, amb, mus, musIn, ready=false, engs=new Map(), noise=null, wind=null, windF=null, mur=null, sceneS={birds:0,vil:0,build:false,tk:0,ts:0}, nextBird=0, nextHam=0, nextWind=0, nextMur=0, phase=0, lastTick=0, nextT=0, step=0, motifA=null, motifB=null, gone=false;
-  const mtof=m=>440*Math.pow(2,(m-69)/12), rnd=(x,y)=>x+Math.random()*(y-x);
+  const MUSV=.36, mtof=m=>440*Math.pow(2,(m-69)/12), rnd=(x,y)=>x+Math.random()*(y-x); let restDone=false;
   function init(ctx){ if(ready) return; a=ctx;
     try{ comp=a.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=12; comp.ratio.value=3; comp.attack.value=.01; comp.release.value=.25;
       const master=a.createGain(); master.gain.value=.9; comp.connect(master); master.connect(a.destination);
@@ -361,9 +363,9 @@ SND=(()=>{ let a=null, comp, fx, fxIn, amb, mus, musIn, ready=false, engs=new Ma
       const ms=a.createBufferSource(); ms.buffer=noise; ms.loop=true; ms.loopStart=.7; mur=a.createGain(); mur.gain.value=0;
       [480,1150].forEach(f=>{ const b=a.createBiquadFilter(); b.type='bandpass'; b.frequency.value=f; b.Q.value=2.2; ms.connect(b); b.connect(mur); }); mur.connect(amb); ms.start();
     }catch(e){ return; }
-    ready=true; apply(); mus.gain.setValueAtTime(0,a.currentTime); if(!musicOff) mus.gain.setTargetAtTime(.55,a.currentTime+.3,1.4); nextT=a.currentTime+.4;
-    setInterval(tick,100); document.addEventListener('visibilitychange',()=>{ gone=document.hidden; if(!ready) return; const t=a.currentTime; mus.gain.setTargetAtTime(gone||musicOff?0:.55,t,.3); amb.gain.setTargetAtTime(gone||muted?0:.9,t,.3); fx.gain.setTargetAtTime(gone||muted?0:1,t,.1); if(!gone) nextT=Math.max(nextT,t+.3); }); }
-  function apply(){ if(!ready) return; const t=a.currentTime; fx.gain.setTargetAtTime(muted||gone?0:1,t,.05); amb.gain.setTargetAtTime(muted||gone?0:.9,t,.2); mus.gain.setTargetAtTime(musicOff||gone?0:.55,t,.6); if(!musicOff) nextT=Math.max(nextT,t+.2); }
+    ready=true; apply(); mus.gain.setValueAtTime(0,a.currentTime); if(!musicOff) mus.gain.setTargetAtTime(MUSV,a.currentTime+.3,1.4); nextT=a.currentTime+.4;
+    setInterval(tick,100); document.addEventListener('visibilitychange',()=>{ gone=document.hidden; if(!ready) return; const t=a.currentTime; mus.gain.setTargetAtTime(gone||musicOff?0:MUSV,t,.3); amb.gain.setTargetAtTime(gone||muted?0:.9,t,.3); fx.gain.setTargetAtTime(gone||muted?0:1,t,.1); if(!gone) nextT=Math.max(nextT,t+.3); }); }
+  function apply(){ if(!ready) return; const t=a.currentTime; fx.gain.setTargetAtTime(muted||gone?0:1,t,.05); amb.gain.setTargetAtTime(muted||gone?0:.9,t,.2); mus.gain.setTargetAtTime(musicOff||gone?0:MUSV,t,.6); if(!musicOff) nextT=Math.max(nextT,t+.2); }
   /* ----- the instruments ----- */
   function env(g,t,v,att,dec){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+att); g.gain.exponentialRampToValueAtTime(.0001,t+att+dec); }
   function osc(f,type,t,dur,v,att,dec,out){ const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); env(g,t,v,att,dec); o.connect(g); g.connect(out); o.start(t); o.stop(t+att+dec+.05); return o; }
@@ -387,8 +389,8 @@ SND=(()=>{ let a=null, comp, fx, fxIn, amb, mus, musIn, ready=false, engs=new Ma
     if(e===0&&inBar===0){ const M=sec===2?motifB:motifA, F2=FORM[sec]; phr=[M,sec===0?M:vary(M,[F2[2],F2[3]])]; }
     const rest=(bar%32)>=30;   /* every 32 bars two bars of only piano: a breath */
     if(e===0){ piano(C[0],t,.11,3.2); C[1].forEach((m,k)=>piano(m,t+.025*k+rnd(0,.01),.05,2.6)); }
-    else if(e===4&&Math.random()<.55) C[1].forEach((m,k)=>piano(m,t+.02*k,.03,1.8));
-    else if((e===3||e===6)&&Math.random()<.35) piano(C[1][Math.random()*3|0]+12,t,.025,1.4);
+    else if(e===4&&Math.random()<.4) C[1].forEach((m,k)=>piano(m,t+.02*k,.028,1.8));
+    else if((e===3||e===6)&&Math.random()<.25) piano(C[1][Math.random()*3|0]+12,t,.025,1.4);
     if(!rest&&phr){ const half=inBar>>1, loc=(inBar&1)*8+e, M=phr[half]; for(const [s0,m] of M) if(s0===loc) marimba(m,t+rnd(-.008,.008),rnd(.13,.19)); } }
   /* ----- the world ----- */
   function sweep(f1,f2,t,d,v,out){ const o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+d); env(g,t,v,.005,d); o.connect(g); g.connect(out); o.start(t); o.stop(t+d+.05); }
@@ -404,7 +406,7 @@ SND=(()=>{ let a=null, comp, fx, fxIn, amb, mus, musIn, ready=false, engs=new Ma
       g.gain.setValueAtTime(.0001,t+d); g.gain.exponentialRampToValueAtTime(v,t+d+.06); g.gain.setValueAtTime(v,t+d+l-.08); g.gain.exponentialRampToValueAtTime(.0001,t+d+l); o.connect(g); g.connect(fxIn); o.start(t+d); lfo.start(t+d); o.stop(t+d+l+.05); lfo.stop(t+d+l+.05); }); }
   /* ten times a second: the next notes of the tune, and what the world sounds like now */
   function tick(){ if(!ready||gone) return; const now=a.currentTime, dt=Math.min(.3,now-(lastTick||now)); lastTick=now;
-    if(!musicOff){ if(nextT<now) nextT=now+.05; while(nextT<now+.4){ playStep(step,nextT); step++; nextT+=60/76/2; } }
+    if(!musicOff){ if(nextT<now) nextT=now+.05; while(nextT<now+.4){ if(step>0&&step%128===0&&!restDone){ restDone=true; if(Math.random()<.75){ nextT+=rnd(14,32); continue; } } if(step%128===1) restDone=false; playStep(step,nextT); step++; nextT+=60/76/2; } }
     if(muted) return; const S=sceneS;
     if(now>=nextWind){ nextWind=now+rnd(2.5,4.5); windF.frequency.setTargetAtTime(rnd(320,820),now,1.6); wind.gain.setTargetAtTime(rnd(.018,.045),now,1.6); }
     if(now>=nextBird){ if(nextBird) bird(now+.05); nextBird=now+rnd(2.5,7)/(.25+S.birds*1.2); }
@@ -1598,7 +1600,7 @@ const trein=(()=>{
   function blockedAt(m,x,z,yaw,pad){ const S=MS[m.sort], fx=Math.cos(yaw)*S.off, fz=-Math.sin(yaw)*S.off, r=S.rad*.72+(pad||0); return hitsAt(m,x,z,r)||hitsAt(m,x+fx,z+fz,r)||hitsAt(m,x-fx,z-fz,r); }
   /* the nearest place where it fits, on the level of the spot you point at */
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
-  function addMachine(sort){ if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
+  function addMachine(sort){ if(mode==='camp'){ sfx.boing(); return; } if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
   function newMach(sort,x,z,yaw,pad,quiet,exact){ const M=MACH[sort](), m={kind:'m',nid:++nidN,by:0,sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
     if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); fxp('thud',.8); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
@@ -1994,6 +1996,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   /* the start screen is also the menu: creative or campaign (each a new world); during a game also play on and start again; sound and full screen always */
   const startEl=$('#start'), door=$('#start-door'), again=$('#start-again'), snd=$('#start-sound'), full=$('#start-full'); let started=false;
   const shut=()=>{ startEl.hidden=true; };
+  { const mark=()=>document.body.classList.toggle('menu',!startEl.hidden); new MutationObserver(mark).observe(startEl,{attributes:true,attributeFilter:['hidden']}); mark(); }
   const play=m=>{ audio(); MP.before(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); MP.after(); };
   /* saved games: a list in the browser (name, way of playing, when), each game on its own. The game you play saves itself every few seconds, when the menu opens and when the app goes to the background */
   const LST='treinbaan-lijst', SKEY='treinbaan-spel-', modesEl=startEl.querySelector('.modes'), savesEl=$('#saves'), lstEl=$('#saves-lst'), naamEl=$('#naam'), naamIn=$('#naam-in'), optsEl=startEl.querySelector('.in > .opts');
@@ -2175,7 +2178,7 @@ function resize(){ fitBar(); renderer.setSize(app.clientWidth||1,app.clientHeigh
 if(window.ResizeObserver) new ResizeObserver(resize).observe(app); window.addEventListener('resize',resize);
 let lastT=performance.now();
 function loop(now){ const dt=Math.min(.05,Math.max(0,(now-lastT)/1000)); lastT=now; Tm+=dt;
-  stepAnim(dt); { const mo=!document.getElementById('start').hidden; document.body.classList.toggle('menu',mo); trein.menuDrift(mo,dt); } trein.update(dt,Tm);
+  stepAnim(dt); trein.menuDrift(!document.getElementById('start').hidden,dt); trein.update(dt,Tm);
   sunG.rotation.z+=dt*.15*AMP; for(const c of clouds){ c.g.position.x+=c.v*dt*AMP; if(c.g.position.x>24) c.g.position.x=-24; }
   stepConf(dt); setCam(); renderer.render(scene,camera); requestAnimationFrame(loop); }
 trein.enter(); resize(); requestAnimationFrame(loop);
