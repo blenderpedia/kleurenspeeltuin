@@ -976,10 +976,16 @@ const trein=(()=>{
     play(m,[{t:.45,p:{arm:k?.8:-.2,bk:.9}},{t:.75,p:{bk:-.5}},{t:1.25,p:REST.shovel}],[{t:.65,fn:()=>{ if(k&&machs.indexOf(k)>=0){ while(m.carry.length&&k.load.length<KCAP) k.load.push(m.carry.shift()); showLoad(k); pop(k.g,.04); }
         frontAt(m,1.35,a1); const px=Math.sin(m.yaw), pz=Math.cos(m.yaw); m.carry.forEach((sh,j)=>dropRaw(sh,a1.x+px*(j-1)*.45,hAt(a1.x,a1.z)+.6+j*.1,a1.z+pz*(j-1)*.45)); m.carry=[]; showLoad(m); sfx.plop(); }}],
       ()=>{ m.busy=false; workUI(m); }); }
+  /* the dump truck: the bed tips up and everything slides out behind it as loose blocks; beside the rails and road factory the factory hand comes for them and stacks them in the store (there they count) */
+  function tipAct(m){ if(!m.load.length){ nope(m); play(m,[{t:.4,p:{bed:.25}},{t:.8,p:{bed:0}}]); return; }
+    m.busy=true; workUI(m); tone(70,.9,'sawtooth',.05,120);
+    play(m,[{t:.8,p:{bed:.95}},{t:1.7,p:{bed:.95}},{t:2.3,p:{bed:0}}],[{t:.85,fn:()=>{ const c=Math.cos(m.yaw), sn=Math.sin(m.yaw);
+        m.load.forEach((sh,j)=>{ const o=(j%4-1.5)*.42, back=1.55+(j>>2)*.45, x=clampN(m.x-c*back+sn*o,MX-.6), z=clampN(m.z+sn*back+c*o,MZ-.6); dropRaw(sh,x,hAt(x,z)+.5+(j>>2)*.3,z); });
+        m.load=[]; showLoad(m); sfx.plop(); tone(196,.25,'triangle',.2,110,.08); }}],()=>{ m.busy=false; workUI(m); }); }
   /* the work button */
   function act(){ const m=driving; if(!m) return;
     if(m.sort==='graaf'){ if(m.stopping) return; if(m.work){ m.work=false; workUI(m); sfx.tap(); return; } if(m.busy) return; m.work=true; m.dug=false; digOnce(m); return; }
-    if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else { nope(m); play(m,[{t:.4,p:{bed:.25}},{t:.8,p:{bed:0}}]); } }
+    if(m.busy) return; if(m.sort==='shovel') shovelAct(m); else tipAct(m); }
   /* one step for the machine you drive: it turns towards the way you push the stick (pull back and a loader or truck backs up), and rides as far as nothing is in the way */
   function steer(m,dt){ const S=MS[m.sort], mag=Math.min(1,Math.hypot(stX,stZ)); let vt=0;
     if(mag>.3&&m.sort==='graaf'&&(m.work||m.busy)&&!m.stopping) stopDig(m);
