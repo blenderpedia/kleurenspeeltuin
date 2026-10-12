@@ -122,7 +122,6 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 #spelers{position:absolute;left:16px;top:calc(var(--btn) + 30px);display:grid;gap:6px;justify-items:start;pointer-events:none}
 #spelers .sp{display:flex;align-items:center;gap:.4em;padding:.15em .75em .15em .35em;border-radius:999px;background:var(--paper);box-shadow:0 3px 0 var(--shade);font:800 clamp(13px,3.2vmin,16px)/1.25 var(--display);color:var(--ink)}
 #spelers .sp i{width:.95em;height:.95em;border-radius:50%}
-body.gast #spoor-tunnel,body.gast #spoor-wtunnel,body.gast #spoor-sensor,body.gast #spoor-boost{display:none!important}
 .ik{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 12px}
 .ik input{width:min(56vw,250px);box-sizing:border-box;padding:.3em .7em;border:4px solid var(--paper);border-radius:999px;background:var(--paper);color:var(--ink);font:800 clamp(17px,4.4vmin,22px)/1.2 var(--display);text-align:center;box-shadow:0 4px 0 var(--shade);outline:none}
 .ik input:focus{border-color:var(--yellow)}
@@ -845,7 +844,7 @@ const trein=(()=>{
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
   let me=null, walking=false, hintM=false, nearT=0;
-  let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], edgeO=null, pendAdd=null, pHoldT=0, pLate=null, known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
+  let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], edgeO=null, pendAdd=null, holdT={p:0,t:0,x:0}, late={}, known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
     if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
@@ -897,6 +896,7 @@ const trein=(()=>{
   function netMe(pid,a){ const v=avs.get(pid); if(v&&Array.isArray(a)) avTo(v,a[0]/100,a[1]/100,a[2]/1000,a[3]|0,a[4]); }
   /* the host: what a guest builds. A piece is known by what it is and where it lies (key); a wagon on the track by the piece it stands on (ref) */
   const pk=p=>[p.type,p.x,p.z,p.q,p.lv,p.m].join(), byKey=k=>pieces.find(p=>!p.fixed&&!p.gang&&!isGate(p)&&pk(p)===k), notHeld=o=>!(held&&held.rec===o);
+  const atXZ=(L,a)=>Array.isArray(a)?L.find(o=>Math.abs(o.x-a[0])<.01&&Math.abs(o.z-a[1])<.01&&notHeld(o))||null:null;
   const place=(type,a)=>({type,x:+a[0]||0,z:+a[1]||0,q:(a[2]|0)&3,lv:a[3]?1:0,m:a[4]<0?-1:1});
   function pref0(p){ const tn=tunnels.filter(t=>t.a&&t.b); if(p.gang) return ['G',tn.indexOf(p.tun)]; if(isGate(p)) return ['g',tn.indexOf(p.tun),p.tun.a===p?0:1];
     if(p.fixed){ for(let i=0;i<dorpen.length;i++){ const k=dorpen[i].track.indexOf(p); if(k>=0) return ['f',i,k]; } return null; } return ['p',pk(p)]; }
@@ -909,7 +909,16 @@ const trein=(()=>{
       else { const c=place(p.type,d.o||[]); if(free(c,p)){ p.x=c.x; p.z=c.z; p.q=c.q; p.lv=c.lv; p.m=c.m; } fix(p); klik(); }
       rebuild(); settle(); }
     else if(t==='tap'){ const p=byKey(d.k); if(p){ if(p.type==='wissel') flip(p); else if(p.type==='overweg') gate(p); else if(p.type==='eind') press(p); } }
-    else if(t==='veh'||t==='mach'){ const e=d.e; if(e&&isFinite(e.z)&&isFinite(e.x0)&&isFinite(e.x1)) edgeO={z:clampN(+e.z,MZ-.7),x0:clampN(+e.x0,MX),x1:clampN(+e.x1,MX)}; try{ if(t==='veh'&&KN&&/^(loc|goed|pass|auto)$/.test(d.s)) addTrain(d.s); else if(t==='mach'&&MS[d.s]) addMachine(d.s); } finally { edgeO=null; } }
+    else if(t==='veh'||t==='mach'||t==='sens'||t==='boost'){ const e=d.e; if(e&&isFinite(e.z)&&isFinite(e.x0)&&isFinite(e.x1)) edgeO={z:clampN(+e.z,MZ-.7),x0:clampN(+e.x0,MX),x1:clampN(+e.x1,MX)}; try{ if(t==='veh'&&KN&&/^(loc|goed|pass|auto)$/.test(d.s)) addTrain(d.s); else if(t==='mach'&&MS[d.s]) addMachine(d.s); else if(t==='sens') addSensor(); else if(t==='boost') addBoost(); } finally { edgeO=null; } }
+    else if(t==='sm'||t==='sb'||t==='stap'){ const q=atXZ(props,d.a); if(!q) return; if(t==='stap'){ tapSensor(q); return; } propBody(q,false); if(q.busy){ q.busy.pause=0; q.busy.stop=null; q.busy=null; }
+      if(t==='sb'){ g.remove(q.g); props=props.filter(x=>x!==q); sfx.boop(); } else { const o=d.o||[]; q.x=clampN(+o[0]||0,MX-.4); q.z=clampN(+o[1]||0,MZ-.4); q.yaw=+o[2]||0; q.y=hAt(q.x,q.z); propBody(q,true); } bind(); }
+    else if(t==='fm'||t==='fb'){ const f=atXZ(boosts,d.a); if(!f) return; if(t==='fb'){ g.remove(f.g); boosts=boosts.filter(x=>x!==f); sfx.boop(); } else { const o=d.o||[]; f.x=clampN(+o[0]||0,MX-.4); f.z=clampN(+o[1]||0,MZ-.4); f.yaw=+o[2]||0; lay(f); } }
+    else if(t==='tun'){ const net=d.net==='road'?'road':'rail', A=SPOTS[d.a], B=SPOTS[d.b];
+      if(!A||!B||d.a===d.b||A.net!==net||B.net!==net||A.pl!==B.pl||locked.has(net==='rail'?'tunnel':'wtunnel')||nTun(net)>=MAXTUN||!canPay('tunnel')||!spotOk(A,null)||!spotOk(B,null)) return;
+      const tn={a:null,b:null,gang:null,net}; tn.a=portal(tn,A); tn.b=portal(tn,B); tunnels.push(tn); bore(tn); pay('tunnel',1); rebuild(); settle(); sfx.tada(); }
+    else if(t==='gm'||t==='gb'){ const p=pieces.find(q=>isGate(q)&&q.spot===d.s&&q.tun&&q.tun.a&&q.tun.b); if(!p||!notHeld(p)) return; const tn=p.tun;
+      if(t==='gb'){ fill(tn); pay('tunnel',-1); sfx.boop(); }
+      else { unbore(tn); evict(p); if(world) unsolid(p); rebuild(); const sp=SPOTS[d.to]; if(sp&&openSpots(p,tn.net).some(q=>q.i===sp.i&&q.pl===SPOTS[p.spot].pl)){ const c=gatePose(sp); p.x=c.x; p.z=c.z; p.q=c.q; p.spot=c.spot; } fix(p); bore(tn); rebuild(); settle(); klik(); } }
     else if(t==='vtap'){ const v=vehs.find(q=>q.nid===d.n); if(v&&!tip(v)) pop(v.g,.25); }
     else if(t==='vt'||t==='vf'||t==='vb'){ const v=vehs.find(q=>q.nid===d.n); if(!v||!notHeld(v)) return;
       if(t==='vb'){ dismount(v); g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
@@ -924,11 +933,11 @@ const trein=(()=>{
     else if(t==='push'){ const r=blocks.find(q=>q.nid===d.n); if(r&&notHeld(r)&&Array.isArray(d.w)&&Array.isArray(d.p)){ const wx=clampN(+d.w[0]||0,7), wz=clampN(+d.w[1]||0,7); wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(+d.p[0]||0,+d.p[1]||0,+d.p[2]||0)); } }
     else return;
     /* whatever came of it, the guests get the lists again (so a guest that moved something the host could not, sees it go back) */
-    delete lastS.p; delete lastS.k; delete lastS.v; delete lastS.m; delete lastS.b; }
+    delete lastS.p; delete lastS.k; delete lastS.v; delete lastS.m; delete lastS.b; delete lastS.x; delete lastS.t; }
   /* a guest lets go of something: it tells the host (a piece goes the usual way here too, and the host is told at the end) */
-  const pSend=m=>{ netOut(m); pHoldT=performance.now()+700; };
+  const sendHold=(k,ms)=>m=>{ netOut(m); holdT[k]=performance.now()+ms; }, pSend=sendHold('p',700), xSend=sendHold('x',700), tSend=sendHold('t',900);
   function netRelease(h,out){ const r=h.rec;
-    if(h.kind==='p') return pieces.indexOf(r)<0;
+    if(h.kind==='p') return pieces.indexOf(r)<0; if(h.kind==='s') return props.indexOf(r)<0; if(h.kind==='f') return boosts.indexOf(r)<0;
     if(h.kind==='b'){ ring.visible=false; if(blocks.indexOf(r)<0) return true; world.addBody(r.b); const t=r.nt||(r.nt={p:new V3(),q:new T.Quaternion()});
       if(h.out){ r.m.visible=false; netOut({t:'bb',n:r.nid}); after(1.5,()=>{ if(blocks.indexOf(r)>=0) r.m.visible=true; }); sfx.boop(); }
       else { t.p.set(tgt.x,tgt.y-.1,tgt.z); t.q.copy(heldQ); netOut({t:'bm',n:r.nid,p:[R3(tgt.x),R3(tgt.y-.1),R3(tgt.z)],q:[R3(heldQ.x),R3(heldQ.y),R3(heldQ.z),R3(heldQ.w)]}); sfx.plop(); } return true; }
@@ -972,13 +981,14 @@ const trein=(()=>{
   function netVehs(dt){ const k=kNet(dt), kh=1-Math.exp(-dt*24); for(const v of vehs){ if(held&&held.rec===v){ const m=v.g; m.position.lerp(v.tp,kh); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.x=0; m.rotation.y+=da*kh; m.rotation.z+=(v.pitch-m.rotation.z)*kh; continue; } const t=v.nt; if(!t) continue; v.g.position.lerp(t.p,k); v.g.quaternion.slerp(t.q,k); v.tp.copy(v.g.position); } }
   function netMach(m,dt){ m.v=0; m.kf=null; const t=m.nt; if(!t||(held&&held.rec===m)) return; const k=kNet(dt), x0=m.x, z0=m.z; m.x+=(t.x-m.x)*k; m.z+=(t.z-m.z)*k; m.y+=(t.y-m.y)*k; m.up=t.y>RISE/2; m.yaw+=wrapA(t.yaw-m.yaw)*k;
     for(const key in t.pose) m.pose[key]+=(t.pose[key]-m.pose[key])*k; m.dist+=(m.x-x0)*Math.cos(m.yaw)-(m.z-z0)*Math.sin(m.yaw); }
-  function netLate(){ if(pLate&&performance.now()>=pHoldT){ const L=pLate; pLate=null; piecesTo(L,false); rebuild(); } }
+  function netLate(){ const now=performance.now(), S={}; let any=false; for(const k of ['p','t','x']) if(late[k]&&now>=holdT[k]&&!lateBusy(k)){ S[k]=late[k]; late[k]=null; any=true; } if(any) netS(S,false); }
   function netBlocks(dt){ const k=kNet(dt); let top=0; for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const t=r.nt; if(!t) continue; r.m.position.lerp(t.p,k); r.m.quaternion.slerp(t.q,k); if(r.m.position.y>top) top=r.m.position.y; } return top; }
   function netMan(z,dt){ const w=z.man, t=w.nt; w.bub.visible=false; if(!t) return; const k=kNet(dt), dx=t.x-w.x, dz=t.z-w.z; w.x+=dx*k; w.z+=dz*k; w.yaw=t.yaw; if(dx*dx+dz*dz>.0004) w.step+=dt*12; }
   /* a guest: the sections put the copy right, a little at a time (snap: all at once, when you join) */
-  function netS(S,snap){ if(S.k){ stock.hout=S.k[0]; stock.steen=S.k[1]; stockDirty=true; locked=new Set(S.k[2]); lockUI(locked); }
+  const lateBusy=k=>k==='x'?!!(held&&(held.kind==='s'||held.kind==='f')):k==='t'?!!(pick||(held&&held.kind==='p'&&isGate(held.rec))):false;
+  function netS(S,snap){ S=Object.assign({},S); if(!snap){ const now=performance.now(); for(const k of ['p','t','x']) if(S[k]){ if(now<holdT[k]||lateBusy(k)){ late[k]=S[k]; S[k]=null; } else late[k]=null; } } if(S.k){ stock.hout=S.k[0]; stock.steen=S.k[1]; stockDirty=true; locked=new Set(S.k[2]); lockUI(locked); }
     if(S.d) S.d.forEach((a,i)=>{ if(dorpen[i]) villTo(dorpen[i],a,snap); });
-    if(S.w) worldTo(S.w,snap); if(S.p){ if(!snap&&performance.now()<pHoldT){ pLate=S.p; S.p=null; } else { pLate=null; piecesTo(S.p,snap); } } if(S.t) tunnelsTo(S.t); if(S.p||S.t||S.d) rebuild(); if(S.x) propsTo(S.x);
+    if(S.w) worldTo(S.w,snap); if(S.p) piecesTo(S.p,snap); if(S.t) tunnelsTo(S.t); if(S.p||S.t||S.d) rebuild(); if(S.x) propsTo(S.x);
     if(S.v) vehsTo(S.v); if(S.m) machsTo(S.m); if(S.b) blocksTo(S.b); if(S.f) netFolk=S.f; if(S.f||S.v) folkTo(netFolk,snap); }
   function villTo(d,a,snap){ const [st,proj,need,site,extra,houses,sk,vis,gst]=a;
     if(st&&!d.station){ dropSite(d); stationUp(d); if(!snap){ d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); } }
@@ -1249,12 +1259,12 @@ const trein=(()=>{
     return {x:s.x,y:s.y+TH,z:s.z,yaw:Math.atan2(-tz,tx),pitch:Math.atan2(ty,l),wp:s}; }
   /* a boost lies on the rail it was put on; when that rail goes, it drops onto the ground where it was (and clicks on again when rail comes back under it) */
   function lay(f){ const t=onTrack(f.x,f.z,.35); if(t){ f.x=t.x; f.z=t.z; f.y=t.y; f.yaw=t.yaw; f.pitch=t.pitch; f.wp=t.wp; } else { f.wp=null; f.y=hAt(f.x,f.z)+.004; f.pitch=0; } }
-  function addBoost(){ if(locked.has('boost')||boosts.length>=MAXBOOST){ sfx.boing(); return; } const m=SPOOR.boost(), q=spot(null), f={kind:'f',x:q[0],z:q[1],y:hAt(q[0],q[1])+.004,yaw:0,pitch:0,g:m.g,bolt:m.bolt,wp:null};
+  function addBoost(){ if(NET===2){ if(locked.has('boost')){ sfx.boing(); return; } netOut({t:'boost',e:lowEdge()}); sfx.pop(5); return; } if(locked.has('boost')||boosts.length>=MAXBOOST){ sfx.boing(); return; } const m=SPOOR.boost(), q=spot(null), f={kind:'f',x:q[0],z:q[1],y:hAt(q[0],q[1])+.004,yaw:0,pitch:0,g:m.g,bolt:m.bolt,wp:null};
     m.g.userData.rec=f; m.g.rotation.order='YZX'; m.g.position.set(f.x,f.y,f.z); g.add(m.g); boosts.push(f); popIn(m.g,.3); sfx.pop(5); }
   function bind(){ for(const f of boosts) if(!held||held.rec!==f) lay(f); for(const s of props){ const b=beside(s.x,s.z,0,1.35); s.wp=b?b.wp:null; } }
   function propBody(s,on){ if(!world) return; if(s.b){ world.removeBody(s.b); s.b=null; } if(!on) return; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.31,.21,.31))); b.position.set(s.x,.21+hAt(s.x,s.z),s.z); b.quaternion.setFromAxisAngle(V(0,1,0),s.yaw); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); s.b=b; wakeAll(); }
   function showNum(s,n){ if(s.shown!==n){ s.shown=n; s.plate.material=SPOOR.numMat(n); } }
-  function addSensor(){ if(locked.has('sensor')||props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
+  function addSensor(){ if(NET===2){ if(locked.has('sensor')){ sfx.boing(); return; } netOut({t:'sens',e:lowEdge()}); sfx.pop(6); return; } if(locked.has('sensor')||props.length>=MAXSENS){ sfx.boing(); return; } const m=SPOOR.sensor(), q=spot(null), s={kind:'s',x:q[0],z:q[1],y:hAt(q[0],q[1]),yaw:0,sec:SECS[0],g:m.g,lamp:m.lamp,num:m.num,plate:m.plate,wp:null,busy:null,b:null,shown:SECS[0]};
     m.g.userData.rec=s; m.g.position.set(s.x,s.y,s.z); g.add(m.g); props.push(s); propBody(s,true); bind(); popIn(m.g,.3); sfx.pop(6); }
   function tapSensor(s){ s.sec=SECS[(SECS.indexOf(s.sec)+1)%SECS.length]; if(s.busy) s.busy.pause=Math.min(s.busy.pause,s.sec); pop(s.g,.2); tone(520+s.sec*30,.1,'triangle',.2); }
 
@@ -1315,7 +1325,7 @@ const trein=(()=>{
     if(!pick.a){ const t={a:null,b:null,gang:null,net:pick.net}; pick.t=t; pick.a=t.a=portal(t,sp); rebuild(); settle(); klik(); sfx.pop(4); marksOn(openSpots(null,pick.net).filter(s=>s.pl===sp.pl)); return; }
     if(sp.pl!==SPOTS[pick.a.spot].pl){ sfx.boing(); return; }   /* the way out lies on the same table as the way in */
     if(nTun(pick.net)>=MAXTUN||!canPay('tunnel')){ sfx.boing(); stockUI(stock,null,true); undig(); return; }
-    const t=pick.t; t.b=portal(t,sp); tunnels.push(t); pick=null; marksOff(); digUI(false); bore(t); pay('tunnel',1); rebuild(); settle(); sfx.tada(); [t.a,t.b].forEach(p=>{ wpt(p,0,.7,cv); cv.y+=1; burst(cv,16,3.2); }); }
+    const t=pick.t; t.b=portal(t,sp); tunnels.push(t); pick=null; marksOff(); digUI(false); bore(t); pay('tunnel',1); rebuild(); settle(); sfx.tada(); if(NET===2) tSend({t:'tun',net:t.net,a:t.a.spot,b:t.b.spot}); [t.a,t.b].forEach(p=>{ wpt(p,0,.7,cv); cv.y+=1; burst(cv,16,3.2); }); }
   /* while pointing, a finger only finds the markers and the way in (tap it again to take it back); anything else scrolls */
   function pickDown(ev){ const now=performance.now(), hm=hit(ev,marks.filter(m=>m.g.visible).map(m=>m.h)), ha=!hm&&pick.a?hit(ev,[pick.a.g],true):null;
     ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec:hm?hm.object.userData.spot:ha?pick.a:null,kind:hm?'spot':ha?'pa':'mat',pt:null,g0:null,mode:0}; }
@@ -1324,9 +1334,9 @@ const trein=(()=>{
     if(best){ if(!held.cand||held.cand.spot!==best.i) klik(); held.cand=gatePose(best); held.q=best.q; aimAt(p,held.cand,0); }
     else { held.cand=null; mid({type:p.type,x:0,z:0,q:held.q,lv:0,m:1},a1); aimAt(p,{type:p.type,x:F.x-a1.x,z:F.z-a1.z,q:held.q,lv:0,m:1},.45+F.y); } }
   function dropGate(h,out){ const p=h.rec, t=p.tun; marksOff();
-    if(!h.cand&&out){ fill(t); pay('tunnel',-1); sfx.boop(); return; }   /* into the bin: the whole tunnel goes, the stone comes back */
+    if(!h.cand&&out){ fill(t); pay('tunnel',-1); if(NET===2) tSend({t:'gb',s:h.s0}); sfx.boop(); return; }   /* into the bin: the whole tunnel goes, the stone comes back */
     if(h.cand){ p.x=h.cand.x; p.z=h.cand.z; p.q=h.cand.q; p.spot=h.cand.spot; klik(); } else sfx.plop();
-    fix(p); bore(t); rebuild(); settle(); }
+    fix(p); bore(t); rebuild(); settle(); if(NET===2) tSend({t:'gm',s:h.s0,to:p.spot}); }
 
   /* ----- machines you drive yourself. Each has a size (rad), a top speed, how fast it turns and gets going, and its box for the physics. The excavator rides on tracks and turns on the spot ----- */
   const MS={graaf:{rad:.8,off:.45,speed:1.1,turn:1.1,acc:2.5,tank:true,box:[.78,.5,.5],col:'var(--yellow)',ink:true,word:'Graven'},shovel:{rad:.78,off:.55,speed:4.2,turn:2.6,acc:9,box:[.88,.55,.45],col:'var(--orange)',ink:true,word:'Scheppen'},kiep:{rad:.78,off:.62,speed:3.6,turn:2.2,acc:7,box:[1.02,.55,.45],col:'var(--blue)',word:'Kiepen'}}, MAXMACH=2;
@@ -1539,12 +1549,12 @@ const trein=(()=>{
     if(NET===2) netOut({t:'push',n:r.nid,w:[R3(wx),R3(wz)],p:[R3(h.point.x),R3(h.point.y),R3(h.point.z)]}); else { wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(h.point.x,h.point.y,h.point.z)); }
     if(now-pushSnd>110){ pushSnd=now; tone(R(150,210),.08,'triangle',.16,90); burst(h.point,3,1.6,r.col); } }
 
-  function grab(r){ if(r.kind==='p'){ const gate=isGate(r); if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,k0:pk(r),cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r,r.tun.net).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
+  function grab(r){ if(r.kind==='p'){ const gate=isGate(r); if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,k0:pk(r),s0:r.spot,cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r,r.tun.net).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
     else if(r.kind==='v'){ dismount(r); te.setFromQuaternion(r.g.quaternion,'YZX'); r.yaw=te.y; r.pitch=0; r.tp.copy(r.g.position); r.g.rotation.set(0,te.y,0); held={kind:'v',rec:r,cand:null,yaw:te.y}; }
     else if(r.kind==='z'){ millBody(r,false); manHome(r); held={kind:'z',rec:r,ox:r.x,oz:r.z}; }
     else if(r.kind==='m'){ if(driving===r) leave(true); machBody(r,false); held={kind:'m',rec:r,ox:r.x,oz:r.z,oup:r.up}; }
-    else if(r.kind==='f'){ r.wp=null; held={kind:'f',rec:r,snap:false}; }
-    else if(r.kind==='s'){ propBody(r,false); if(r.busy){ r.busy.pause=0; r.busy.stop=null; r.busy=null; } r.wp=null; held={kind:'s',rec:r,snap:false}; }
+    else if(r.kind==='f'){ r.wp=null; held={kind:'f',rec:r,a0:[r.x,r.z],snap:false}; }
+    else if(r.kind==='s'){ propBody(r,false); if(r.busy){ r.busy.pause=0; r.busy.stop=null; r.busy=null; } r.wp=null; held={kind:'s',rec:r,a0:[r.x,r.z],snap:false}; }
     else { world.removeBody(r.b); wakeAll(); te.setFromQuaternion(r.m.quaternion,'YXZ'); const rot=Math.round(te.y/(PI/2))&1; heldQ.setFromAxisAngle(YAX,Math.round(te.y/(PI/2))*PI/2); tgt.copy(r.m.position); held={kind:'b',rec:r,rot:!!rot,out:false}; }
     sfx.pop(5); }
   /* a piece in the hand jumps onto the nearest open end the finger points at; a bend or a switch picks the side the finger is on */
@@ -1570,9 +1580,9 @@ const trein=(()=>{
       r.m.position.set(tgt.x,tgt.y-.1,tgt.z); r.m.quaternion.copy(heldQ); r.b.position.set(tgt.x,tgt.y-.1,tgt.z); r.b.quaternion.set(heldQ.x,heldQ.y,heldQ.z,heldQ.w); r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); world.addBody(r.b); wakeAll(); sfx.plop(); return; }
     if(h.kind==='z'){ const m=h.rec; if(out){ removeMill(m); sfx.boop(); return; } const q=nearSite(clampN(m.x,MX),clampN(m.z,MZ),m,m.hw,m.hd)||[h.ox,h.oz]; m.x=q[0]; m.z=q[1]; m.y=hAt(m.x,m.z); millBody(m,true); manHome(m); bind(); sfx.plop(); return; }
     if(h.kind==='m'){ const m=h.rec; if(out){ removeMach(m); sfx.boop(); return; } if(!placeM(m,clampN(m.x,MX-1),clampN(m.z,MZ-1))){ m.x=h.ox; m.z=h.oz; m.up=h.oup; m.y=m.up?RISE:0; } machBody(m,true); sfx.plop(); return; }
-    if(h.kind==='f'){ const f=h.rec; if(out&&!h.snap){ g.remove(f.g); boosts=boosts.filter(x=>x!==f); sfx.boop(); return; } f.x=clampN(f.x,MX-.4); f.z=clampN(f.z,MZ-.4); lay(f); if(f.wp) klik(); else sfx.plop(); return; }
-    if(h.kind==='s'){ const s=h.rec; if(out&&!h.snap){ g.remove(s.g); props=props.filter(x=>x!==s); sfx.boop(); return; }
-      s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=hAt(s.x,s.z); propBody(s,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
+    if(h.kind==='f'){ const f=h.rec; if(out&&!h.snap){ g.remove(f.g); boosts=boosts.filter(x=>x!==f); if(NET===2) xSend({t:'fb',a:h.a0}); sfx.boop(); return; } f.x=clampN(f.x,MX-.4); f.z=clampN(f.z,MZ-.4); lay(f); if(NET===2) xSend({t:'fm',a:h.a0,o:[R3(f.x),R3(f.z),R3(f.yaw)]}); if(f.wp) klik(); else sfx.plop(); return; }
+    if(h.kind==='s'){ const s=h.rec; if(out&&!h.snap){ g.remove(s.g); props=props.filter(x=>x!==s); if(NET===2) xSend({t:'sb',a:h.a0}); sfx.boop(); return; }
+      s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=hAt(s.x,s.z); propBody(s,true); bind(); if(NET===2) xSend({t:'sm',a:h.a0,o:[R3(s.x),R3(s.z),R3(s.yaw)]}); if(h.snap) klik(); else sfx.plop(); return; }
     if(h.kind==='p'&&isGate(h.rec)){ dropGate(h,out); return; }
     if(h.kind==='p'){ const p=h.rec; let o=h.cand;
       if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); if(lastP===p) lastP=null; pay(p.type,-1); if(NET===2) pSend({t:'pb',k:h.k0}); sfx.boop(); rebuild(); settle(); return; }   /* into the bin: the blocks come back */
@@ -1649,14 +1659,14 @@ const trein=(()=>{
       avStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
-      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||(kind==='p'&&!isGate(rec)))){ rec=null; kind='mat'; }
+      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||kind==='p'||kind==='s'||kind==='f')){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
       if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&ptr.rec.by) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s'){ if(NET===2) xSend({t:'stap',a:[p.rec.x,p.rec.z]}); tapSensor(p.rec); } else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
