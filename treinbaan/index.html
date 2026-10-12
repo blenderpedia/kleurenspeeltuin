@@ -122,7 +122,7 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 #spelers{position:absolute;left:16px;top:calc(var(--btn) + 30px);display:grid;gap:6px;justify-items:start;pointer-events:none}
 #spelers .sp{display:flex;align-items:center;gap:.4em;padding:.15em .75em .15em .35em;border-radius:999px;background:var(--paper);box-shadow:0 3px 0 var(--shade);font:800 clamp(13px,3.2vmin,16px)/1.25 var(--display);color:var(--ink)}
 #spelers .sp i{width:.95em;height:.95em;border-radius:50%}
-body.gast #bot{display:none!important}
+body.gast #spoor-tunnel,body.gast #spoor-wtunnel,body.gast #spoor-sensor,body.gast #spoor-boost{display:none!important}
 .ik{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 12px}
 .ik input{width:min(56vw,250px);box-sizing:border-box;padding:.3em .7em;border:4px solid var(--paper);border-radius:999px;background:var(--paper);color:var(--ink);font:800 clamp(17px,4.4vmin,22px)/1.2 var(--display);text-align:center;box-shadow:0 4px 0 var(--shade);outline:none}
 .ik input:focus{border-color:var(--yellow)}
@@ -845,7 +845,7 @@ const trein=(()=>{
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
   let me=null, walking=false, hintM=false, nearT=0;
-  let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
+  let NET=0, nidN=0, netNews=null, netSend=null, lastS={}, netFolk=[], edgeO=null, pendAdd=null, pHoldT=0, pLate=null, known={v:new Set(),m:new Set(),b:new Set()}; const avs=new Map();
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
     if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
@@ -895,6 +895,52 @@ const trein=(()=>{
   function netStick(pid,x,z){ for(const m of machs) if(m.by===pid){ m.sx=clampN(+x||0,1); m.sz=clampN(+z||0,1); } }
   function netAct(pid){ const m=machs.find(q=>q.by===pid); if(m) actOn(m); }
   function netMe(pid,a){ const v=avs.get(pid); if(v&&Array.isArray(a)) avTo(v,a[0]/100,a[1]/100,a[2]/1000,a[3]|0,a[4]); }
+  /* the host: what a guest builds. A piece is known by what it is and where it lies (key); a wagon on the track by the piece it stands on (ref) */
+  const pk=p=>[p.type,p.x,p.z,p.q,p.lv,p.m].join(), byKey=k=>pieces.find(p=>!p.fixed&&!p.gang&&!isGate(p)&&pk(p)===k), notHeld=o=>!(held&&held.rec===o);
+  const place=(type,a)=>({type,x:+a[0]||0,z:+a[1]||0,q:(a[2]|0)&3,lv:a[3]?1:0,m:a[4]<0?-1:1});
+  function pref0(p){ const tn=tunnels.filter(t=>t.a&&t.b); if(p.gang) return ['G',tn.indexOf(p.tun)]; if(isGate(p)) return ['g',tn.indexOf(p.tun),p.tun.a===p?0:1];
+    if(p.fixed){ for(let i=0;i<dorpen.length;i++){ const k=dorpen[i].track.indexOf(p); if(k>=0) return ['f',i,k]; } return null; } return ['p',pk(p)]; }
+  function pref(r){ if(!Array.isArray(r)) return null; const tn=tunnels.filter(t=>t.a&&t.b); if(r[0]==='p') return byKey(r[1])||null; if(r[0]==='f'){ const d=dorpen[r[1]]; return d&&d.track[r[2]]||null; }
+    if(r[0]==='G'){ const t=tn[r[1]]; return t&&t.gang||null; } if(r[0]==='g'){ const t=tn[r[1]]; return t&&(r[2]?t.b:t.a)||null; } return null; }
+  function netCmd(pid,d){ const t=d.t;
+    if(t==='add'){ const ty=d.type; if(!TYPE[ty]||/poort|gang/.test(ty)||locked.has(ty)||pieces.length>=MAXP||!canPay(ty)) return; const o=place(ty,d.o||[]); if(free(o,null)) placeNew(ty,o,!!d.s); }
+    else if(t==='pm'||t==='pb'){ const p=byKey(d.k); if(!p||!notHeld(p)) return; evict(p); if(world) unsolid(p); rebuild();
+      if(t==='pb'){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); if(lastP===p) lastP=null; pay(p.type,-1); sfx.boop(); }
+      else { const c=place(p.type,d.o||[]); if(free(c,p)){ p.x=c.x; p.z=c.z; p.q=c.q; p.lv=c.lv; p.m=c.m; } fix(p); klik(); }
+      rebuild(); settle(); }
+    else if(t==='tap'){ const p=byKey(d.k); if(p){ if(p.type==='wissel') flip(p); else if(p.type==='overweg') gate(p); else if(p.type==='eind') press(p); } }
+    else if(t==='veh'||t==='mach'){ const e=d.e; if(e&&isFinite(e.z)&&isFinite(e.x0)&&isFinite(e.x1)) edgeO={z:clampN(+e.z,MZ-.7),x0:clampN(+e.x0,MX),x1:clampN(+e.x1,MX)}; try{ if(t==='veh'&&KN&&/^(loc|goed|pass|auto)$/.test(d.s)) addTrain(d.s); else if(t==='mach'&&MS[d.s]) addMachine(d.s); } finally { edgeO=null; } }
+    else if(t==='vtap'){ const v=vehs.find(q=>q.nid===d.n); if(v&&!tip(v)) pop(v.g,.25); }
+    else if(t==='vt'||t==='vf'||t==='vb'){ const v=vehs.find(q=>q.nid===d.n); if(!v||!notHeld(v)) return;
+      if(t==='vb'){ dismount(v); g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
+      else if(t==='vf'){ dismount(v); setFree(v,clampN(+d.x||0,MX-.5),clampN(+d.z||0,MZ-.4),+d.yaw||0); }
+      else { const p=pref(d.r), si=d.si|0; if(!p||!p.live||!p.segs[si]||p.segs[si].net!==v.K.net) return; dismount(v); const pos={p,si,u:Math.max(0,Math.min(1,+d.u||0)),d:d.d>0?1:-1}; fit(pos,null,v.K,0); v.pos=pos; placeOn(v,null); mount(v,pos); if(v.loco&&v.c) toot(); } }
+    else if(t==='mm'||t==='mb'){ const m=machs.find(q=>q.nid===d.n); if(!m||!notHeld(m)||m===driving||m.by) return;
+      if(t==='mb'){ removeMach(m); sfx.boop(); } else { const ox=m.x, oz=m.z, ou=m.up; machBody(m,false); if(!placeM(m,clampN(+d.x||0,MX-1),clampN(+d.z||0,MZ-1))){ m.x=ox; m.z=oz; m.up=ou; m.y=ou?RISE:0; } machBody(m,true); } }
+    else if(t==='bm'||t==='bb'){ const r=blocks.find(q=>q.nid===d.n); if(!r||!notHeld(r)) return;
+      if(t==='bb'){ removeBlock(r,true); wakeAll(); sfx.boop(); }
+      else { const p=d.p||[], q=d.q||[], x=clampN(+p[0]||0,MX-.5), y=Math.max(.2,Math.min(TOPMAX+3,+p[1]||0)), z=clampN(+p[2]||0,MZ-.5); r.b.position.set(x,y,z); r.b.quaternion.set(+q[0]||0,+q[1]||0,+q[2]||0,isFinite(+q[3])?+q[3]:1); r.b.quaternion.normalize();
+        r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); r.b.wakeUp(); r.m.position.set(x,y,z); wakeAll(); } }
+    else if(t==='push'){ const r=blocks.find(q=>q.nid===d.n); if(r&&notHeld(r)&&Array.isArray(d.w)&&Array.isArray(d.p)){ const wx=clampN(+d.w[0]||0,7), wz=clampN(+d.w[1]||0,7); wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(+d.p[0]||0,+d.p[1]||0,+d.p[2]||0)); } }
+    else return;
+    /* whatever came of it, the guests get the lists again (so a guest that moved something the host could not, sees it go back) */
+    delete lastS.p; delete lastS.k; delete lastS.v; delete lastS.m; delete lastS.b; }
+  /* a guest lets go of something: it tells the host (a piece goes the usual way here too, and the host is told at the end) */
+  const pSend=m=>{ netOut(m); pHoldT=performance.now()+700; };
+  function netRelease(h,out){ const r=h.rec;
+    if(h.kind==='p') return pieces.indexOf(r)<0;
+    if(h.kind==='b'){ ring.visible=false; if(blocks.indexOf(r)<0) return true; world.addBody(r.b); const t=r.nt||(r.nt={p:new V3(),q:new T.Quaternion()});
+      if(h.out){ r.m.visible=false; netOut({t:'bb',n:r.nid}); after(1.5,()=>{ if(blocks.indexOf(r)>=0) r.m.visible=true; }); sfx.boop(); }
+      else { t.p.set(tgt.x,tgt.y-.1,tgt.z); t.q.copy(heldQ); netOut({t:'bm',n:r.nid,p:[R3(tgt.x),R3(tgt.y-.1),R3(tgt.z)],q:[R3(heldQ.x),R3(heldQ.y),R3(heldQ.z),R3(heldQ.w)]}); sfx.plop(); } return true; }
+    if(h.kind==='m'){ if(machs.indexOf(r)<0) return true; machBody(r,true); const x=r.x, z=r.z; if(r.nt) r.y=r.nt.y;
+      if(out){ r.g.visible=false; netOut({t:'mb',n:r.nid}); after(1.5,()=>{ if(machs.indexOf(r)>=0) r.g.visible=true; }); sfx.boop(); }
+      else { if(r.nt){ r.nt.x=x; r.nt.z=z; } netOut({t:'mm',n:r.nid,x:R3(x),z:R3(z)}); sfx.plop(); } return true; }
+    if(h.kind==='v'){ if(vehs.indexOf(r)<0) return true; const t=r.nt||(r.nt={p:new V3(),q:new T.Quaternion()});
+      if(h.cand&&h.cand.p.live){ const c=h.cand, ref=pref0(c.p); if(ref) netOut({t:'vt',n:r.nid,r:ref,si:c.si,u:R3(c.u),d:c.d}); t.p.copy(r.tp); sfx.plop(); }
+      else if(out){ r.g.visible=false; netOut({t:'vb',n:r.nid}); after(1.5,()=>{ if(vehs.indexOf(r)>=0) r.g.visible=true; }); sfx.boop(); }
+      else { t.p.copy(r.tp); netOut({t:'vf',n:r.nid,x:R3(r.tp.x),z:R3(r.tp.z),yaw:R3(h.yaw)}); sfx.plop(); }
+      t.q.setFromEuler(new T.Euler(0,r.yaw,r.pitch,'YZX')); r.pos=null; return true; }
+    return true; }
   /* a guest: where you are and how you steer */
   function netMine(){ return {me:me?[Q2(me.x),Q2(me.z),Q3(me.yaw),driving?driving.nid:0,me.up?1:0]:[0,0,0,0,0],st:driving?[Q3(stX),Q3(stZ)]:null}; }
   function netInOk(nid){ const m=nM.get(nid); if(m&&walking&&!driving) getIn(m); else netOut({t:'out'}); }
@@ -923,15 +969,16 @@ const trein=(()=>{
       if(snap||first){ r.m.position.copy(t.p); r.m.quaternion.copy(t.q); if(first){ r.m.visible=true; if(!snap) popIn(r.m,.25); } } }
     for(let i=0;i<F.z.length;i+=5){ const z=mills[F.z[i]]; if(!z) continue; const w=z.man, c=F.z[i+4]; w.nt={x:F.z[i+1]/100,z:F.z[i+2]/100,yaw:F.z[i+3]/1000}; w.carry=!!c; if(c) w.pack.material=BOUW.blockMat(c===2?'steen':'hout'); w.pack.visible=w.carry; if(snap){ w.x=w.nt.x; w.z=w.nt.z; w.yaw=w.nt.yaw; } }
     for(let i=0;i<F.a.length;i+=6){ const a=avs.get(F.a[i]); if(a) avTo(a,F.a[i+1]/100,F.a[i+2]/100,F.a[i+3]/1000,F.a[i+4],F.a[i+5]); } }
-  function netVehs(dt){ const k=kNet(dt); for(const v of vehs){ const t=v.nt; if(!t) continue; v.g.position.lerp(t.p,k); v.g.quaternion.slerp(t.q,k); v.tp.copy(v.g.position); } }
-  function netMach(m,dt){ m.v=0; m.kf=null; const t=m.nt; if(!t) return; const k=kNet(dt), x0=m.x, z0=m.z; m.x+=(t.x-m.x)*k; m.z+=(t.z-m.z)*k; m.y+=(t.y-m.y)*k; m.up=t.y>RISE/2; m.yaw+=wrapA(t.yaw-m.yaw)*k;
+  function netVehs(dt){ const k=kNet(dt), kh=1-Math.exp(-dt*24); for(const v of vehs){ if(held&&held.rec===v){ const m=v.g; m.position.lerp(v.tp,kh); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.x=0; m.rotation.y+=da*kh; m.rotation.z+=(v.pitch-m.rotation.z)*kh; continue; } const t=v.nt; if(!t) continue; v.g.position.lerp(t.p,k); v.g.quaternion.slerp(t.q,k); v.tp.copy(v.g.position); } }
+  function netMach(m,dt){ m.v=0; m.kf=null; const t=m.nt; if(!t||(held&&held.rec===m)) return; const k=kNet(dt), x0=m.x, z0=m.z; m.x+=(t.x-m.x)*k; m.z+=(t.z-m.z)*k; m.y+=(t.y-m.y)*k; m.up=t.y>RISE/2; m.yaw+=wrapA(t.yaw-m.yaw)*k;
     for(const key in t.pose) m.pose[key]+=(t.pose[key]-m.pose[key])*k; m.dist+=(m.x-x0)*Math.cos(m.yaw)-(m.z-z0)*Math.sin(m.yaw); }
-  function netBlocks(dt){ const k=kNet(dt); let top=0; for(const r of blocks){ const t=r.nt; if(!t) continue; r.m.position.lerp(t.p,k); r.m.quaternion.slerp(t.q,k); if(r.m.position.y>top) top=r.m.position.y; } return top; }
+  function netLate(){ if(pLate&&performance.now()>=pHoldT){ const L=pLate; pLate=null; piecesTo(L,false); rebuild(); } }
+  function netBlocks(dt){ const k=kNet(dt); let top=0; for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const t=r.nt; if(!t) continue; r.m.position.lerp(t.p,k); r.m.quaternion.slerp(t.q,k); if(r.m.position.y>top) top=r.m.position.y; } return top; }
   function netMan(z,dt){ const w=z.man, t=w.nt; w.bub.visible=false; if(!t) return; const k=kNet(dt), dx=t.x-w.x, dz=t.z-w.z; w.x+=dx*k; w.z+=dz*k; w.yaw=t.yaw; if(dx*dx+dz*dz>.0004) w.step+=dt*12; }
   /* a guest: the sections put the copy right, a little at a time (snap: all at once, when you join) */
   function netS(S,snap){ if(S.k){ stock.hout=S.k[0]; stock.steen=S.k[1]; stockDirty=true; locked=new Set(S.k[2]); lockUI(locked); }
     if(S.d) S.d.forEach((a,i)=>{ if(dorpen[i]) villTo(dorpen[i],a,snap); });
-    if(S.w) worldTo(S.w,snap); if(S.p) piecesTo(S.p,snap); if(S.t) tunnelsTo(S.t); if(S.p||S.t||S.d) rebuild(); if(S.x) propsTo(S.x);
+    if(S.w) worldTo(S.w,snap); if(S.p){ if(!snap&&performance.now()<pHoldT){ pLate=S.p; S.p=null; } else { pLate=null; piecesTo(S.p,snap); } } if(S.t) tunnelsTo(S.t); if(S.p||S.t||S.d) rebuild(); if(S.x) propsTo(S.x);
     if(S.v) vehsTo(S.v); if(S.m) machsTo(S.m); if(S.b) blocksTo(S.b); if(S.f) netFolk=S.f; if(S.f||S.v) folkTo(netFolk,snap); }
   function villTo(d,a,snap){ const [st,proj,need,site,extra,houses,sk,vis,gst]=a;
     if(st&&!d.station){ dropSite(d); stationUp(d); if(!snap){ d.track.forEach(p=>popIn(p.g,.3)); popIn(d.plat.g,.35); } }
@@ -955,7 +1002,7 @@ const trein=(()=>{
   function piecesTo(list,snap){ const key=a=>a.slice(0,6).join(), want=new Map(list.map(a=>[key(a),a]));
     for(const p of pieces.slice()){ if(p.fixed||p.gang||isGate(p)) continue; const k=key([p.type,p.x,p.z,p.q,p.lv,p.m]), a=want.get(k);
       if(!a){ evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); continue; } want.delete(k); setSw(p,a[6],snap); setShut(p,a[7],snap); }
-    for(const a of want.values()){ const p=layPiece(a[0],a[1],a[2],a[3],false,a[4],a[5]); if(!snap) popIn(p.g,.25); setSw(p,a[6],true); setShut(p,a[7],true); } }
+    for(const a of want.values()){ const p=layPiece(a[0],a[1],a[2],a[3],false,a[4],a[5]); if(!snap) popIn(p.g,.25); if(pendAdd&&key(a)===pendAdd){ lastP=p; pendAdd=null; } setSw(p,a[6],true); setShut(p,a[7],true); } }
   function tunnelsTo(list){ for(const t of tunnels){ unbore(t); for(const p of [t.a,t.b]){ if(!p) continue; evict(p); if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } tunnels=[];
     for(const [net,a,b] of list){ if(!SPOTS[a]||!SPOTS[b]) continue; const t={a:null,b:null,gang:null,net}; t.a=portal(t,SPOTS[a]); t.b=portal(t,SPOTS[b]); tunnels.push(t); bore(t); } }
   function propsTo([ps,bs]){ props.forEach(q=>{ propBody(q,false); g.remove(q.g); }); props=[]; boosts.forEach(f=>g.remove(f.g)); boosts=[]; for(const [x,z,yaw,sec] of ps) makeSensor(x,z,yaw,sec); for(const [x,z,yaw] of bs) makeBoost(x,z,yaw); bind(); }
@@ -977,8 +1024,8 @@ const trein=(()=>{
       const was=f.st; f.home=dorpen[h]||dorpen[0]; f.dest=dorpen[dd]||null; f.at=dorpen[at]||f.home; f.v=vn?nV.get(vn)||null:null; f.st=st==='ride'&&!f.v?'away':st; if(!snap&&was!=='wait'&&f.st==='wait') popIn(f.g,.25); });
     for(const f of folk) folkN=Math.max(folkN,f.i+1); lineUp(); for(const v of vehs) if(v.sort==='pass') seatHeads(v); }
   /* a guest joins: the host's world from its seed, then everything on top */
-  function netJoin(W,pl,mine){ NET=2; if(driving||walking) leave(true); mode=W.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',W.seed); clearPlay(); for(const a of [...avs.values()]) avDrop(a); avSet(pl||[],mine);
-    netFolk=[]; netS(W.s,true); netF(W.f,true); if(me){ panX=me.x; panZ=me.z; } applyCamera(); }
+  function netJoin(W,pl,mine){ if(driving||walking) leave(true); NET=0; mode=W.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',W.seed); clearPlay(); NET=2; for(const a of [...avs.values()]) avDrop(a); avSet(pl||[],mine);
+    netFolk=[]; netS(W.s,true); netF(W.f,true); if(me){ placeMe(me.x-1.4*Math.max(1,(mine|0)-1),me.z+.6); panX=me.x; panZ=me.z; } applyCamera(); }
   /* start or stop playing together (the others go; a guest's copy stays until a new game comes) */
   function netRole(r){ if(NET===2&&r!==2&&driving){ NET=r; leave(true); } NET=r; lastS={}; known={v:new Set(),m:new Set(),b:new Set()}; for(const o of [...vehs,...machs,...blocks,...mills]) o.ls=null; for(const m of machs){ m.by=0; m.sx=m.sz=0; } for(const a of [...avs.values()]) avDrop(a); }
   /* ----- a saved game: the world comes back from its seed, then everything that changed is put on top of it ----- */
@@ -1082,7 +1129,7 @@ const trein=(()=>{
     for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of machs) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.6) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false; for(const H of vrects) if(inMill(H,x,z,.6)) return false; if(heapAt(x,z,.6)) return false;
     for(const r of blocks){ const q=r.b.position; if(Math.hypot(q.x-x,q.z-z)<1) return false; } for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>8) continue; for(const q of p.path) if((q.x-x)*(q.x-x)+(q.z-z)*(q.z-z)<.8) return false; } return true; }
   /* the strip of ground just above the buttons: its depth and how far it reaches left and right */
-  function lowEdge(){ const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
+  function lowEdge(){ if(edgeO) return edgeO; const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
   /* a free place low in the picture for something new (or something that lost its track) */
   function spot(self){ const e=lowEdge(), xc=(e.x0+e.x1)/2, n=Math.max(3,Math.floor((e.x1-e.x0)/1.3)); for(let r=0;r<10;r++) for(let k=0;k<n;k++){ const sx=xc+((k+1)>>1)*(k&1?-1:1)*1.3, sz=e.z-.2-r*1.25; if(clearAt(sx,sz,self)) return [sx,sz]; } return [clampN(xc,MX-1),e.z]; }
   function stage(v){ const s=spot(v); setFree(v,s[0],s[1],0); }
@@ -1166,7 +1213,7 @@ const trein=(()=>{
   function eachDot(net,fn){ const a=net==='road'?BX-1:BX, b=net==='road'?BZ-1:BZ; for(let x=-a;x<=a;x+=2) for(let z=-b;z<=b;z+=2) fn(x,z); }
   /* the stock at the factory: paying for a piece, getting it back from the bin, a block that is stacked */
   const canPay=type=>{ if(mode!=='camp') return true; const c=COST[type]; for(const k in c) if(stock[k]<c[k]) return false; return true; };   /* in the creative game everything is free */
-  function pay(type,sign){ if(mode!=='camp') return; const c=COST[type]; for(const k in c) stock[k]-=c[k]*sign; restack(); stockUI(stock); }
+  function pay(type,sign){ if(mode!=='camp'||NET===2) return; const c=COST[type]; for(const k in c) stock[k]-=c[k]*sign; restack(); stockUI(stock); }
   /* a new piece clicks straight onto an open end: first where you were building (the piece you put down last), else the open end nearest the middle of the picture; only ends you can see (where you were building may lie a little outside, the picture may still be on its way there). A bend tries left before right, a switch branches left before right, a bridge climbs from the ground and comes down from a high end */
   const inView=(x,z)=>Math.abs(x-panX)<vw/2&&Math.abs(z-panZ)<vd/2+1;
   function attach(type){ const ty=TYPE[type], ms=ty.mirror?[1,-1]:[1], L=open.filter(X=>X.p===lastP?Math.abs(X.e.x-panX)<vw/2+5&&Math.abs(X.e.z-panZ)<vd/2+5:inView(X.e.x,X.e.z));
@@ -1179,10 +1226,11 @@ const trein=(()=>{
       /* nothing to click onto: first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
       for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o=rest({type,x,z,q,lv:0,m:1}); mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } }); }
     if(!best){ sfx.boing(); return; }
-    const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle();
+    if(NET===2){ pendAdd=[type,best.x,best.z,best.q,best.lv,best.m].join(); netOut({t:'add',type,o:[best.x,best.z,best.q,best.lv,best.m],s:snap?1:0}); if(snap) klik(); sfx.pop(pieces.length%8); } else placeNew(type,best,snap);
     /* the picture follows a track that grows towards its edge */
-    if(snap){ mid(p,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
-  function addTrain(sort,quiet,force){ if(!force&&locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
+    if(snap){ mid(best,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
+  function placeNew(type,best,snap){ const t=TYPE[type], m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle(); return p; }
+  function addTrain(sort,quiet,force){ if(NET===2&&!force){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'veh',s:sort,e:lowEdge()}); sfx.pop(3); return; } if(!force&&locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
     if(!force&&n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
     const ci=isLoc?locN:isCar?carN:0, vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',nid:++nidN,ci,sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
     if(world){ const b=new PH.Body({mass:1.5,material:slipM}); b.addShape(new PH.Box(V(K.box[0],K.box[1],K.box[2]))); if(isCar) b.mass=1; b.linearDamping=.03; b.angularDamping=.35; b.allowSleep=true; b.sleepSpeedLimit=.1; b.sleepTimeLimit=1; b.veh=v; v.b=b; }
@@ -1299,7 +1347,7 @@ const trein=(()=>{
   function blockedAt(m,x,z,yaw,pad){ const S=MS[m.sort], fx=Math.cos(yaw)*S.off, fz=-Math.sin(yaw)*S.off, r=S.rad*.72+(pad||0); return hitsAt(m,x,z,r)||hitsAt(m,x+fx,z+fz,r)||hitsAt(m,x-fx,z-fz,r); }
   /* the nearest place where it fits, on the level of the spot you point at */
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
-  function addMachine(sort){ if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
+  function addMachine(sort){ if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
   function newMach(sort,x,z,yaw,pad,quiet,exact){ const M=MACH[sort](), m={kind:'m',nid:++nidN,by:0,sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
     if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); tone(80,.35,'sawtooth',.05,150); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
@@ -1488,10 +1536,10 @@ const trein=(()=>{
     const list=[]; for(const r of blocks) list.push(r.m); const h=hit(ev,list); if(!h) return; const r=h.object.userData.blk, upp=2*h.distance*Math.tan(camera.fov*PI/360)/(app.clientHeight||1);
     camera.getWorldDirection(fw); fw.y=0; fw.normalize(); rt.crossVectors(fw,YAX).normalize();
     let wx=(rt.x*vx-fw.x*vy)*upp, wz=(rt.z*vx-fw.z*vy)*upp, sp=Math.hypot(wx,wz); if(sp<.6) return; if(sp>7){ wx*=7/sp; wz*=7/sp; }
-    wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(h.point.x,h.point.y,h.point.z));
+    if(NET===2) netOut({t:'push',n:r.nid,w:[R3(wx),R3(wz)],p:[R3(h.point.x),R3(h.point.y),R3(h.point.z)]}); else { wakeAll(); r.pt=.22; r.px=wx; r.pz=wz; r.b.applyImpulse(V(wx*.2,0,wz*.2),V(h.point.x,h.point.y,h.point.z)); }
     if(now-pushSnd>110){ pushSnd=now; tone(R(150,210),.08,'triangle',.16,90); burst(h.point,3,1.6,r.col); } }
 
-  function grab(r){ if(r.kind==='p'){ const gate=isGate(r); if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r,r.tun.net).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
+  function grab(r){ if(r.kind==='p'){ const gate=isGate(r); if(gate){ unbore(r.tun); rebuild(); } evict(r); if(world) unsolid(r); held={kind:'p',rec:r,k0:pk(r),cand:null,q:r.q,m:mOf(r),spots:gate?openSpots(r,r.tun.net).filter(s=>s.pl===SPOTS[r.spot].pl):null}; if(gate) marksOn(held.spots); rebuild(); settle(); }
     else if(r.kind==='v'){ dismount(r); te.setFromQuaternion(r.g.quaternion,'YZX'); r.yaw=te.y; r.pitch=0; r.tp.copy(r.g.position); r.g.rotation.set(0,te.y,0); held={kind:'v',rec:r,cand:null,yaw:te.y}; }
     else if(r.kind==='z'){ millBody(r,false); manHome(r); held={kind:'z',rec:r,ox:r.x,oz:r.z}; }
     else if(r.kind==='m'){ if(driving===r) leave(true); machBody(r,false); held={kind:'m',rec:r,ox:r.x,oz:r.z,oup:r.up}; }
@@ -1517,7 +1565,7 @@ const trein=(()=>{
       if(best&&!bin){ wpt(best,bs.si,Math.min(1,bs.u+.05),a1); wpt(best,bs.si,Math.max(0,bs.u-.05),a2); const pos={p:best,si:bs.si,u:bs.u,d:Math.cos(held.yaw-Math.atan2(a2.z-a1.z,a1.x-a2.x))>=0?1:-1};
         fit(pos,null,v.K,0); v.pos=pos; placeOn(v,null); if(!held.cand) klik(); held.cand=pos; }
       else { held.cand=null; v.tp.set(F.x,.5+v.K.vh+F.y,F.z); v.yaw=held.yaw; v.pitch=0; } } }
-  function release(px,py){ const h=held; held=null; if(!h) return; const out=px!=null&&overBin(px,py);
+  function release(px,py){ const h=held; held=null; if(!h) return; const out=px!=null&&overBin(px,py); if(NET===2&&netRelease(h,out)) return;
     if(h.kind==='b'){ const r=h.rec; ring.visible=false; if(h.out){ removeBlock(r,false); sfx.boop(); return; }
       r.m.position.set(tgt.x,tgt.y-.1,tgt.z); r.m.quaternion.copy(heldQ); r.b.position.set(tgt.x,tgt.y-.1,tgt.z); r.b.quaternion.set(heldQ.x,heldQ.y,heldQ.z,heldQ.w); r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); world.addBody(r.b); wakeAll(); sfx.plop(); return; }
     if(h.kind==='z'){ const m=h.rec; if(out){ removeMill(m); sfx.boop(); return; } const q=nearSite(clampN(m.x,MX),clampN(m.z,MZ),m,m.hw,m.hd)||[h.ox,h.oz]; m.x=q[0]; m.z=q[1]; m.y=hAt(m.x,m.z); millBody(m,true); manHome(m); bind(); sfx.plop(); return; }
@@ -1527,11 +1575,11 @@ const trein=(()=>{
       s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=hAt(s.x,s.z); propBody(s,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
     if(h.kind==='p'&&isGate(h.rec)){ dropGate(h,out); return; }
     if(h.kind==='p'){ const p=h.rec; let o=h.cand;
-      if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); if(lastP===p) lastP=null; pay(p.type,-1); sfx.boop(); rebuild(); settle(); return; }   /* into the bin: the blocks come back */
+      if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); if(lastP===p) lastP=null; pay(p.type,-1); if(NET===2) pSend({t:'pb',k:h.k0}); sfx.boop(); rebuild(); settle(); return; }   /* into the bin: the blocks come back */
       if(!o){ const q=h.q, m=h.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); const ox=clampN(F.x,MX)-a1.x, oz=clampN(F.z,MZ)-a1.z; let bd=1e9;
         eachDot(TYPE[p.type].net,(x,z)=>{ const c=rest({type:p.type,x,z,q,lv:0,m}), dd=(x-ox)*(x-ox)+(z-oz)*(z-oz); if(dd<bd&&free(c,p)){ bd=dd; o=c; } }); }
       if(o){ p.x=o.x; p.z=o.z; p.q=o.q; p.lv=o.lv; p.m=o.m; }
-      fix(p); lastP=p; if(h.cand) klik(); else sfx.plop(); rebuild(); settle(); }
+      fix(p); lastP=p; if(h.cand) klik(); else sfx.plop(); rebuild(); settle(); if(NET===2) pSend({t:'pm',k:h.k0,o:[p.x,p.z,p.q,p.lv,p.m]}); }
     else { const v=h.rec;
       if(h.cand&&h.cand.p.live){ mount(v,h.cand); if(v.loco&&v.c) toot(); else if(v.sort==='auto'&&v.c) honk(); else sfx.plop(); }
       else if(out){ g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
@@ -1548,7 +1596,7 @@ const trein=(()=>{
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; },
-    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, addMill, serialize, restore, reset, dig, COST,
+    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,cmd:netCmd,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, addMill, serialize, restore, reset, dig, COST,
     get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,folk,dorpen,vrects,locked,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
@@ -1582,7 +1630,7 @@ const trein=(()=>{
       for(const m of marks){ if(!m.g.visible) continue; const w=Math.sin(Tm*5)*AMP; m.ar.position.x=.32+w*.12; m.r.scale.setScalar(1+.1*w); }
       if(moving){ chuffT-=dt; if(chuffT<=0){ chuffT=.34/fastest; tone(R(150,175),.06,'triangle',.045,95); } }
       const k=1-Math.exp(-dt*18), kv=1-Math.exp(-dt*24); let top=0;
-      if(NET===2) top=netBlocks(dt); else if(world){ world.step(H60,dt,4);
+      if(NET===2){ top=netBlocks(dt); netLate(); } else if(world){ world.step(H60,dt,4);
         for(const r of blocks){ if(held&&held.rec===r){ r.m.position.lerp(tgt,1-Math.exp(-dt*20)); r.m.quaternion.slerp(heldQ,1-Math.exp(-dt*14)); continue; } const p=r.b.position, q=r.b.quaternion;
           if(Math.abs(p.x)>MX+.6||Math.abs(p.z)>MZ+.6||p.y<-.8){ const x=clampN(p.x,MX-1.2), z=clampN(p.z,MZ-1.2); p.set(x,surface(x,z,r).y+2.5,z); r.b.velocity.set(0,0,0); r.b.angularVelocity.set(0,0,0); r.pt=0; r.b.wakeUp(); popIn(r.m,.25); }
           r.m.position.set(p.x,p.y,p.z); r.m.quaternion.set(q.x,q.y,q.z,q.w); if(p.y>top&&r.b.velocity.norm2()<1) top=p.y; }
@@ -1601,14 +1649,14 @@ const trein=(()=>{
       avStep(dt); tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
-      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&kind!=='a'&&kind!=='m'){ rec=null; kind='mat'; }
+      if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||(kind==='p'&&!isGate(rec)))){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
-      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(NET===2||(ptr.mode===1&&ptr.kind==='m'&&ptr.rec.by)) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
+      if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&ptr.rec.by) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
     up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
-      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
+      if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s') tapSensor(p.rec); else if(p.kind==='f'){ pop(p.rec.g,.2); tone(700,.08,'triangle',.12,1100); } else if(p.kind==='z'){ pop(p.rec.g,.08); sfx.tap(); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
 })();
@@ -1745,7 +1793,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
       if(d.t==='join'){ if(p) return; if(players.length>=MAXP){ sendTo(c,{t:'vol'}); return; } flush(); lc.delete(c);
         const q={id:nextId++,name:clean(d.name),ci:((d.ci|0)%7+7)%7,c,t:now()}; players.push(q); trein.net.players(plist(),1); sendTo(c,{t:'welcome',id:q.id,W:trein.net.all(),pl:plist()}); toAll({t:'pl',pl:plist()},c); lobbyInfo(); chips(); toast(q.name+' doet mee!'); sfx.pop(2); return; }
       if(!p) return; const N=trein.net;
-      if(d.t==='me') N.me(p.id,d.a); else if(d.t==='st') N.stick(p.id,d.x,d.z); else if(d.t==='act') N.act(p.id); else if(d.t==='in') sendTo(c,{t:N.inn(p.id,d.m)?'inok':'inno',m:d.m}); else if(d.t==='out') N.outBy(p.id); else if(d.t==='bye') gone(c); }
+      if(d.t==='me') N.me(p.id,d.a); else if(d.t==='st') N.stick(p.id,d.x,d.z); else if(d.t==='act') N.act(p.id); else if(d.t==='in') sendTo(c,{t:N.inn(p.id,d.m)?'inok':'inno',m:d.m}); else if(d.t==='out') N.outBy(p.id); else if(d.t==='bye') gone(c); else N.cmd(p.id,d); }
     /* before a new player comes in, the others get everything up to now (so all start from the same place) */
     function flush(){ const S=trein.net.diff(); if(S) toAll({t:'s',S}); toAll({t:'f',F:trein.net.fast(false)}); }
     function lobbyInfo(){ const m=info(); for(const c of lc) sendTo(c,m); }
@@ -1773,7 +1821,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
       if(d.t==='welcome'){ if(role===1||(role===2&&c!==hostC)) return; const first=role!==2; if(first) saveNow(); role=2; hostC=c; myId=d.id; if(e.info) hostName=e.info.name; lastHost=now();
         for(const [k,o] of lob) if(o!==e){ clearTimeout(o.to); try{ o.c.close(); }catch(x){} lob.delete(k); } clearInterval(lobT); lobT=null;
         curSave=null; started=true; document.body.classList.add('gast'); document.body.classList.toggle('vrij',d.W.mode==='vrij'); trein.net.send=m=>sendTo(hostC,m); trein.net.join(d.W,d.pl,d.id); players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]}));
-        go(); chips(); if(first){ shut(); sfx.tada(); toast('Je speelt mee met '+hostName+'!'); } else toast(hostName+' begint een nieuw spel.'); return; }
+        go(); chips(); if(first){ shut(); tabTo('rails'); sfx.tada(); toast('Je speelt mee met '+hostName+'!'); } else toast(hostName+' begint een nieuw spel.'); return; }
       if(role!==2||c!==hostC) return; lastHost=now(); const N=trein.net;
       if(d.t==='f') N.F(d.F); else if(d.t==='s') N.S(d.S); else if(d.t==='e'){ toast(d.m); if(d.fx==='tada') sfx.tada(); }
       else if(d.t==='pl'){ players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]})); N.players(d.pl,myId); chips(); render(); }
