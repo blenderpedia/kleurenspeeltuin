@@ -483,7 +483,7 @@ const trein=(()=>{
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], cranes=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', shape='kubus', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]], oP=[[0,0],[-1.3,0],[1.3,0],[-.9,.3],[.9,-.3],[-.9,-.3],[.9,.3],[-.45,0],[.45,0]], oT=[[.78,0],[-.78,0],[.78,.7],[-.78,.7],[.78,-.7],[-.78,-.7]];
@@ -691,11 +691,21 @@ const trein=(()=>{
   /* the stock at the factory: paying for a piece, getting it back from the bin, a block that is stacked */
   const canPay=type=>{ if(mode!=='camp') return true; const c=COST[type]; for(const k in c) if(stock[k]<c[k]) return false; return true; };   /* in the creative game everything is free */
   function pay(type,sign){ if(mode!=='camp') return; const c=COST[type]; for(const k in c) stock[k]-=c[k]*sign; restack(); stockUI(stock); }
-  function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } if(!canPay(type)){ sfx.boing(); stockUI(stock,null,true); return; } const q=0, t=TYPE[type], e=lowEdge(), xc=(e.x0+e.x1)/2, hw=(e.x1-e.x0)/2-1.2, zt=panZ-vd/2+1.5; let best=null, bc=1e9;
-    /* first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
-    for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o=rest({type,x,z,q,lv:0,m:1}); mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } });
+  /* a new piece clicks straight onto an open end: first where you were building (the piece you put down last), else the open end nearest the middle of the picture; only ends you can see (where you were building may lie a little outside, the picture may still be on its way there). A bend tries left before right, a switch branches left before right, a bridge climbs from the ground and comes down from a high end */
+  const inView=(x,z)=>Math.abs(x-panX)<vw/2&&Math.abs(z-panZ)<vd/2+1;
+  function attach(type){ const ty=TYPE[type], ms=ty.mirror?[1,-1]:[1], L=open.filter(X=>X.p===lastP?Math.abs(X.e.x-panX)<vw/2+5&&Math.abs(X.e.z-panZ)<vd/2+5:inView(X.e.x,X.e.z));
+    const rank=X=>(X.e.net===ty.net?0:5000)+(X.p===lastP?(X.k===1?0:1+X.k):1000+Math.hypot(X.e.x-panX,X.e.z-panZ));   /* (end 1 is the way on: straight on at a switch) */ L.sort((a,b)=>rank(a)-rank(b));
+    for(const X of L) for(let e=0;e<ty.ends.length;e++){ const E=ty.ends[e]; if(E.net!==X.e.net||(ty.sym&&(e&1))) continue;
+      for(const m of ms){ const q=(X.e.q+2-(m>0?E.oq:4-E.oq))&3, lz=E.z*m, c={type,q,m,x:X.e.x-(E.x*CS[q]+lz*SN[q]),z:X.e.z-(-E.x*SN[q]+lz*CS[q]),lv:X.e.lv-E.l}; if(c.lv<0||c.lv>1) continue; if(free(c,null)) return c; } }
+    return null; }
+  function add(type){ if(pieces.length>=MAXP){ sfx.boing(); return; } if(!canPay(type)){ sfx.boing(); stockUI(stock,null,true); return; } const t=TYPE[type]; let best=attach(type), bc=1e9; const snap=!!best;
+    if(!best){ const q=0, e=lowEdge(), xc=(e.x0+e.x1)/2, hw=(e.x1-e.x0)/2-1.2, zt=panZ-vd/2+1.5;
+      /* nothing to click onto: first a free place in the picture that touches nothing, then any free place in the picture, then the nearest free place there is */
+      for(let pass=0;pass<3&&!best;pass++) eachDot(t.net,(x,z)=>{ const o=rest({type,x,z,q,lv:0,m:1}); mid(o,a1); if(pass<2&&(Math.abs(a1.x-xc)>hw||a1.z>e.z-.3||a1.z<zt)) return; const cost=Math.abs(e.z-1-a1.z)*3+Math.abs(a1.x-xc); if(cost<bc&&free(o,null)&&(pass||alone(o))){ bc=cost; best=o; } }); }
     if(!best){ sfx.boing(); return; }
-    const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q,lv:best.lv,m:1,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=q*PI/2; popIn(m.g,.3); sfx.pop(pieces.length%8); pay(type,1); rebuild(); settle(); }
+    const m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle();
+    /* the picture follows a track that grows towards its edge */
+    if(snap){ mid(p,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
   function addTrain(sort){ const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
     if(n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
     const vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
@@ -968,11 +978,11 @@ const trein=(()=>{
       s.x=clampN(s.x,MX-.4); s.z=clampN(s.z,MZ-.4); s.y=hAt(s.x,s.z); propBody(s,true); bind(); if(h.snap) klik(); else sfx.plop(); return; }
     if(h.kind==='p'&&h.rec.type==='poort'){ dropGate(h,out); return; }
     if(h.kind==='p'){ const p=h.rec; let o=h.cand;
-      if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); pay(p.type,-1); sfx.boop(); rebuild(); settle(); return; }   /* into the bin: the blocks come back */
+      if(!o&&out){ g.remove(p.g); pieces=pieces.filter(x=>x!==p); if(lastP===p) lastP=null; pay(p.type,-1); sfx.boop(); rebuild(); settle(); return; }   /* into the bin: the blocks come back */
       if(!o){ const q=h.q, m=h.m; mid({type:p.type,x:0,z:0,q,lv:0,m},a1); const ox=clampN(F.x,MX)-a1.x, oz=clampN(F.z,MZ)-a1.z; let bd=1e9;
         eachDot(TYPE[p.type].net,(x,z)=>{ const c=rest({type:p.type,x,z,q,lv:0,m}), dd=(x-ox)*(x-ox)+(z-oz)*(z-oz); if(dd<bd&&free(c,p)){ bd=dd; o=c; } }); }
       if(o){ p.x=o.x; p.z=o.z; p.q=o.q; p.lv=o.lv; p.m=o.m; }
-      fix(p); if(h.cand) klik(); else sfx.plop(); rebuild(); settle(); }
+      fix(p); lastP=p; if(h.cand) klik(); else sfx.plop(); rebuild(); settle(); }
     else { const v=h.rec;
       if(h.cand&&h.cand.p.live){ mount(v,h.cand); if(v.loco&&v.c) toot(); else if(v.sort==='auto'&&v.c) honk(); else sfx.plop(); }
       else if(out){ g.remove(v.g); vehs=vehs.filter(x=>x!==v); sfx.boop(); }
@@ -981,7 +991,7 @@ const trein=(()=>{
   /* everything that was put down goes away */
   function wipe(){ if(held&&held.kind==='b') world.addBody(held.rec.b); cranes.forEach(k=>{ craneStop(k); craneBody(k,false); g.remove(k.g); }); mills.slice().forEach(removeMill);
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g));
-    if(pick){ pick=null; digUI(false); } marksOff(); tunnels=[]; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
+    if(pick){ pick=null; digUI(false); } marksOff(); tunnels=[]; lastP=null; stock.hout=START.hout; stock.steen=START.steen; stockDirty=true; pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; cranes=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
   function reset(){ wipe(); gen(mode==='camp'); panX=panZ=0; applyCamera(); sfx.boing(); }
 
