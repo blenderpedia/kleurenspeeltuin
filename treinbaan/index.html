@@ -439,6 +439,34 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
   return {factory,man,log,pile,blockMat,STONE}; })();
 
 /* ---------- machines you drive: excavator, wheel loader, dump truck. The nose points along +x, the origin sits on the ground ---------- */
+/* ---------- villages: little houses of toy blocks, and a platform with the village's name ---------- */
+const DORP=(()=>{ const B=.94, mats={}, M=c=>mats[c]||(mats[c]=mat(c,{shininess:30,specular:0x151515}));
+  const kubus=roundBox(B,B,B,.1,.05), rol=cyl(B/2,B/2,B,24), kegel=cone(.56,.72,24), plat=roundBox(3*B,.24,B,.08,.04);
+  /* a roof block: a three-cornered block, the ridge running front to back */
+  const dak=(()=>{ const sh=new T.Shape(); sh.moveTo(-.47,0); sh.lineTo(.47,0); sh.lineTo(0,.62); sh.closePath(); const q=new T.ExtrudeGeometry(sh,{depth:.86,bevelEnabled:true,bevelThickness:.04,bevelSize:.04,bevelSegments:2}); q.translate(0,0,-.43); return q; })();
+  /* an arch block: a block with a round hole through it, front to back */
+  const boog=(()=>{ const sh=new T.Shape(); sh.moveTo(-.43,0); sh.lineTo(-.22,0); sh.absarc(0,.3,.22,PI,0,true); sh.lineTo(.22,0); sh.lineTo(.43,0); sh.lineTo(.43,.86); sh.lineTo(-.43,.86); sh.closePath(); const q=new T.ExtrudeGeometry(sh,{depth:.86,bevelEnabled:true,bevelThickness:.04,bevelSize:.04,bevelSegments:2,curveSegments:12}); q.translate(0,.04,-.43); return q; })();
+  const walls=[C.red,C.yellow,C.blue,C.green,C.orange,C.purple,C.pink,C.paper], roofs=[C.red,C.blue,C.orange,C.green,C.purple];
+  /* the sorts of house: their half size on the ground (along x, along z) */
+  const SORTS={huis:[.5,.5],hoog:[.5,.5],breed:[1,.5],toren:[.5,.5],poort:[1.45,.5]};
+  /* one house: the blocks stand on the ground, the front looks along +z. rs: the world's dice */
+  function house(sort,rs){ const g=new T.Group(), pick=l=>l[(rs()*l.length)|0], w=pick(walls), r=pick(roofs.filter(c=>c!==w)), w2=pick(walls.filter(c=>c!==w));
+    if(sort==='huis'){ mesh(kubus,M(w),0,B/2,0,g); mesh(dak,M(r),0,B,0,g); }
+    else if(sort==='hoog'){ mesh(kubus,M(w),0,B/2,0,g); mesh(kubus,M(w2),0,B*1.5,0,g); mesh(dak,M(r),0,2*B,0,g); }
+    else if(sort==='breed'){ [-B/2,B/2].forEach((x,i)=>{ mesh(kubus,M(i?w2:w),x,B/2,0,g); mesh(dak,M(r),x,B,0,g); }); }
+    else if(sort==='toren'){ mesh(rol,M(w),0,B/2,0,g); mesh(rol,M(w2),0,B*1.5,0,g); mesh(kegel,M(r),0,2*B+.36,0,g); }
+    else { mesh(boog,M(w2),0,0,0,g); [-B,B].forEach(x=>mesh(kubus,M(w),x,B/2,0,g)); mesh(plat,M(r),0,B+.12,0,g); mesh(dak,M(w2),0,B+.24,0,g); }
+    return g; }
+  /* the platform beside the station track: a long slab (along x, its rail side at +z), a little shelter and a board with the name */
+  const slabM=mat(0xe4dccb,{shininess:8,specular:0x0a0a0a}), edgeM=mat(C.yellow,{shininess:30}), postM=mat(C.ink), shedM=mat(C.red,{shininess:30});
+  function platform(len,name){ const g=new T.Group(); mesh(roundBox(len,.3,1,.06,.03),slabM,0,.15,0,g); const e=mesh(box(len-.1,.02,.08),edgeM,0,.31,.42,g); e.castShadow=false;
+    [-.9,.9].forEach(x=>mesh(cyl(.04,.04,1,8),postM,x-len/4,.8,-.25,g)); mesh(roundBox(2.2,.08,.9,.04,.02),shedM,-len/4,1.32,-.1,g);
+    const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const c=cv.getContext('2d'); c.fillStyle=hx(C.paper); c.fillRect(0,0,512,128); c.lineWidth=14; c.strokeStyle=hx(C.blue); c.strokeRect(7,7,498,114);
+    c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; let f=78; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; while(c.measureText(name).width>460&&f>30){ f-=4; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; } c.fillText(name,256,70);
+    const tex=new T.CanvasTexture(cv), bd=new T.Mesh(new T.PlaneGeometry(1.8,.45),new T.MeshBasicMaterial({map:tex})); bd.position.set(len/4,1.25,-.3); g.add(bd); [-.8,.8].forEach(x=>mesh(cyl(.035,.035,1.1,8),postM,len/4+x,.75,-.33,g));
+    return {g,tex}; }
+  return {house,platform,SORTS,B}; })();
+
 const MACH=(()=>{ const ink=mat(C.ink), dark=mat(0x4a4466,{shininess:20}), glass=mat(0xbfe6ff), steel=mat(0xb4bccb,{shininess:70,specular:0x555555}), hub=mat(C.paper);
   /* a wheel that turns: a tyre, a hub and a spoke you can see go round */
   function wheel(x,y,z,r,w,p){ const g=new T.Group(); g.position.set(x,y,z); const t=cyl(r,r,w,18); t.rotateX(PI/2); mesh(t,ink,0,0,0,g); const h=cyl(r*.45,r*.45,w+.02,12); h.rotateX(PI/2); mesh(h,hub,0,0,0,g); mesh(box(r*1.2,r*.18,w+.03),dark,0,0,0,g); p.add(g); return g; }
@@ -512,7 +540,7 @@ const trein=(()=>{
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], dorpen=[], vrects=[], mills=[], stock={hout:START.hout,steen:START.steen}, stockDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=new T.Raycaster(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]];
@@ -544,6 +572,7 @@ const trein=(()=>{
     for(const p of pieces){ if(p===skip||p.gang||Math.abs(p.x-o.x)+Math.abs(p.z-o.z)>12) continue; const J=[]; for(const a of e) for(const b of p.ends) if(joins(a,b)) J.push(a.x,a.z); if(clash(s,p.sm,J)) return false; }
     for(const t of trees){ if(!t.alive||Math.abs(t.x-o.x)+Math.abs(t.z-o.z)>9) continue; for(let i=0;i<s.length;i+=3){ if(hidPt(s[i],s[i+1],s[i+2])) continue; const dx=s[i]-t.x, dz=s[i+2]-t.z; if(dx*dx+dz*dz<.72) return false; } }   /* no track through a tree */
     for(const m of mills){ if(Math.abs(m.x-o.x)+Math.abs(m.z-o.z)>10) continue; for(let i=0;i<s.length;i+=3){ if(hidPt(s[i],s[i+1],s[i+2])) continue; if(inMill(m,s[i],s[i+2],.42)) return false; } }
+    for(const H of vrects){ if(Math.abs(H.x-o.x)+Math.abs(H.z-o.z)>12) continue; for(let i=0;i<s.length;i+=3) if(s[i+1]<2.5&&inMill(H,s[i],s[i+2],.42)) return false; }   /* nor through a house or a platform */
     for(const L of logs){ if(Math.abs(L.x-o.x)+Math.abs(L.z-o.z)>10) continue; for(let i=0;i<s.length;i+=3){ const dx=s[i]-L.x-L.ux*.5, dz=s[i+2]-L.z-L.uz*.5; if(dx*dx+dz*dz<.7) return false; } }   /* nor through a building or a felled tree */
     return true; }
   const alone=o=>!endsOf(o).some(e=>pieces.some(p=>!p.gang&&p.ends.some(f=>f.x===e.x&&f.z===e.z)));
@@ -598,17 +627,38 @@ const trein=(()=>{
 
   /* the rocks lie spread over the land, at least one up on every table; each holds six blocks of stone and shrinks as they are cut out */
   const ROCK=6, rockSize=r=>{ const k=.5+.5*r.left/ROCK; r.rad=.86*r.sc*k; r.g.userData.s0=null; r.g.scale.setScalar(r.sc*k); };
-  function placeRocks(rs){ const ok=(x,z,up)=>Math.abs(x)<MX-1.6&&Math.abs(z)<MZ-1.6&&!(Math.abs(x)<9.6&&Math.abs(z)<7.2)&&(up?inPlat(x,z,-1.8):!inPlat(x,z,PV+2.4))&&rocks.every(q=>Math.hypot(q.x-x,q.z-z)>4.5);
+  function placeRocks(rs){ const ok=(x,z,up)=>Math.abs(x)<MX-1.6&&Math.abs(z)<MZ-1.6&&!(Math.abs(x)<9.6&&Math.abs(z)<7.2)&&(up?inPlat(x,z,-1.8):!inPlat(x,z,PV+2.4))&&!inVill(x,z,2.5)&&rocks.every(q=>Math.hypot(q.x-x,q.z-z)>4.5);
     const put=(x,z)=>{ const rg=BOS.rock(rocks.length), y=hAt(x,z), r={x,z,y,sc:.95+rs()*.25,g:rg,left:ROCK,res:null,rad:0,b:null}; rg.position.set(x,y,z); rg.rotation.y=rs()*6.28; g.add(rg); rockSize(r);
       if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.55,.4,.55))); b.position.set(x,y+.4,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); r.b=b; } rocks.push(r); };
     for(const P of PLS){ const n=(P.x1-P.x0)*(P.z1-P.z0)>=100?2:1; for(let k=0,t=0;k<n&&t<120;t++){ const x=P.x0+1.8+rs()*(P.x1-P.x0-3.6), z=P.z0+1.8+rs()*(P.z1-P.z0-3.6); if(ok(x,z,true)){ put(x,z); k++; } } }
     const want=Math.round(12*AREA); for(let t=0;rocks.length<want&&t<800*AREA;t++){ const x=(rs()*2-1)*(MX-1.6), z=(rs()*2-1)*(MZ-1.6); if(ok(x,z,false)) put(x,z); } }
+  /* villages (campaign only): five to seven, spread over the field, away from the open middle, the high ground and each other. Each has four to eight houses round a little square and, on its front side, a station: three straight pieces of track that stay where they are (fixed) with a platform and the village's name. vrects: what tracks and machines go round */
+  const NAMES=['Klotsdorp','Dakkum','Boogveen','Kubusdam','Rolhoven','Torenmeer','Hoekstede'];
+  const inVill=(x,z,pad)=>dorpen.some(d=>inMill(d.r,x,z,pad));
+  function clearVillages(){ for(const d of dorpen){ for(const h of d.houses){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); } g.remove(d.plat.g); d.plat.tex.dispose(); if(d.plat.b&&world) world.removeBody(d.plat.b); for(const p of d.track){ if(pieces.indexOf(p)<0) continue; if(world) unsolid(p); g.remove(p.g); pieces=pieces.filter(x=>x!==p); } } dorpen=[]; vrects=[]; }
+  function staticBox(x,y,z,hw,hh,hd){ if(!world) return null; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(hw,hh,hd))); b.position.set(x,y,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); return b; }
+  function fixedPiece(type,x,z,q){ const t=TYPE[type], mm=SPOOR.piece(type), p={kind:'p',type,x,z,q,lv:0,m:1,fixed:true,sw:0,shut:false,g:mm.g,pier:mm.pier,arm:mm.arm,gates:mm.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; mm.g.userData.rec=p; g.add(mm.g); pieces.push(p); fix(p); mm.g.position.set(p.tx,p.ty,p.tz); mm.g.rotation.y=q*PI/2; return p; }
+  function placeVillages(rs){ const names=NAMES.slice(); for(let i=names.length-1;i>0;i--){ const j=(rs()*(i+1))|0; [names[i],names[j]]=[names[j],names[i]]; }
+    const n=5+((rs()*3)|0);
+    for(let t=0;dorpen.length<n&&t<3000;t++){ const cx=(rs()*2-1)*(MX-10), cz=(rs()*2-1)*(MZ-10); if(Math.abs(cx)<15&&Math.abs(cz)<11) continue;
+      if(dorpen.some(d=>Math.hypot(d.x-cx,d.z-cz)<30)) continue; const r={x:cx,z:cz,hw:6.5,hd:6}; let ok=true; for(let a=-1;a<=1&&ok;a+=.25) for(let c=-1;c<=1;c+=.25) if(inPlat(r.x+a*r.hw,r.z+c*r.hd,PV+3)){ ok=false; break; } if(!ok) continue;
+      /* the station: three straight pieces along x on the front side, the platform behind them (towards the houses) */
+      const sx=2*Math.round((cx-3-1)/2)+1, sz=2*Math.round((cz+3.6)/2), d={x:cx,z:cz,r,name:names[dorpen.length%names.length],houses:[],track:[],plat:null};
+      for(let k=0;k<3;k++) d.track.push(fixedPiece('recht',sx+2*k,sz,0));
+      const pl=DORP.platform(6,d.name); pl.g.position.set(sx+3,0,sz-1.05); g.add(pl.g); pl.b=staticBox(sx+3,.15,sz-1.05,3,.15,.5); d.plat=pl; vrects.push({x:sx+3,z:sz-1.05,hw:3,hd:.5});
+      /* the houses: anywhere on the village ground behind the platform, not touching each other */
+      const want=4+((rs()*5)|0), sorts=Object.keys(DORP.SORTS);
+      for(let tt=0;d.houses.length<want&&tt<300;tt++){ const sort=sorts[(rs()*sorts.length)|0], rot=rs()<.3, S=DORP.SORTS[sort], hw=rot?S[1]:S[0], hd=rot?S[0]:S[1], x=Math.round((cx+(rs()*2-1)*(5.5-hw))*2)/2, z=Math.round((cz-1.4+(rs()*2-1)*(3.4-hd))*2)/2;
+        if(z+hd>sz-1.8||d.houses.some(h=>Math.abs(h.x-x)<h.hw+hw+.7&&Math.abs(h.z-z)<h.hd+hd+.7)) continue;
+        const hg=DORP.house(sort,rs); hg.position.set(x,0,z); hg.rotation.y=rot?(rs()<.5?PI/2:-PI/2):0; g.add(hg); const hh=sort==='huis'||sort==='breed'||sort==='poort'?.8:1.2, h={x,z,hw,hd,g:hg,b:staticBox(x,hh,z,hw,hh,hd)}; d.houses.push(h); vrects.push({x,z,hw,hd}); }
+      dorpen.push(d); }
+    rebuild(); }
   /* the forest: clumps of trees around an open middle, also up on the tables but not along their rims (so there is room for a tunnel gate) */
   function addTree(x,z,kind,ci,sc){ const tg=BOS.tree(kind,ci), y=hAt(x,z); tg.position.set(x,y,z); tg.scale.setScalar(sc); tg.rotation.y=(x*7+z*13)%6.28; g.add(tg); const t={x,z,y,sc,g:tg,yaw:tg.rotation.y,alive:true,res:null,b:null};
     if(world){ const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(.2*sc,sc,.2*sc))); b.position.set(x,y+sc,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); t.b=b; } trees.push(t); }
   function plant(rs){ const L=[];
     for(let cx=-(MX-3.45);cx<MX-3.2;cx+=6.5) for(let cz=-(MZ-2.3);cz<MZ-1.8;cz+=5.5){ if(rs()<.2) continue; const ox=cx+(rs()-.5)*2.4, oz=cz+(rs()-.5)*2, n=4+((rs()*5)|0), kind=rs()<.55?1:0;
-      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||(inPlat(x,z,PV+2.3)&&!inPlat(x,z,-1.3))||L.some(t=>Math.abs(t[0]-x)<1.2&&Math.hypot(t[0]-x,t[1]-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
+      for(let i=0,tries=0;i<n&&tries<40;tries++){ const a=rs()*PI*2, r=Math.sqrt(rs())*2.3, x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r*.85; if(Math.abs(x)>MX-1||Math.abs(z)>MZ-1||(Math.abs(x)<9.6&&Math.abs(z)<7.2)||(inPlat(x,z,PV+2.3)&&!inPlat(x,z,-1.3))||inVill(x,z,1)||L.some(t=>Math.abs(t[0]-x)<1.2&&Math.hypot(t[0]-x,t[1]-z)<1.2)||rocks.some(q=>Math.hypot(q.x-x,q.z-z)<2)) continue;
         L.push([x,z,rs()<.8?kind:1-kind,(rs()*4)|0,.72+rs()*.24]); i++; } }
     /* about as many trees as ever (a big forest is heavy for a tablet): a few go when there are too many */
     while(L.length>190*AREA) L.splice((rs()*L.length)|0,1); L.forEach(t=>addTree(...t)); }
@@ -618,7 +668,7 @@ const trein=(()=>{
   /* a new world: new tables, new places for tunnel gates and (in the campaign) a new forest and new rocks. A seed makes the same world again (tests) */
   function gen(on,seed){ let sd=seed||((Math.random()*2147483646)|0)+1; seedW=sd; const rs=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
     for(const t of trees){ g.remove(t.g); if(t.b&&world) world.removeBody(t.b); } for(const r of rocks){ g.remove(r.g); if(r.b&&world) world.removeBody(r.b); } trees=[]; rocks=[];
-    setSize(on); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ placeRocks(rs); plant(rs); } if(world) wakeAll(); }
+    clearVillages(); setSize(on); PLS=pickPlats(rs); raise(); SPOTS=makeSpots(); if(on){ placeVillages(rs); placeRocks(rs); plant(rs); } if(world) wakeAll(); }
 
   /* who is joined to whom; every stretch of track  /* who is joined to whom; every stretch of track that hangs together gets one number per net (p.cid) */
   function rebuild(){ const list=pieces.filter(p=>!held||held.rec!==p), E=[]; pieces.forEach(p=>{ p.n=p.ends.map(()=>null); p.cid={}; p.live=false; }); list.forEach(p=>{ p.live=true; p.ends.forEach((e,k)=>E.push({p,k,e})); });
@@ -650,7 +700,7 @@ const trein=(()=>{
   function land(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; let t=(RISE-o.y)/d.y; out.set(o.x+d.x*t,RISE,o.z+d.z*t); if(inPlat(out.x,out.z,PV)) return out; t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function ground(x,y,out){ hit({clientX:x,clientY:y},[]); const o=ray.ray.origin, d=ray.ray.direction; if(d.y>-.001) return null; const t=-o.y/d.y; return out.set(o.x+d.x*t,0,o.z+d.z*t); }
   function clearAt(x,z,self){ if(Math.abs(x)>MX-.6||Math.abs(z)>MZ-.6||(inPlat(x,z,PV+.7)&&!inPlat(x,z,PV-.7))) return false; for(const r of rocks) if(r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.6) return false; for(const w of vehs) if(w!==self&&!w.c&&Math.hypot(w.g.position.x-x,w.g.position.z-z)<1.15) return false;
-    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of machs) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.6) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false;
+    for(const q of props) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of boosts) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.05) return false; for(const q of machs) if(q!==self&&Math.hypot(q.x-x,q.z-z)<1.6) return false; for(const t of trees) if(t.alive&&Math.hypot(t.x-x,t.z-z)<.95) return false; for(const m of mills) if(inMill(m,x,z,.7)) return false; for(const H of vrects) if(inMill(H,x,z,.6)) return false;
     for(const r of blocks){ const q=r.b.position; if(Math.hypot(q.x-x,q.z-z)<1) return false; } for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>8) continue; for(const q of p.path) if((q.x-x)*(q.x-x)+(q.z-z)*(q.z-z)<.8) return false; } return true; }
   /* the strip of ground just above the buttons: its depth and how far it reaches left and right */
   function lowEdge(){ const W=app.clientWidth||1, H=app.clientHeight||1, y=H-botPx-34, c=ground(W/2,y,a1), z=c?c.z:panZ+vd/2, l=ground(34,y,a1), x0=l?l.x:panX-vw/2, r=ground(W-34,y,a1), x1=r?r.x:panX+vw/2; return {z:Math.min(MZ-.7,z),x0,x1}; }
@@ -863,6 +913,7 @@ const trein=(()=>{
     for(const q of rocks) if(q.left&&Math.abs(q.y-m.y)<.6&&Math.hypot(q.x-x,q.z-z)<r+q.rad*.75) return true;
     for(const L of logs) if(Math.abs(L.y-m.y)<.6&&Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<r+.45) return true;
     for(const q of mills) if(Math.abs(q.y-m.y)<.6&&inMill(q,x,z,r*.85)) return true;
+    if(!m.up) for(const H of vrects) if(inMill(H,x,z,r*.85)) return true;
     for(const q of machs) if(q!==m&&!(held&&held.rec===q)&&Math.hypot(q.x-x,q.z-z)<r+MS[q.sort].rad) return true;
     for(const q of props) if(Math.hypot(q.x-x,q.z-z)<r+.25) return true; return false; }
   function blockedAt(m,x,z,yaw,pad){ const S=MS[m.sort], fx=Math.cos(yaw)*S.off, fz=-Math.sin(yaw)*S.off, r=S.rad*.72+(pad||0); return hitsAt(m,x,z,r)||hitsAt(m,x+fx,z+fz,r)||hitsAt(m,x-fx,z-fz,r); }
@@ -892,7 +943,7 @@ const trein=(()=>{
   const dropRaw=(sh,x,y,z)=>spawn(sh,x,y,z,false,sh==='steen'?BOUW.STONE:C.brown);
   /* the excavator reaches 1 to 2.3 away from where it stands, all round (its top turns): a rock (a block a bite, the rock shrinks), a tree (three blows and it goes over) and the log of a felled tree (a block of wood a bite, three a tree). Each block goes into a dump truck within reach that has room, else onto the ground beside it. Slow: five seconds a bite; it goes on by itself until you tap again, steer, or nothing is left in reach */
   function dropAt(m,ang){ for(const a of [ang+PI/2,ang-PI/2,ang+PI,ang+PI*.75,ang-PI*.75]){ const x=m.x+Math.cos(a)*1.8, z=m.z-Math.sin(a)*1.8;
-      if(Math.abs(x)<MX-1&&Math.abs(z)<MZ-1&&m.up===inPlat(x,z,PV)&&!machs.some(q=>q!==m&&Math.hypot(q.x-x,q.z-z)<1.1)&&!trees.some(t=>t.alive&&Math.hypot(t.x-x,t.z-z)<.7)&&!rocks.some(r=>r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.4)&&!logs.some(L=>Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<.8)&&!mills.some(q=>inMill(q,x,z,.4))) return {x,z,y:hAt(x,z)}; } return null; }
+      if(Math.abs(x)<MX-1&&Math.abs(z)<MZ-1&&m.up===inPlat(x,z,PV)&&!machs.some(q=>q!==m&&Math.hypot(q.x-x,q.z-z)<1.1)&&!trees.some(t=>t.alive&&Math.hypot(t.x-x,t.z-z)<.7)&&!rocks.some(r=>r.left&&Math.hypot(r.x-x,r.z-z)<r.rad+.4)&&!logs.some(L=>Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<.8)&&!mills.some(q=>inMill(q,x,z,.4))&&!vrects.some(H=>inMill(H,x,z,.4))) return {x,z,y:hAt(x,z)}; } return null; }
   /* the work in reach: a felled tree first (it finishes what it chopped), else the nearest rock or tree. y is the top it bites into */
   function reachJob(m){ let best=null, bd=1e9; const take=(J,D,w)=>{ if(D>1.05&&D<2.3&&D+w<bd){ bd=D+w; J.D=D; best=J; } };
     for(const L of logs){ if(Math.abs(L.y-m.y)>.1) continue; const x=L.x+L.ux*.15, z=L.z+L.uz*.15; take({kind:'log',L,x,z,y:L.y+.34},Math.hypot(x-m.x,z-m.z),-9); }
@@ -969,7 +1020,7 @@ const trein=(()=>{
   /* may the factory stand here: on the field, clear of trees, rocks, track, machines and sensors */
   function siteFree(x,z,self,hw,hd){ if(Math.abs(x)>MX-hw-.4||Math.abs(z)>MZ-hd-.45) return false; const M={x,z,hw,hd}, up=inPlat(x,z,0);
     for(const sx of [-hw-.3,hw+.3]) for(const sz of [-hd-.3,hd+.3]) if(inPlat(x+sx,z+sz,up?PV-.1:PV+.2)!==up) return false;   /* wholly on the mat or wholly on the high ground */
-    for(const r of rocks) if(r.left&&inMill(M,r.x,r.z,r.rad+.2)) return false;
+    for(const r of rocks) if(r.left&&inMill(M,r.x,r.z,r.rad+.2)) return false; for(const H of vrects) if(Math.abs(H.x-x)<H.hw+hw+.3&&Math.abs(H.z-z)<H.hd+hd+.3) return false;
     for(const t of trees) if(t.alive&&inMill(M,t.x,t.z,.4)) return false; for(const m of mills) if(m!==self&&Math.abs(m.x-x)<m.hw+hw+.2&&Math.abs(m.z-z)<m.hd+hd+.2) return false; for(const L of logs) if(inMill(M,L.x+L.ux*.5,L.z+L.uz*.5,.65)) return false;
     for(const p of pieces){ if(p.gang||Math.abs(p.x-x)+Math.abs(p.z-z)>12) continue; for(const q of p.path) if(!hidPt(q.x,q.y,q.z)&&inMill(M,q.x,q.z,.46)) return false; }
     for(const q of machs) if(q!==self&&inMill(M,q.x,q.z,.9)) return false; for(const q of props) if(inMill(M,q.x,q.z,.35)) return false; return true; }
@@ -1104,7 +1155,7 @@ const trein=(()=>{
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving; }, addMill, reset, dig, COST,
-    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
+    get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,dorpen,vrects,stock,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
     /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
@@ -1154,6 +1205,7 @@ const trein=(()=>{
       tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
     down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
+      if(kind==='p'&&rec.fixed){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
     move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
