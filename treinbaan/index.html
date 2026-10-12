@@ -237,7 +237,9 @@ function popIn(o,dur=.4){ const s=o.userData.s0||(o.userData.s0=o.scale.clone())
 /* ---------- sound ---------- */
 let actx=null, muted=false;
 try{ muted=localStorage.getItem('treinbaan-stil')==='1'; }catch(e){}
-function audio(){ if(!actx){ const A=window.AudioContext||window.webkitAudioContext; if(A){ try{ actx=new A(); }catch(e){} } } if(actx&&actx.state==='suspended'){ const p=actx.resume(); if(p&&p.catch) p.catch(()=>{}); } return actx; }
+let unmuteEl=null;
+function audio(){ if(!actx){ try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} const A=window.AudioContext||window.webkitAudioContext; if(A){ try{ actx=new A(); }catch(e){} }
+    if(!navigator.audioSession&&/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){ try{ unmuteEl=new Audio('data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'); unmuteEl.loop=true; unmuteEl.setAttribute('playsinline',''); const p=unmuteEl.play(); if(p&&p.catch) p.catch(()=>{}); document.addEventListener('visibilitychange',()=>{ if(!unmuteEl) return; if(document.hidden) unmuteEl.pause(); else { const q=unmuteEl.play(); if(q&&q.catch) q.catch(()=>{}); } }); }catch(e){} } } if(actx&&actx.state==='suspended'){ const p=actx.resume(); if(p&&p.catch) p.catch(()=>{}); } return actx; }
 function tone(f,dur=.15,type='sine',vol=.2,f2=0,delay=0){
   if(muted) return; const a=audio(); if(!a) return;
   const t=a.currentTime+delay, o=a.createOscillator(), g=a.createGain();
@@ -847,7 +849,7 @@ const trein=(()=>{
   function startSet(){ addMill('fab',[4.5,.5]); const f=mills[mills.length-1]; if(f) f.fixed=true;
     const a=dorpen.find(q=>q.kind==='woon'), x0=a?a.sx+6:-7; layPiece('eind',x0,4,2); for(let x=x0;x<=5;x+=2) layPiece('recht',x,4,0); layPiece('eind',7,4,0); rebuild();
     const p=pieces.find(q=>q.type==='recht'&&q.x===3&&q.z===4); for(const sort of ['loc','goed']){ addTrain(sort,true); mount(vehs[vehs.length-1],{p,si:0,u:.5,d:1}); }
-    newMach('shovel',-4.5,7.6,PI/2); newMach('kiep',-1.2,7.8,PI/2); }
+    newMach('shovel',-4.5,7.6,PI/2); newMach('kiep',-1.2,7.8,PI/2); newMach('pickup',2.4,10.8,PI/2); }
   function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
@@ -1347,7 +1349,7 @@ const trein=(()=>{
     fix(p); bore(t); rebuild(); settle(); if(NET===2) tSend({t:'gm',s:h.s0,to:p.spot}); }
 
   /* ----- machines you drive yourself. Each has a size (rad), a top speed, how fast it turns and gets going, and its box for the physics. The excavator rides on tracks and turns on the spot ----- */
-  const MS={graaf:{rad:.8,off:.45,speed:1.1,turn:1.1,acc:2.5,tank:true,box:[.78,.5,.5],col:'var(--yellow)',ink:true,word:'Graven'},shovel:{rad:.78,off:.55,speed:3.0,turn:2.6,acc:9,box:[.88,.55,.45],col:'var(--orange)',ink:true,word:'Scheppen'},kiep:{rad:.78,off:.62,speed:3.6,turn:2.2,acc:7,box:[1.02,.55,.45],col:'var(--blue)',word:'Kiepen'},pickup:{rad:.72,off:.5,speed:4.8,turn:2.8,acc:8,box:[.88,.45,.4],col:'var(--orange)',word:'Rijden',any:true}}, MAXMACH=2;
+  const MS={graaf:{rad:.8,off:.45,speed:1.1,turn:1.1,acc:2.5,tank:true,box:[.78,.5,.5],col:'var(--yellow)',ink:true,word:'Graven'},shovel:{rad:.78,off:.55,speed:3.0,turn:2.6,acc:9,box:[.88,.55,.45],col:'var(--orange)',ink:true,word:'Scheppen'},kiep:{rad:.78,off:.62,speed:3.6,turn:2.2,acc:7,box:[1.02,.55,.45],col:'var(--blue)',word:'Kiepen'},pickup:{rad:.72,off:.5,speed:4.8,turn:2.8,acc:8,box:[.88,.45,.4],col:'var(--orange)',word:'Rijden'}}, MAXMACH=2;
   const wrapA=a=>a-Math.round(a/TAU)*TAU;
   const TRK=900, TRL=14, TRF=4, TRW={graaf:[.4,.26],shovel:[.42,.17],kiep:[.42,.16],pickup:[.38,.14]}, trkL=[], trkO=new T.Object3D();
   const trk=(()=>{ const q=new T.PlaneGeometry(1,1); q.rotateX(-PI/2); const m=new T.InstancedMesh(q,new T.MeshBasicMaterial({color:0x3a3020,transparent:true,opacity:.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),TRK);
@@ -1366,7 +1368,7 @@ const trein=(()=>{
   function syncM(m){ if(!m.b) return; const S=MS[m.sort]; m.b.position.set(m.x,m.y+S.box[1],m.z); m.b.quaternion.setFromAxisAngle(V(0,1,0),m.yaw); m.b.velocity.set(Math.cos(m.yaw)*m.v,0,-Math.sin(m.yaw)*m.v); }
   function machBody(m,on){ if(!world) return; if(m.b){ world.removeBody(m.b); m.b=null; wakeAll(); } if(!on) return; const S=MS[m.sort], b=new PH.Body({mass:0,type:PH.Body.KINEMATIC}); b.addShape(new PH.Box(V(S.box[0],S.box[1],S.box[2]))); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); m.b=b; syncM(m); wakeAll(); }
   /* may a machine stand here: inside the field, on its own level (not up the side of the high ground, not over its rim), clear of trees, rocks, buildings, sensors and the other machines. Three circles along its length */
-  function hitsAt(m,x,z,r){ if(Math.abs(x)>MX-r||Math.abs(z)>MZ-r) return true; if(!(m.sort&&MS[m.sort].any)&&(m.up?!inPlat(x,z,PV-r):inPlat(x,z,PV+r))) return true;
+  function hitsAt(m,x,z,r){ if(Math.abs(x)>MX-r||Math.abs(z)>MZ-r) return true; if(m.up?!inPlat(x,z,PV-r):inPlat(x,z,PV+r)) return true;
     for(const t of trees) if(t.alive&&Math.abs(t.y-m.y)<.6&&Math.hypot(t.x-x,t.z-z)<r+.3) return true;
     for(const q of rocks) if(q.left&&Math.abs(q.y-m.y)<.6&&Math.hypot(q.x-x,q.z-z)<r+q.rad*.75) return true;
     for(const L of logs) if(Math.abs(L.y-m.y)<.6&&Math.hypot(L.x+L.ux*.5-x,L.z+L.uz*.5-z)<r+.45) return true;
@@ -1471,7 +1473,6 @@ const trein=(()=>{
     if(mag>.3&&m.sort==='graaf'&&(m.work||m.busy)&&!m.stopping) stopDig(m);
     if(mag>.15&&!m.busy){ const want=Math.atan2(-sz,sx); let df=wrapA(want-m.yaw), back=false; if(!S.tank&&Math.abs(df)>2.3){ back=true; df=wrapA(want+PI-m.yaw); }
       const ny=m.yaw+clampN(df,S.turn*dt); if(!blockedAt(m,m.x,m.z,ny)) m.yaw=ny; vt=(back?-.6:1)*S.speed*fast*mag*Math.max(0,Math.cos(df)); }
-    if(S.any){ m.up=inPlat(m.x,m.z,0); m.y+=((m.up?RISE:0)-m.y)*Math.min(1,dt*9); }
     m.v+=clampN(vt-m.v,S.acc*fast*dt); if(Math.abs(m.v)<.005){ m.v=0; return; }
     const dx=Math.cos(m.yaw)*m.v*dt, dz=-Math.sin(m.yaw)*m.v*dt;
     if(!blockedAt(m,m.x+dx,m.z+dz,m.yaw)){ m.x+=dx; m.z+=dz; } else if(!blockedAt(m,m.x+dx,m.z,m.yaw)) m.x+=dx; else if(!blockedAt(m,m.x,m.z+dz,m.yaw)) m.z+=dz; else { if(Math.abs(m.v)>.8&&bumpT<=0){ bumpT=.4; tone(110,.1,'triangle',.18,70); } m.v=0; return; }
@@ -1913,7 +1914,7 @@ priceUI=st=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.class
   mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Slaat steen van rotsen, hakt bomen om voor hout en schept van hopen',on:()=>trein.addMachine('graaf')});
   mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept van hopen en losse blokjes en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
   mkBtn(G.mach,{id:'mach-kiep',cls:'btn face',svg:ST.kiep,label:'Kiepwagen: tik erop om in te stappen. Brengt steen naar de fabriek',on:()=>trein.addMachine('kiep')});
-  mkBtn(G.mach,{id:'mach-pickup',cls:'btn face',svg:ST.pickup,label:'Pickup: loop erheen en stap in. Rijdt overal, ook de verhoging op',on:()=>trein.addMachine('pickup')});
+  mkBtn(G.mach,{id:'mach-pickup',cls:'btn face',svg:ST.pickup,label:'Pickup: loop erheen en stap in. Snel overal heen',on:()=>trein.addMachine('pickup')});
   /* a locked vehicle (campaign): grey with a lock; you earn it by building up the villages */
   lockUI=set=>{ const ids={graaf:'mach-graaf',shovel:'mach-shovel',kiep:'mach-kiep',pickup:'mach-pickup',loc:'spoor-loc',goed:'spoor-goed',pass:'spoor-pass',auto:'spoor-auto',wissel:'spoor-wissel',brug:'spoor-brug',tunnel:'spoor-tunnel',overweg:'spoor-overweg',wtunnel:'spoor-wtunnel',sensor:'spoor-sensor',boost:'spoor-boost'}; for(const k in ids){ const e=$('#'+ids[k]); if(e) e.classList.toggle('lock',set.has(k)); } }; lockUI(trein.state.locked);
   /* the driving pad: push the stick the way you want to go; the big button does the work, the small one gets you out */
