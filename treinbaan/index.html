@@ -53,6 +53,10 @@ body{margin:0;background:linear-gradient(var(--sky-top),var(--sky-low) 72%);colo
 .btn{position:relative}
 .cost{position:absolute;right:-8px;bottom:-6px;min-width:1.6em;height:1.6em;box-sizing:border-box;padding:0 .32em;border-radius:1em;border:2px solid var(--paper);background:#ffd22e;color:#5a3d00;font:800 clamp(12px,3vmin,16px)/1 var(--display);display:grid;place-items:center;pointer-events:none;box-shadow:inset 0 -2px 0 #e09a00}
 .btn.poor{filter:grayscale(.9);opacity:.55}
+/* the name under a building's button; the drawer makes room for it */
+.btn .lbl{position:absolute;left:50%;top:calc(100% + 9px);transform:translateX(-50%);width:max-content;max-width:calc(var(--btn) + 10px);font:800 clamp(10px,2.5vmin,13px)/1.05 var(--display);color:var(--ink);text-align:center;-webkit-hyphens:manual;hyphens:manual;pointer-events:none}
+#treinBar.lbls .items{padding-bottom:clamp(28px,7vmin,36px)}
+.btn.on .lbl{transform:translateX(-50%) scale(.88)}
 .btn.lock{filter:grayscale(1);opacity:.45}
 #toast{position:absolute;left:50%;top:calc(var(--sw) + 26px);transform:translateX(-50%);max-width:min(88vw,560px);box-sizing:border-box;padding:.45em 1.1em;border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 5px 0 var(--shade);font:800 clamp(15px,3.6vmin,20px)/1.25 var(--display);text-align:center;pointer-events:none;opacity:0;transition:opacity .35s}
 #toast.show{opacity:1}
@@ -528,6 +532,7 @@ let binUI=()=>{}, overBin=()=>false;
 /* the tunnel button stays down while you point at a way in and a way out */
 const tunBtn={}; let lockUI=()=>{}, nearUI=()=>{}, toastT=null;
 function toast(msg){ const e=document.getElementById('toast'); if(!e) return; e.textContent=msg; e.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.remove('show'),Math.max(3500,msg.length*75)); }
+let placeUI=()=>{};
 let digUI=(on,net)=>{ for(const k in tunBtn) tunBtn[k].classList.toggle('on',!!on&&k===net); };
 /* getting into a machine swaps the drawer for the joystick (the buttons fill this in) */
 let driveUI=()=>{}, busyUI=()=>{};
@@ -640,15 +645,11 @@ const SPOOR=(()=>{
     else if(type==='brug'){ mesh(geo.brug,wood,0,0,0,g); [-1,1].forEach(s=>flatM(geo.gBrug,grv,0,0,s*.24,g)); mesh(geo.romp,beech,0,0,0,g); }
     else if(type==='wissel'){ arm=new T.Group(); arm.position.set(.26,TH+.012,0); flatM(geo.pijl,red,0,0,0,arm); g.add(arm); }
     if(!pier){ pier=new T.Group(); g.add(pier); } pier.visible=false; return {g,pier,arm,gates}; }
-  /* the platform beside a station's track (on the left, -z): a long slab with a yellow line, a little shelter and a name board on two posts. The board is a sprite, so it can be read from every side */
+  /* the platform beside a station's track (on the left, -z): a long slab with a yellow line and a little shelter */
   const deckM=mat(0xe4dccb,{shininess:8,specular:0x0a0a0a}), shedM=mat(C.red,{shininess:30});
   function stationDeck(g){ const d=new T.Group(); d.position.set(3,0,-1.05); g.add(d); mesh(roundBox(5.7,.3,1,.06,.03),deckM,0,.15,0,d); const e=mesh(box(5.6,.02,.08),yel,0,.31,.42,d); e.castShadow=false;
     [-.85,.85].forEach(x=>mesh(cyl(.04,.04,1,8),ink,x-1.45,.8,-.28,d)); mesh(roundBox(2.2,.08,.82,.04,.02),shedM,-1.45,1.32,-.12,d);
-    [-.75,.75].forEach(x=>mesh(cyl(.035,.035,1.25,8),ink,1.45+x,.92,-.38,d)); const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const tex=new T.CanvasTexture(cv);
-    const sp=new T.Sprite(new T.SpriteMaterial({map:tex})); sp.raycast=()=>{}; sp.scale.set(1.9,.475,1); sp.position.set(1.45,1.62,-.38); d.add(sp); g.userData.board={cv,tex}; g.userData.deck=d; }
-  /* the name on the board of a station */
-  function nameBoard(g,name){ const B=g.userData.board; if(!B) return; const c=B.cv.getContext('2d'); c.fillStyle=hx(C.paper); c.fillRect(0,0,512,128); c.lineWidth=14; c.strokeStyle=hx(C.blue); c.strokeRect(7,7,498,114);
-    c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; let f=78; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; while(c.measureText(name).width>450&&f>30){ f-=4; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; } c.fillText(name,256,70); B.tex.needsUpdate=true; }
+    g.userData.deck=d; }
   /* trains: the origin sits on top of the rails, the nose points along +x */
   const wheelGeo=(()=>{ const q=cyl(.125,.125,.07,16); q.rotateX(PI/2); return q; })(), hubGeo=(()=>{ const q=cyl(.05,.05,.08,10); q.rotateX(PI/2); return q; })();
   const chassisGeo=roundBox(1,.12,.46,.05,.02), knobGeo=sph(.05,8,6);
@@ -680,7 +681,7 @@ const SPOOR=(()=>{
   const boltG=(()=>{ const q=new T.ExtrudeGeometry(side([[-.36,.1],[.06,.2],[.02,.05],[.36,-.1],[-.06,-.2],[-.02,-.05]]),{depth:.025,bevelEnabled:false}); q.rotateX(-PI/2); return q; })();
   const plateM=mat(C.orange,{shininess:50}), boltM=mat(C.yellow,{shininess:60,emissive:0x5a3a00});
   function boost(){ const g=new T.Group(), p=mesh(plateG,plateM,0,.004,0,g), b=mesh(boltG,boltM,0,.034,0,g), gh=new T.Mesh(sph(.45,10,8),new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); p.castShadow=b.castShadow=false; gh.position.y=.15; g.add(gh); return {g,bolt:b}; }
-  return {RR,TH,HW,RISE,BL,TYPE,rise,piece,nameBoard,loco,goods,coach,car,sensor,boost,numMat,lampCol};
+  return {RR,TH,HW,RISE,BL,TYPE,rise,piece,loco,goods,coach,car,sensor,boost,numMat,lampCol};
 })();
 
 /* ---------- the toy forest: wooden trees on a little foot ---------- */
@@ -708,22 +709,17 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
   const logGeo=(()=>{ const q=cyl(.17,.17,1.2,12); q.rotateZ(PI/2); q.translate(.6,.17,0); return q; })(), endGeo=(()=>{ const q=cyl(.12,.12,1.21,10); q.rotateZ(PI/2); q.translate(.6,.17,0); return q; })();
   const houtM=mat(C.brown,{shininess:12,specular:0x101010}), blockMat=sh=>sh==='steen'?rockM:houtM;
   const seeThrough=r=>new T.Mesh(sph(r,10,8),new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
-  /* a name board: dark letters on paper in a coloured frame */
-  function board(name,col,w,h){ const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const c=cv.getContext('2d'); c.fillStyle=hx(C.paper); c.fillRect(0,0,512,128); c.lineWidth=14; c.strokeStyle=hx(col); c.strokeRect(7,7,498,114);
-    c.fillStyle=hx(C.ink); c.textAlign='center'; c.textBaseline='middle'; let f=76; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; while(c.measureText(name).width>450&&f>30){ f-=4; c.font='800 '+f+'px "Baloo 2",Arial,sans-serif'; } c.fillText(name,256,70);
-    const t=new T.CanvasTexture(cv); t.anisotropy=4; return new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:t})); }
   /* the boxes a building is made of for the physics: [x,y,z, half sizes] */
   /* the workshop: a red hall with a big striped door and a yellow roof; the machines stand in front of it */
   function werk(){ const g=new T.Group(); mesh(roundBox(4,.14,3,.08,.03),wood,0,.07,0,g); mesh(roundBox(3.4,1.3,2,.1,.04),red,0,.79,-.35,g); mesh(roundBox(3.7,.18,2.3,.06,.03),yel,0,1.53,-.35,g);
     mesh(box(1.7,1,.04),mat(0xdfe5ee,{shininess:30}),0,.64,.66,g); for(let i=0;i<5;i++) mesh(box(1.7,.025,.05),mat(0x9aa3b5),0,.24+i*.2,.67,g);
-    [-1.22,1.22].forEach(x=>mesh(box(.5,.4,.04),glass,x,.88,.66,g)); const b=board('Werkplaats',C.red,1.9,.47); b.position.set(0,1.98,.2); g.add(b); [-.75,.75].forEach(x=>mesh(cyl(.035,.035,.45,8),ink,x,1.75,.18,g));
+    [-1.22,1.22].forEach(x=>mesh(box(.5,.4,.04),glass,x,.88,.66,g));
     const bh=seeThrough(1.8); bh.position.y=.6; g.add(bh); return {g,boxes:[[0,.07,0,2,.07,1.5],[0,.79,-.35,1.7,.65,1]],drop:null}; }
   /* the stone factory: a grey hall with a saw-tooth roof and a chimney, and beside it a hopper on legs where the stone goes in */
   function sfab(){ const g=new T.Group(), grey=mat(0xb4bccb,{shininess:20}); mesh(roundBox(4.2,.14,3,.08,.03),wood,0,.07,0,g); mesh(roundBox(2.6,1.1,1.8,.08,.03),grey,-.6,.69,-.45,g); [-1.25,.05].forEach(x=>mesh(toothGeo,paper,x,1.24,-.45,g));
     mesh(cyl(.16,.2,1.2,12),red,-1.65,1.75,-1.05,g); mesh(cyl(.2,.2,.1,12),paper,-1.65,2.32,-1.05,g); mesh(box(.62,.66,.03),ink,-1.2,.47,.46,g); [-.25,.35].forEach(x=>mesh(box(.36,.3,.03),glass,x,.8,.46,g));
     [[-.26,-.26],[.26,-.26],[-.26,.26],[.26,.26]].forEach(([a,b])=>mesh(cyl(.04,.04,.8,8),ink,1.35+a,.54,.35+b,g)); mesh(cyl(.42,.16,.4,16),orange,1.35,1.1,.35,g); mesh(cyl(.44,.44,.06,16),orange,1.35,1.32,.35,g);
     [[1.1,-.85],[1.6,-.85],[1.35,-.85,1]].forEach(([x,z,up])=>mesh(BLOK.geos.steen,rockM,x,.32+(up?.36:0),z,g));
-    const b=board('Steenfabriek',0x7f8aa0,1.9,.47); b.position.set(-.6,1.95,.32); g.add(b); [-1.35,.15].forEach(x=>mesh(cyl(.035,.035,.5,8),ink,x,1.49,.3,g));
     const bh=seeThrough(1.8); bh.position.y=.6; g.add(bh); return {g,boxes:[[0,.07,0,2.1,.07,1.5],[-.6,.69,-.45,1.3,.55,.9],[1.35,.7,.35,.4,.62,.4]],drop:{x:1.35,z:.35}}; }
   /* the little people: wooden peg dolls; the nose points along +x. The woodcutter has an axe, the miner a helmet and a pick, the factory hand carries only */
   const bubM=new T.MeshBasicMaterial({map:canvasTex(c=>{ c.clearRect(0,0,256,256); c.fillStyle=hx(C.paper); c.beginPath(); c.arc(128,128,112,0,PI*2); c.fill(); c.lineWidth=12; c.strokeStyle=hx(C.ink); c.stroke(); c.fillStyle=hx(C.ink); c.font='800 180px "Baloo 2",Arial,sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('?',128,140); }),transparent:true,depthWrite:false}), bubGeo=new T.PlaneGeometry(.5,.5);
@@ -740,7 +736,6 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
   function cent(){ const g=new T.Group(), hall=mat(0x3fae7a,{shininess:30}); mesh(roundBox(4.2,.14,3,.08,.03),wood,0,.07,0,g); mesh(roundBox(2.4,1.2,1.7,.1,.04),hall,-.55,.74,-.5,g); mesh(roundBox(2.6,.16,1.9,.06,.03),paper,-.55,1.42,-.5,g);
     for(let i=0;i<4;i++) mesh(cyl(.28-i*.015,.285-i*.015,.42,16),i&1?paper:red,-1.3,1.71+i*.42,-.85,g);
     const fire=mat(0x6b3a1a,{shininess:10}); mesh(roundBox(.62,.42,.04,.06,.02),fire,-.1,.6,.36,g); [-.95,-.45].forEach(x=>mesh(box(.32,.28,.03),glass,x,.95,.36,g));
-    const b=board('Centrale',0x3fae7a,1.4,.4); b.position.set(-.2,1.82,.1); g.add(b); [-.75,.35].forEach(x=>mesh(cyl(.035,.035,.4,8),ink,x,1.62,.08,g));
     [[-.26,-.26],[.26,-.26],[-.26,.26],[.26,.26]].forEach(([a,c])=>mesh(cyl(.04,.04,.8,8),ink,1.35+a,.54,.35+c,g)); mesh(cyl(.42,.16,.4,16),green,1.35,1.1,.35,g); mesh(cyl(.44,.44,.06,16),green,1.35,1.32,.35,g);
     mesh(roundBox(1.25,.06,.9,.03,.015),beech,1.25,.17,-.85,g); const st=[]; for(let i=0;i<10;i++){ const o=mesh(BLOK.geos.hout,houtM,.9+(i%3)*.36,.38+((i/6)|0)*.36,-1.05+(((i%6)/3)|0)*.42,g); o.scale.setScalar(.78); o.visible=false; st.push(o); }
     const bh=seeThrough(1.8); bh.position.y=.6; g.add(bh); return {g,boxes:[[0,.07,0,2.1,.07,1.5],[-.55,.74,-.5,1.2,.6,.85],[1.35,.7,.35,.4,.62,.4],[-1.3,1.9,-.85,.3,1,.3]],drop:{x:1.35,z:.35},fire,store:st,top:[-.55,1.55,-.5]}; }
@@ -760,10 +755,9 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
     else { const rol=cyl(B/2,B/2,B,24); mesh(rol,M(w),0,y0+B/2,0,g); mesh(rol,M(w2),0,y0+B*1.5,0,g); mesh(cone(.56,.72,24),M(r),0,y0+2*B+.36,0,g); mesh(box(.26,.24,.04),win,0,y0+B*1.45,B/2-.01,g); top=y0+2.6; }
     const dx=kind===2?-B/2:0; mesh(box(.26,.42,.03),ink,dx-.16,y0+.21,B/2+.01,g); mesh(box(.24,.22,.02),win,dx+.2,y0+.5,B/2+.01,g);
     const bh=seeThrough(1.2); bh.position.y=.7; g.add(bh); const hw=kind===2?B:B/2; return {g,boxes:[[0,.05,0,1.05,.05,.95],[0,y0+top/2,0,hw,top/2,B/2]],drop:{x:0,z:0},win,top:[0,top-.3,0]}; }
-  /* an office: a tall blue building with rows of windows, a flat roof and a name board */
+  /* an office: a tall blue building with rows of windows and a flat roof */
   function kant(){ const g=new T.Group(), body=mat(0x5b8fd9,{shininess:40}), win=mat(winOff,{shininess:40}); mesh(roundBox(2.8,.1,2.4,.1,.03),wood,0,.05,0,g); mesh(roundBox(2.3,2.5,1.7,.1,.04),body,0,1.35,-.2,g); mesh(roundBox(2.5,.16,1.9,.06,.03),paper,0,2.66,-.2,g);
     for(let f=0;f<3;f++) for(let i=0;i<4;i++){ if(f===0&&(i===1||i===2)) continue; mesh(box(.34,.42,.02),win,-.81+i*.54,.62+f*.72,.66,g); } mesh(box(.62,.56,.03),ink,0,.38,.66,g); mesh(box(.5,.1,.04),paper,0,.72,.67,g);
-    const b=board('Kantoor',0x5b8fd9,1.4,.4); b.position.set(0,3.02,0); g.add(b); [-.5,.5].forEach(x=>mesh(cyl(.035,.035,.4,8),ink,x,2.82,-.02,g));
     const bh=seeThrough(1.6); bh.position.y=1.2; g.add(bh); return {g,boxes:[[0,.05,0,1.4,.05,1.2],[0,1.35,-.2,1.15,1.25,.85]],drop:{x:0,z:0},win,top:[0,2.75,-.2]}; }
   /* the crane (smaller than the old one): a tower with a jib that turns (top), a trolley that runs along the jib (trol) and a hook on a cable */
   function kraan(){ const g=new T.Group(); mesh(roundBox(.64,.18,.64,.06,.025),ink,0,.09,0,g); mesh(roundBox(.2,1.5,.2,.05,.02),yel,0,.93,0,g);
@@ -775,10 +769,9 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
   /* the store: a wooden barn, open at the front, with twenty places for blocks of wood or stone inside (five wide, two deep, two high) */
   function opsl(){ const g=new T.Group(); mesh(roundBox(3.6,.14,2.8,.08,.03),wood,0,.07,0,g); mesh(roundBox(2.7,.06,1.15,.03,.015),beech,-.1,.17,-.42,g);
     mesh(roundBox(3,1.35,.12,.04,.02),brown,-.1,.81,-1.06,g); [-1.56,1.36].forEach(x=>mesh(roundBox(.12,1.35,1.5,.04,.02),brown,x,.81,-.38,g)); const rf=mesh(roundBox(3.3,.12,.95,.05,.02),red,-.1,1.6,-.78,g); rf.rotation.x=.22;
-    const b=board('Opslag',C.brown,1.3,.37); b.position.set(-.1,2.02,-.95); g.add(b); [-.6,.4].forEach(x=>mesh(cyl(.035,.035,.42,8),ink,x,1.8,-.97,g));
     const slots=[]; for(let i=0;i<20;i++){ const o=mesh(BLOK.geos.hout,houtM,-1.04+(i%5)*.47,.38+((i/10)|0)*.36,-.66+(((i%10)/5)|0)*.47,g); o.visible=false; slots.push(o); }
     const bh=seeThrough(1.7); bh.position.y=.6; g.add(bh); return {g,boxes:[[0,.07,0,1.8,.07,1.4],[-.1,.81,-1.06,1.5,.68,.06],[-1.56,.81,-.38,.06,.68,.75],[1.36,.81,-.38,.06,.68,.75]],drop:{x:-.1,z:.1},slots}; }
-  return {werk,sfab,cent,paal,huis,kant,kraan,opsl,board,man,log,blockMat,STONE,lit,unlit}; })();
+  return {werk,sfab,cent,paal,huis,kant,kraan,opsl,man,log,blockMat,STONE,lit,unlit}; })();
 
 /* ---------- machines you drive: excavator, wheel loader, dump truck. The nose points along +x, the origin sits on the ground ---------- */
 /* ---------- villages: little houses of toy blocks, and a platform with the village's name ---------- */
@@ -924,7 +917,7 @@ const trein=(()=>{
   function mid(o,out){ const n=tyOf(o).segs.length; let x=0, y=0, z=0; for(let i=0;i<n;i++){ wpt(o,i,.5,cv); x+=cv.x; y+=cv.y; z+=cv.z; } return out.set(x/n,y/n,z/n); }
   /* points along a piece (plus what it stands on) used to keep two pieces from lying through each other; a high track may cross a low one under an arch */
   function sampleOf(o){ const s=[]; tyOf(o).segs.forEach((sg,si)=>{ for(let i=1;i<=sg.n;i++){ wpt(o,si,i/(sg.n+1),cv); s.push(cv.x,cv.y,cv.z); } });
-    if(o.type==='station') for(let x=.3;x<5.8;x+=.55) for(const z of [-.75,-1.35]){ lpt(o,x,z,cv); s.push(cv.x,cv.y,cv.z); }
+    if(o.type==='station') for(let x=.6;x<5.5;x+=.6) for(const z of [-.75,-1.35]){ lpt(o,x,z,cv); s.push(cv.x,cv.y,cv.z); }
     if(o.type==='brug') [.6,.7,.8].forEach(u=>{ wpt(o,0,u,cv); s.push(cv.x,0,cv.z); }); else if(o.lv>0){ wpt(o,0,.5,cv); if(!inPlat(cv.x,cv.z,.001)) s.push(cv.x,0,cv.z,cv.x,RISE/2,cv.z); } return s; }
   /* a piece that is simply put down lies on the ground it is over: on the mat, or up on the high ground */
   function rest(o){ o.lv=0; if(o.type!=='brug'){ mid(o,a2); if(inPlat(a2.x,a2.z,.001)) o.lv=1; } return o; }
@@ -1010,7 +1003,7 @@ const trein=(()=>{
   /* every station has a name of its own: the first free one of the list */
   const STN=['Klotsdorp','Kubusdam','Dakkum','Boogveen','Torenmeer','Houtveen','Dennendal','Blokhoven','Spoorwijk','Bielzen','Steenkamp','Wielerdam'];
   const stName=p=>STN[p.nm%STN.length]+(p.nm>=STN.length?' '+(1+Math.floor(p.nm/STN.length)):'');
-  function nameSt(p,nm){ if(nm==null){ nm=0; while(pieces.some(q=>q!==p&&q.type==='station'&&q.nm===nm)) nm++; } p.nm=nm; SPOOR.nameBoard(p.g,stName(p)); }
+  function nameSt(p,nm){ if(nm==null){ nm=0; while(pieces.some(q=>q!==p&&q.type==='station'&&q.nm===nm)) nm++; } p.nm=nm; }
   /* the blocks in a goods wagon lie in their places again (after one was taken out of the middle) */
   function relay(v){ v.load.forEach((l,i)=>{ const ms=msOf(l.sh); l.m.position.set(SLX[i],.33+(i>2?.21:0)+BLOK.bottom[l.sh]*ms,0); }); }
   /* the first words of a new campaign */
@@ -1048,7 +1041,7 @@ const trein=(()=>{
   function placeMe(x,z){ me.up=inPlat(x,z,0); me.y=me.up?RISE:0; for(let r=0;r<=8;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(inPlat(sx,sz,0)===me.up&&meFree(sx,sz)){ me.x=sx; me.z=sz; me.g.position.set(sx,me.y,sz); me.g.rotation.y=me.yaw; return; } } me.x=x; me.z=z; me.g.position.set(x,me.y,z); }
   /* the machine you can get into from where you stand */
   function nearMach(){ let best=null, bd=1e9; for(const m of machs){ if(m===driving||m.by||m.up!==me.up||(held&&held.rec===m)) continue; const d=Math.hypot(m.x-me.x,m.z-me.z)-MS[m.sort].rad; if(d<1.5&&d<bd){ bd=d; best=m; } } return best; }
-  function stroll(){ if(driving||!me) return; walking=true; stX=stZ=0; driveUI(true,'lopen'); nearUI(!!nearMach()); pop(me.g,.1); fxp('step'); fxp('step',1,.24); }
+  function stroll(){ if(driving||!me) return; unplace(); walking=true; stX=stZ=0; driveUI(true,'lopen'); nearUI(!!nearMach()); pop(me.g,.1); fxp('step'); fxp('step',1,.24); }
   /* out of a machine: the doll stands beside it */
   function outOf(m){ const r=MS[m.sort].rad+.7; me.up=m.up; me.y=m.y; let done=false; for(const a of [PI/2,-PI/2,PI,0,PI*.75,-PI*.75,PI/4,-PI/4]){ const x=m.x+Math.cos(m.yaw+a)*r, z=m.z-Math.sin(m.yaw+a)*r; if(meFree(x,z)){ me.x=x; me.z=z; done=true; break; } } if(!done) placeMe(m.x,m.z+r);
     me.g.position.set(me.x,me.y,me.z); me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; popIn(me.g,.25); }
@@ -1106,7 +1099,7 @@ const trein=(()=>{
       rebuild(); settle(); }
     else if(t==='tap'){ const p=byKey(d.k); if(p){ if(p.type==='wissel') flip(p); else if(p.type==='overweg') gate(p); else if(p.type==='eind') press(p); } }
     else if(t==='veh'||t==='mach'||t==='sens'||t==='boost'){ const e=d.e; if(e&&isFinite(e.z)&&isFinite(e.x0)&&isFinite(e.x1)) edgeO={z:clampN(+e.z,MZ-.7),x0:clampN(+e.x0,MX),x1:clampN(+e.x1,MX)}; try{ if(t==='veh'&&KN&&/^(loc|goed|pass|auto)$/.test(d.s)) addTrain(d.s); else if(t==='mach'&&MS[d.s]) addMachine(d.s); else if(t==='sens') addSensor(); else if(t==='boost') addBoost(); } finally { edgeO=null; } }
-    else if(t==='bld'){ if(!BLD[d.s]) return; const c=Array.isArray(d.c)?[clampN(+d.c[0]||0,MX),clampN(+d.c[1]||0,MZ)]:null; build(d.s,c); }
+    else if(t==='bld'){ if(!BLD[d.s]) return; const c=Array.isArray(d.c)?[clampN(+d.c[0]||0,MX),clampN(+d.c[1]||0,MZ)]:null, at=Array.isArray(d.at)?[clampN(+d.at[0]||0,MX-1),clampN(+d.at[1]||0,MZ-1)]:null; build(d.s,c,at,isFinite(+d.seed)&&d.seed>0?+d.seed:null); }
     else if(t==='zm'||t==='zb'){ const m=mills.find(q=>q.nid===d.n); if(!m||!notHeld(m)) return;
       if(t==='zb'){ removeMill(m,true); pay(m.sort,-1); sfx.boop(); } else { const q=nearSite(clampN(+d.x||0,MX),clampN(+d.z||0,MZ),m,m.hw,m.hd,m.front); if(q){ m.x=q[0]; m.z=q[1]; m.y=hAt(m.x,m.z); } millBody(m,true); if(m.man) manHome(m); bind(); } }
     else if(t==='sm'||t==='sb'||t==='stap'){ const q=atXZ(props,d.a); if(!q) return; if(t==='stap'){ tapSensor(q); return; } propBody(q,false); if(q.busy){ q.busy.pause=0; q.busy.stop=null; q.busy=null; }
@@ -1722,11 +1715,36 @@ const trein=(()=>{
   /* the button of a building: buy it, it comes in the middle of the picture */
   let hints=new Set();
   const hint=(k,msg,d)=>{ if(mode!=='camp'||hints.has(k)) return; hints.add(k); after(d||.8,()=>news(msg)); };
-  function build(sort,near){ if(!BLD[sort]||held) return; if(!canPay(sort)){ broke(); return; } if(NET===2){ netOut({t:'bld',s:sort,c:[R3(panX),R3(panZ-.5)]}); sfx.pop(2); return; }
-    const m=addMill(sort,null,{near}); if(!m) return; burst(cv.set(m.x,1.4,m.z),18,3.4);
+  function build(sort,near,at,seed){ if(!BLD[sort]||held) return; if(!canPay(sort)){ broke(); return; } if(NET===2){ netOut({t:'bld',s:sort,c:[R3(panX),R3(panZ-.5)],at:at||null,seed:seed||null}); sfx.pop(2); return; }
+    const B=BLD[sort]; if(at&&!siteFree(at[0],at[1],null,B.hw,B.hd,B.front)) at=nearSite(at[0],at[1],null,B.hw,B.hd,B.front);   /* someone else was quicker: the nearest place where it fits */
+    const m=addMill(sort,at||null,{near,seed}); if(!m) return; burst(cv.set(m.x,1.4,m.z),18,3.4);
     if(sort==='werk') hint('werk','Je machines staan klaar! Hak met de graafmachine steen uit een rots en kiep het bij een steenfabriek: '+BLD.sfab.pay+' coins per blokje.');
     if(sort==='huis'&&!mills.some(q=>q.sort==='cent')) hint('huis','Een huis heeft stroom nodig. Bouw een centrale, breng er hout heen en zet stroompalen tot bij het huis.');
     if(sort==='kant') hint('kant','Bewoners gaan met de trein naar kantoor. Zet een station bij hun huis en een bij het kantoor, met een sensor bij elk station.'); }
+  /* ----- placing a building (or a station): after its button a see-through one follows your finger, with a green patch under it where it fits and a red one where it does not. Let go on green and it is built (only then you pay); the button again stops it ----- */
+  const WAT={werk:'de werkplaats',sfab:'de steenfabriek',cent:'de centrale',paal:'de stroompaal',kraan:'de hijskraan',opsl:'de opslag',huis:'het huis',kant:'het kantoor',station:'het station'};
+  const footOk=new T.MeshBasicMaterial({color:0x2fc866,transparent:true,opacity:.5,depthWrite:false}), footNo=new T.MeshBasicMaterial({color:C.red,transparent:true,opacity:.5,depthWrite:false});
+  let plc=null;
+  function seeThru(o){ o.traverse(q=>{ if(!q.isMesh||!q.material||q.material.opacity===0) return; q.material=q.material.clone(); q.material.transparent=true; q.material.opacity=.55; q.material.depthWrite=false; q.castShadow=q.receiveShadow=false; }); }
+  function placing(sort){ if(held||(!BLD[sort]&&sort!=='station')) return; if(pick) undig(); if(plc){ const same=plc.sort===sort; unplace(); if(same){ sfx.boop(); return; } } if(!canPay(sort)){ broke(); return; }
+    const st=sort==='station', seed=((Math.random()*2147483646)|0)+1, gh=st?SPOOR.piece('station').g:BOUW[sort](seed).g; seeThru(gh); gh.renderOrder=5;
+    const B=BLD[sort], fw=st?6:B.hw*2+.3, fd=st?2.1:B.hd*2+.3, fg=new T.PlaneGeometry(fw,fd); fg.rotateX(-PI/2); const foot=new T.Mesh(fg,footNo); foot.position.set(st?3:0,.04,st?-.55:0); foot.renderOrder=4; gh.add(foot);
+    g.add(gh); plc={sort,seed,g:gh,foot,x:panX,z:panZ-.5,ok:false,c:null,snap:false,q:0}; plcAt(panX,panZ-.5); placeUI(sort); sfx.tap(); toast('Tik waar '+WAT[sort]+' moet komen.'); }
+  function unplace(){ if(!plc) return; g.remove(plc.g); plc.g.traverse(q=>{ if(q.isMesh&&q.material!==footOk&&q.material!==footNo&&q.material.dispose) q.material.dispose(); }); plc.foot.geometry.dispose(); plc=null; placeUI(null); }
+  /* the station clicks onto an open end of the rails near the finger, else it lies on the dot under the finger (the way the last one lay) */
+  function stCand(x,z){ const ty=TYPE.station; let best=null, bd=2.4;
+    for(const X of open){ if(X.e.net!=='rail') continue; for(let e=0;e<ty.ends.length;e++){ const E=ty.ends[e]; for(const m of [1,-1]){ const q=(X.e.q+2-(m>0?E.oq:4-E.oq))&3, lz=E.z*m, c={type:'station',q,m,x:X.e.x-(E.x*CS[q]+lz*SN[q]),z:X.e.z-(-E.x*SN[q]+lz*CS[q]),lv:X.e.lv-E.l};
+      if(c.lv<0||c.lv>1) continue; lpt(c,3,-.75,a1); const d=Math.hypot(a1.x-x,a1.z-z); if(d<bd&&free(c,null)){ bd=d; best=c; } } } }
+    if(best) return {c:best,snap:true,ok:true};
+    const q=plc?plc.q:0, o={type:'station',x:0,z:0,q,lv:0,m:1}; lpt(o,3,-.55,a1); const ox=x-a1.x, oz=z-a1.z, px=clampN(2*Math.round((ox-1)/2)+1,BX), pz=clampN(2*Math.round(oz/2),BZ), c=rest({type:'station',x:px,z:pz,q,lv:0,m:1});
+    return {c,snap:false,ok:free(c,null)}; }
+  function plcAt(x,z){ const P=plc; if(!P) return; if(P.sort==='station'){ const r=stCand(x,z); P.c=r.c; P.snap=r.snap; P.ok=r.ok&&canPay('station'); P.q=r.c.q; P.g.position.set(r.c.x,r.c.lv*RISE,r.c.z); P.g.rotation.y=r.c.q*PI/2; P.g.scale.z=r.c.m; }
+    else { const B=BLD[P.sort]; x=clampN(Math.round(x*2)/2,MX-B.hw-.4); z=clampN(Math.round(z*2)/2,MZ-B.hd-.45); P.x=x; P.z=z; P.ok=siteFree(x,z,null,B.hw,B.hd,B.front)&&canPay(P.sort); P.g.position.set(x,hAt(x,z),z); }
+    P.foot.material=P.ok?footOk:footNo; }
+  /* let go: build it there, if it fits */
+  function plcDrop(){ const P=plc; if(!P) return; if(!P.ok){ sfx.boing(); pop(P.g,.06); if(!canPay(P.sort)) broke(); return; }
+    if(P.sort==='station'){ const c=P.c; unplace(); if(NET===2){ pendAdd=['station',c.x,c.z,c.q,c.lv,c.m].join(); netOut({t:'add',type:'station',o:[c.x,c.z,c.q,c.lv,c.m],s:1}); sfx.pop(4); } else placeNew('station',c,P.snap); return; }
+    const sort=P.sort, at=[P.x,P.z], seed=P.seed; unplace(); build(sort,null,at,seed); }
   /* the workshop brings its machines: an excavator, a loader and a dump truck stand in front of it */
   function crew(w){ [['graaf',-1.6],['shovel',.5],['kiep',2.5]].forEach(([sort,dx])=>{ const k=newMach(sort,w.x+dx,w.z+w.hd+1.9,-PI/2,.3,true); if(k){ k.ws=w; popIn(k.g,.35); } }); }
   function removeMill(m,all){ if(m.kr) craneStop(m); if(all&&NET!==2&&world&&m.goods.length){ m.goods.forEach((sh,i)=>dropRaw(sh,clampN(m.x-1+(i%5)*.5,MX-.6),.6+((i/5)|0)*.4,clampN(m.z+m.hd+.6,MZ-.6))); m.goods=[]; } millBody(m,false); if(m.man){ manHome(m); g.remove(m.man.g); } if(m.icon) g.remove(m.icon); g.remove(m.g); mills=mills.filter(x=>x!==m); if(all) for(const k of machs.slice()) if(k.ws===m) removeMach(k); bind(); }
@@ -1973,7 +1991,7 @@ const trein=(()=>{
       else { setFree(v,clampN(F.x,MX-.5),clampN(F.z,MZ-.4),h.yaw); sfx.plop(); } } }
   /* the forest and the rocks: all of them back (campaign), or none at all (creative) */
   /* everything that was put down goes away */
-  function wipe(){ trkClear(); if(held&&held.kind==='b') world.addBody(held.rec.b); mills.slice().forEach(removeMill);
+  function wipe(){ unplace(); trkClear(); if(held&&held.kind==='b') world.addBody(held.rec.b); mills.slice().forEach(removeMill);
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g)); if(driving) leave(true); machs.forEach(m=>{ machBody(m,false); g.remove(m.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); logs.forEach(L=>g.remove(L.g)); logs=[]; tunnels=[]; lastP=null; coins=START; coinsDirty=true; hints=new Set(); clearFolk(); pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; machs=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
@@ -1983,9 +2001,9 @@ const trein=(()=>{
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; },
-    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,cmd:netCmd,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, build, serialize, restore, reset, dig, COST,
+    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,cmd:netCmd,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, build, place:placing, serialize, restore, reset, dig, COST,
     get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,vrects,locked,coins,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
-    setTab(t){ if(pick) undig(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
+    setTab(t){ if(pick) undig(); unplace(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
     /* the picture shows a part of the play field, about as much as the old whole mat; the rest is reached by scrolling. It backs off a little when a tower grows tall */
     frame(W,H,top,bottom,th){ wide=true; botPx=bottom; ppuV=Math.max(28,Math.min(64,Math.sqrt(W*H)/18))/(1+tallA*.05); vw=W/ppuV; vd=Math.max(.4*H,H-top-bottom)/ppuV/.743;
@@ -2000,12 +2018,15 @@ const trein=(()=>{
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
-    exit(){ if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='f'||h.kind==='m'||h.kind==='z'){ F.set(panX,0,panZ); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); if(isGate(h.rec)){ marksOff(); bore(h.rec.tun); } } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
+    exit(){ unplace(); if(held){ const h=held; if(h.kind==='b'||h.kind==='s'||h.kind==='f'||h.kind==='m'||h.kind==='z'){ F.set(panX,0,panZ); h.out=false; release(); } else { held=null; if(h.kind==='p'){ fix(h.rec); if(isGate(h.rec)){ marksOff(); bore(h.rec.tun); } } else stage(h.rec); rebuild(); settle(); } } ptr=null; },
     update(dt){ frameN++; let moving=false; fastest=1;
       /* something in the hand near the edge of the screen: the picture scrolls along; the button top right is a bin meanwhile */
       const bs=held&&ptr?(overBin(ptr.cx,ptr.cy)?2:1):0; if(bs!==binSt){ binSt=bs; binUI(bs>0,bs>1); }
       if(bs===1&&ptr.mode===1){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
         if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if(panX!==x0||panZ!==z0) aim({clientX:x,clientY:y}); } }
+      /* placing a building near the edge of the screen: the picture scrolls along too */
+      if(plc&&ptr&&ptr.kind==='plc'){ const W=app.clientWidth||1, H=app.clientHeight||1, E=Math.min(64,W*.13), k=v=>Math.max(0,Math.min(1,v)), x=ptr.cx, y=ptr.cy, sx=k((x-W+E)/E)-k((E-x)/E), sz=k((y-(H-botPx-E*.4))/E)-k((E-y)/E);
+        if(sx||sz){ const x0=panX, z0=panZ; panX+=sx*11*dt; panZ+=sz*11*dt; applyCamera(); if((panX!==x0||panZ!==z0)&&land(x,y,F)) plcAt(F.x,F.z); } }
       if(NET!==2){ for(const c of cons.slice()){ if(c.crash||c.off){ if(c.off) runOff(c); else derail(c); continue; }
         for(const v of c.veh){ const q=v.pos.p; if(q.multi){ const r=c.ch.get(q); if(r){ r.si=v.pos.si; r.t=frameN; } else c.ch.set(q,{si:v.pos.si,t:frameN}); } }
         if(motor(c)){ c.boost=Math.max(0,c.boost-dt); c.fast=1+(BOOSTK-1)*Math.min(1,c.boost/.5); if(c.fast>fastest) fastest=c.fast; if(c.net==='rail'){ sense(c); zoom(c); stopAt(c,dt); } if(c.pause>0){ c.pause-=dt; if(c.pause<=0){ if(c.atSt){ c.atSt=false; if(seen(c.veh[0].tp.x,c.veh[0].tp.z)) SND.whistle(.05); } else if(c.stop) fxp('bell',1175,.5); c.stop=null; } } else if(c.lag<LAG&&advance(c,dt)) moving=true; }
@@ -2038,15 +2059,15 @@ const trein=(()=>{
         m.position.lerp(v.tp,kv); let da=v.yaw-m.rotation.y; da-=Math.round(da/TAU)*TAU; m.rotation.y+=da*kv; m.rotation.z+=(v.pitch-m.rotation.z)*kv; }
       avStep(dt); trkStep(dt); if((ambT-=dt)<=0){ ambT=.25; if(SND) SND.world(ambScene(.25)); }
       if((engT2-=dt)<=0){ engT2=.1; if(SND&&SND.ready&&!muted){ const L=[]; for(const m of machs){ const p=m.g.position, lp=m.lpE||(m.lpE=p.clone()), sp=Math.hypot(p.x-lp.x,p.z-lp.z)/.1; lp.copy(p); const own=m===driving, k=own?1:Math.max(0,1-Math.hypot(m.x-panX,m.z-panZ)/(vw*.5+8)); L.push({id:m.nid,kind:m.sort,on:own||!!m.by,sp:sp/(MS[m.sort].speed||3),busy:!!(m.busy||m.work),k}); } SND.engines(L); } } tall+=(Math.max(0,Math.min(7,top-2.6))-tall)*(1-Math.exp(-dt*2.5)); if(Math.abs(tall-tallA)>.04){ tallA=tall; applyCamera(); } },
-    down(ev){ if(ptr) return; if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
+    down(ev){ if(ptr) return; if(plc){ const now=performance.now(); ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec:null,kind:'plc',pt:null,g0:null,mode:1}; if(land(ev.clientX,ev.clientY,F)) plcAt(F.x,F.z); return; } if(pick){ pickDown(ev); return; } const h=hit(ev,vehs.map(v=>v.g).concat(me&&me.g.visible?[me.g]:[],blocks.map(r=>r.m),props.map(s=>s.g),boosts.map(f=>f.g),machs.map(m=>m.g),mills.map(s=>s.g),pieces.map(p=>p.g),[matM],platMs),true), now=performance.now(); let rec=null, kind='mat';
       if(h){ let o=h.object; if(o.userData.blk){ rec=o.userData.blk; kind='b'; } else { while(o&&!o.userData.rec) o=o.parent; if(o){ rec=o.userData.rec; kind=rec.kind; } } }
       if((kind==='p'||kind==='z')&&rec.fixed){ rec=null; kind='mat'; } if(NET===2&&!(kind==='a'||kind==='m'||kind==='v'||kind==='b'||kind==='p'||kind==='s'||kind==='f'||kind==='z')){ rec=null; kind='mat'; }
       ptr={id:ev.pointerId,x0:ev.clientX,y0:ev.clientY,cx:ev.clientX,cy:ev.clientY,t0:now,lx:ev.clientX,ly:ev.clientY,lt:now,rec,kind,pt:h?h.point.clone():null,g0:null,mode:0}; },
     /* a finger that moves: it takes what it touched along (1), shoves a block with a quick swipe (2), or scrolls the picture when it started on bare ground (3) */
-    move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY;
+    move(ev){ if(!ptr||ev.pointerId!==ptr.id) return; ptr.cx=ev.clientX; ptr.cy=ev.clientY; if(ptr.kind==='plc'){ if(plc&&land(ev.clientX,ev.clientY,F)) plcAt(F.x,F.z); return; }
       if(!ptr.mode){ const dx=ev.clientX-ptr.x0, dy=ev.clientY-ptr.y0; if(dx*dx+dy*dy<100) return; ptr.mode=ptr.kind==='v'||ptr.kind==='p'||ptr.kind==='s'||ptr.kind==='f'||ptr.kind==='m'||ptr.kind==='z'||(ptr.kind==='b'&&performance.now()-ptr.t0>=70)?1:ptr.kind==='b'?2:3; if(ptr.mode===1&&ptr.kind==='m'&&(ptr.rec.by||mode==='camp')) ptr.mode=3; if(ptr.mode===1) grab(ptr.rec); else if(ptr.mode===3) ptr.g0=ground(ptr.x0,ptr.y0,new V3()); }
       if(ptr.mode===1) aim(ev); else if(ptr.mode===2){ if(world) push(ev); } else if(ptr.g0&&ground(ev.clientX,ev.clientY,cv)){ panX+=ptr.g0.x-cv.x; panZ+=ptr.g0.z-cv.z; applyCamera(); } },
-    up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
+    up(ev){ if(!ptr||(ev&&ev.pointerId!==ptr.id)) return; const p=ptr; if(ev&&ev.clientX!=null&&ev.type!=='pointercancel'){ p.cx=ev.clientX; p.cy=ev.clientY; } if(p.kind==='plc'){ ptr=null; if(plc&&ev&&ev.type!=='pointercancel'){ if(land(p.cx,p.cy,F)) plcAt(F.x,F.z); plcDrop(); } return; } if(p.mode===1){ ptr=null; release(p.cx,p.cy); return; }
       if(!p.mode){ if(p.kind==='spot'){ if(pick) pickSpot(p.rec); } else if(p.kind==='pa'){ if(pick&&pick.a){ dropLone(); marksOn(openSpots(null,pick.net)); sfx.boop(); } } else if(p.kind==='v'){ if(NET===2){ netOut({t:'vtap',n:p.rec.nid}); pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } else if(tip(p.rec)){} else { pop(p.rec.g,.25); if(p.rec.loco) toot(); else if(p.rec.sort==='auto') honk(); else sfx.tap(); } } else if(p.kind==='m'){ pop(p.rec.g,.06); if(driving===p.rec) getIn(p.rec); else if(!hintM){ hintM=true; toast('Tik op je poppetje en loop naar de machine. Tik dan op Instappen.'); } } else if(p.kind==='a') stroll(); else if(p.kind==='s'){ if(NET===2) xSend({t:'stap',a:[p.rec.x,p.rec.z]}); tapSensor(p.rec); } else if(p.kind==='f'){ pop(p.rec.g,.2); fxp('whoosh',.4); } else if(p.kind==='z'){ pop(p.rec.g,.05); sfx.tap(); toast(about(p.rec)); } else if(p.kind==='p'){ if(NET===2&&/^(wissel|overweg|eind)$/.test(p.rec.type)) pSend({t:'tap',k:pk(p.rec)}); if(p.rec.type==='wissel') flip(p.rec); else if(p.rec.type==='overweg') gate(p.rec); else if(p.rec.type==='eind') press(p.rec); else { pop(p.rec.g,.06); sfx.tap(); if(p.rec.type==='station') toast(aboutSt(p.rec)); } } else if(p.kind==='b'){ pop(p.rec.m,.12); sfx.tap(); } }
       ptr=null; }
   };
@@ -2081,6 +2102,9 @@ const ICON={
 const ik=hx(C.ink);
 function mkBtn(parent,o){ const b=document.createElement('button'); b.type='button'; b.id=o.id; b.className=o.cls||'btn'; if(o.c) b.style.setProperty('--c',o.c); if(o.i) b.style.setProperty('--i',o.i); b.setAttribute('aria-label',o.label); b.title=o.label; if(o.svg||o.icon) b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(o.svg||ICON[o.icon])+'</svg>'; b.addEventListener('click',()=>{ audio(); o.on(b); }); parent.appendChild(b); return b; }
 const tl=$('#tl'), tr=$('#tr'), bot=$('#bot'); let fitBar=()=>{};
+/* the name of a building under its button (only in the tabs of the buildings) */
+function word(b,w){ const e=document.createElement('span'); e.className='lbl'; e.innerHTML=w; e.setAttribute('aria-hidden','true'); b.appendChild(e); return b; }
+placeUI=sort=>{ document.querySelectorAll('.btn.plc').forEach(b=>b.classList.remove('plc','on')); if(!sort) return; const b=$(sort==='station'?'#spoor-station':'#bouw-'+sort); if(b) b.classList.add('plc','on'); };
 /* the price sits on its button as a gold coin; the button fades when you have too little money */
 const priced=[];
 function price(b,k){ const c=trein.COST[k]; if(!c) return b; const e=document.createElement('span'); e.className='cost'; e.textContent=c; e.setAttribute('aria-hidden','true'); b.appendChild(e); priced.push([b,c]); b.title+=' ('+c+' coins)'; b.setAttribute('aria-label',b.getAttribute('aria-label')+' ('+c+' coins)'); return b; }
@@ -2118,7 +2142,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
     paal:'<path d="M12 3.500v17" stroke="#8a5a33" stroke-width="2.600" stroke-linecap="round"/><path d="M6.800 6.200h10.400" stroke="#8a5a33" stroke-width="2.200" stroke-linecap="round"/><circle cx="8" cy="5" r="1.300" fill="#fffdf6" stroke="#2a2157" stroke-width=".8"/><circle cx="16" cy="5" r="1.300" fill="#fffdf6" stroke="#2a2157" stroke-width=".8"/><path d="M1.500 8.500c2.600 1.800 4.600 1.300 6.500-3.500M16 5c1.900 4.800 3.900 5.300 6.500 3.500" fill="none" stroke="#2a2157" stroke-width="1.100"/><path d="M9.500 20.500h5" stroke="#2a2157" stroke-width="1.600" stroke-linecap="round"/>',
     huis:'<rect x="5" y="11" width="14" height="9.500" rx="1" fill="#ffd22e"/><path d="M3.500 11.500 12 4l8.500 7.500z" fill="#ff4d5a"/><rect x="7.300" y="14.500" width="3" height="6" fill="#2a2157"/><rect x="12.800" y="13.800" width="3.600" height="3" rx=".500" fill="#bfe6ff"/>',
     kant:'<rect x="5" y="4.500" width="14" height="16" rx="1.200" fill="#5b8fd9"/><rect x="4.200" y="3" width="15.600" height="2.200" rx=".800" fill="#fffdf6"/><path d="M7.300 7.500h2v2.200h-2zM11 7.500h2v2.200h-2zM14.700 7.500h2v2.200h-2zM7.300 11.500h2v2.200h-2zM11 11.500h2v2.200h-2zM14.700 11.500h2v2.200h-2zM7.300 15.500h2v2.200h-2zM14.700 15.500h2v2.200h-2z" fill="#bfe6ff"/><rect x="10.600" y="16" width="2.800" height="4.500" fill="#2a2157"/>',
-    station:'<rect x="2" y="16" width="20" height="3.200" rx="1" fill="#f2c078"/><path d="M2 17.600h20" stroke="#b9762c" stroke-width=".8"/><rect x="3" y="11.500" width="18" height="3.600" rx=".8" fill="#e4dccb"/><path d="M3.300 14.700h17.400" stroke="#ffd22e" stroke-width="1.100"/><rect x="3.800" y="5" width="7.400" height="1.700" rx=".600" fill="#ff4d5a"/><path d="M5 6.700v4.800M10 6.700v4.800" stroke="#2a2157" stroke-width="1.100"/><rect x="13" y="6" width="7.500" height="3.200" rx=".600" fill="#fffdf6" stroke="#2f9bff" stroke-width="1"/><path d="M14.500 9.200v2.300M19 9.200v2.300" stroke="#2a2157" stroke-width="1"/>',
+    station:'<rect x="2" y="16" width="20" height="3.200" rx="1" fill="#f2c078"/><path d="M2 17.600h20" stroke="#b9762c" stroke-width=".8"/><rect x="3" y="11.500" width="18" height="3.600" rx=".8" fill="#e4dccb"/><path d="M3.300 14.700h17.400" stroke="#ffd22e" stroke-width="1.100"/><rect x="3.800" y="5" width="7.400" height="1.700" rx=".600" fill="#ff4d5a"/><path d="M5 6.700v4.800M10 6.700v4.800" stroke="#2a2157" stroke-width="1.100"/>',
     stad:'<path d="M3 20.500V12l4.500-4 4.500 4v8.500z"/><path d="M12 20.500V7.500h9v13z"/><path d="M15 11h3M15 14.500h3M3 20.500h18"/>',
     opsl:'<rect x="3" y="9.500" width="18" height="11" rx="1" fill="#a8683a"/><path d="M2 10.500 12 4.500l10 6z" fill="#ff4d5a"/><rect x="5.500" y="12.500" width="13" height="8" fill="#5a3a20"/><rect x="6.500" y="17" width="3.300" height="3" rx=".500" fill="#c98a55"/><rect x="10.400" y="17" width="3.300" height="3" rx=".500" fill="#8791a6"/><rect x="14.300" y="17" width="3.300" height="3" rx=".500" fill="#c98a55"/><rect x="8.400" y="13.700" width="3.300" height="3" rx=".500" fill="#8791a6"/>',
     kraan:'<path d="M6.500 20.500V6.500" stroke="#ffd22e" stroke-width="2.800"/><rect x="3.300" y="19.300" width="6.400" height="2.200" rx=".700" fill="#2a2157"/><rect x="4.500" y="4.300" width="4" height="3" rx=".700" fill="#ff4d5a"/><path d="M5 5.200h16.500" stroke="#ffd22e" stroke-width="1.900" stroke-linecap="round"/><path d="M1.800 5.200h3" stroke="#2a2157" stroke-width="2.400"/><path d="M17.500 5.500v6.200" stroke="#2a2157" stroke-width="1"/><rect x="15.800" y="11.700" width="3.400" height="3" rx=".500" fill="#8791a6"/>'};
@@ -2137,7 +2161,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
     p.classList.remove('two'); let f=base>=64?15:14; font(f); while(tabs.offsetWidth>avail-PAD&&f>10){ f--; font(f); }
     const v1=Math.min(base,(avail-PAD-tabs.offsetWidth-12-(N-1)*GAP-SEP)/N);
     if(v1>=Math.min(base,54)) size(v1); else { p.classList.add('two'); size(Math.max(38,Math.min(base,(avail-PAD-(N-1)*GAP-SEP)/N))); } };
-  const tabTo=id=>{ for(const k in G) G[k].hidden=k!==id; tb.forEach(b=>{ const on=b.id==='tab-'+id; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); fitBar(); trein.setTab(id); };
+  const tabTo=id=>{ for(const k in G) G[k].hidden=k!==id; p.classList.toggle('lbls',id==='bouw'||id==='stad'); tb.forEach(b=>{ const on=b.id==='tab-'+id; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); fitBar(); trein.setTab(id); };
   tb.forEach((b,i)=>{ b.classList.toggle('on',!i); b.setAttribute('aria-selected',i?'false':'true'); });
   /* the start screen is also the menu: creative or campaign (each a new world); during a game also play on and start again; sound and full screen always */
   const startEl=$('#start'), door=$('#start-door'), again=$('#start-again'), snd=$('#start-sound'), full=$('#start-full'); let started=false;
@@ -2289,16 +2313,16 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
   gap(G.weg);
   price(mkBtn(G.weg,{id:'spoor-auto',cls:'btn face',svg:'<path d="M2.500 17v-4.500c0-1 .700-1.700 1.700-1.800l2.300-.300 1.800-3.200c.400-.700 1-1 1.800-1h5c.800 0 1.400.400 1.800 1l1.800 3.200h1c1 0 1.800.800 1.800 1.800V17z" fill="#2f9bff"/><path d="M8.700 10.200 9.900 8h2.300v2.200zM13.700 8h2l1.200 2.200h-3.200z" fill="#bfe6ff"/><circle cx="7.500" cy="17.500" r="2.700" fill="'+ik+'"/><circle cx="16.500" cy="17.500" r="2.700" fill="'+ik+'"/>',label:'Auto',on:()=>trein.addTrain('auto')}),'auto');
   /* Gebouwen: buy a building, it comes low in the picture; drag it where you want it */
-  price(mkBtn(G.bouw,{id:'bouw-werk',cls:'btn face',svg:ST.werk,label:'Werkplaats: hier krijg je je graafmachine, shovel en kiepwagen',on:()=>trein.build('werk')}),'werk');
-  price(mkBtn(G.bouw,{id:'bouw-sfab',cls:'btn face',svg:ST.sfab,label:'Steenfabriek: kiep steen ernaast, elk blokje levert geld op',on:()=>trein.build('sfab')}),'sfab');
-  price(mkBtn(G.bouw,{id:'bouw-cent',cls:'btn face',svg:ST.cent,label:'Centrale: kiep hout ernaast, dan geeft hij stroom',on:()=>trein.build('cent')}),'cent');
-  price(mkBtn(G.bouw,{id:'bouw-paal',cls:'btn face',svg:ST.paal,label:'Stroompaal: brengt de stroom verder; huizen en kantoren tot 5 ver krijgen stroom',on:()=>trein.build('paal')}),'paal');
-  price(mkBtn(G.bouw,{id:'bouw-kraan',cls:'btn face',svg:ST.kraan,label:'Hijskraan: lost een goederenwagon bij een sensor en brengt hout of steen naar een gebouw ernaast',on:()=>trein.build('kraan')}),'kraan');
-  price(mkBtn(G.bouw,{id:'bouw-opsl',cls:'btn face',svg:ST.opsl,label:'Opslag: bewaart 20 blokjes hout of steen; een hijskraan ernaast laadt ze in een goederenwagon',on:()=>trein.build('opsl')}),'opsl');
+  word(price(mkBtn(G.bouw,{id:'bouw-werk',cls:'btn face',svg:ST.werk,label:'Werkplaats: hier krijg je je graafmachine, shovel en kiepwagen',on:()=>trein.place('werk')}),'werk'),'Werk&shy;plaats');
+  word(price(mkBtn(G.bouw,{id:'bouw-sfab',cls:'btn face',svg:ST.sfab,label:'Steenfabriek: kiep steen ernaast, elk blokje levert geld op',on:()=>trein.place('sfab')}),'sfab'),'Steen&shy;fabriek');
+  word(price(mkBtn(G.bouw,{id:'bouw-cent',cls:'btn face',svg:ST.cent,label:'Centrale: kiep hout ernaast, dan geeft hij stroom',on:()=>trein.place('cent')}),'cent'),'Centrale');
+  word(price(mkBtn(G.bouw,{id:'bouw-paal',cls:'btn face',svg:ST.paal,label:'Stroompaal: brengt de stroom verder; huizen en kantoren tot 5 ver krijgen stroom',on:()=>trein.place('paal')}),'paal'),'Stroom&shy;paal');
+  word(price(mkBtn(G.bouw,{id:'bouw-kraan',cls:'btn face',svg:ST.kraan,label:'Hijskraan: lost een goederenwagon bij een sensor en brengt hout of steen naar een gebouw ernaast',on:()=>trein.place('kraan')}),'kraan'),'Hijs&shy;kraan');
+  word(price(mkBtn(G.bouw,{id:'bouw-opsl',cls:'btn face',svg:ST.opsl,label:'Opslag: bewaart 20 blokjes hout of steen; een hijskraan ernaast laadt ze in een goederenwagon',on:()=>trein.place('opsl')}),'opsl'),'Opslag');
   /* Stad: houses, offices and stations */
-  price(mkBtn(G.stad,{id:'bouw-huis',cls:'btn face',svg:ST.huis,label:'Huis: met stroom komen er 2 bewoners wonen',on:()=>trein.build('huis')}),'huis');
-  price(mkBtn(G.stad,{id:'bouw-kant',cls:'btn face',svg:ST.kant,label:'Kantoor: 4 werkplekken, heeft stroom nodig',on:()=>trein.build('kant')}),'kant');
-  price(mkBtn(G.stad,{id:'spoor-station',cls:'btn face',svg:ST.station,label:'Station: rails met een perron. Met een sensor ernaast stopt de trein hier',on:()=>trein.add('station')}),'station');
+  word(price(mkBtn(G.stad,{id:'bouw-huis',cls:'btn face',svg:ST.huis,label:'Huis: met stroom komen er 2 bewoners wonen',on:()=>trein.place('huis')}),'huis'),'Huis');
+  word(price(mkBtn(G.stad,{id:'bouw-kant',cls:'btn face',svg:ST.kant,label:'Kantoor: 4 werkplekken, heeft stroom nodig',on:()=>trein.place('kant')}),'kant'),'Kantoor');
+  word(price(mkBtn(G.stad,{id:'spoor-station',cls:'btn face',svg:ST.station,label:'Station: rails met een perron. Met een sensor ernaast stopt de trein hier',on:()=>trein.place('station')}),'station'),'Station');
   /* Machines: you drive them yourself (tap one to get in) */
   mkBtn(G.mach,{id:'mach-graaf',cls:'btn face',svg:ST.graaf,label:'Graafmachine: tik erop om in te stappen. Slaat steen van rotsen, hakt bomen om voor hout en schept van hopen',on:()=>trein.addMachine('graaf')});
   mkBtn(G.mach,{id:'mach-shovel',cls:'btn face',svg:ST.shovel,label:'Shovel: tik erop om in te stappen. Snel, schept van hopen en losse blokjes en laadt de kiepwagen of een goederenwagon',on:()=>trein.addMachine('shovel')});
