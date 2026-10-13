@@ -772,7 +772,13 @@ const BOUW=(()=>{ const wood=mat(C.wood,{shininess:14,specular:0x111111}), beech
     const trol=new T.Group(); trol.position.set(1,.22,0); top.add(trol); mesh(roundBox(.2,.08,.19,.025,.012),ink,0,0,0,trol);
     const cable=mesh(cyl(.013,.013,1,6),ink,0,-.5,0,trol), hook=new T.Group(); trol.add(hook); mesh(cyl(.055,.025,.08,10),red,0,-.04,0,hook);
     const bh=seeThrough(.9); bh.position.y=.9; g.add(bh); return {g,boxes:[[0,.09,0,.32,.09,.32],[0,.93,0,.1,.75,.1]],drop:null,top:[0,1.6,0],kr:{top,trol,cable,hook}}; }
-  return {werk,sfab,cent,paal,huis,kant,kraan,board,man,log,blockMat,STONE,lit,unlit}; })();
+  /* the store: a wooden barn, open at the front, with twenty places for blocks of wood or stone inside (five wide, two deep, two high) */
+  function opsl(){ const g=new T.Group(); mesh(roundBox(3.6,.14,2.8,.08,.03),wood,0,.07,0,g); mesh(roundBox(2.7,.06,1.15,.03,.015),beech,-.1,.17,-.42,g);
+    mesh(roundBox(3,1.35,.12,.04,.02),brown,-.1,.81,-1.06,g); [-1.56,1.36].forEach(x=>mesh(roundBox(.12,1.35,1.5,.04,.02),brown,x,.81,-.38,g)); const rf=mesh(roundBox(3.3,.12,.95,.05,.02),red,-.1,1.6,-.78,g); rf.rotation.x=.22;
+    const b=board('Opslag',C.brown,1.3,.37); b.position.set(-.1,2.02,-.95); g.add(b); [-.6,.4].forEach(x=>mesh(cyl(.035,.035,.42,8),ink,x,1.8,-.97,g));
+    const slots=[]; for(let i=0;i<20;i++){ const o=mesh(BLOK.geos.hout,houtM,-1.04+(i%5)*.47,.38+((i/10)|0)*.36,-.66+(((i%10)/5)|0)*.47,g); o.visible=false; slots.push(o); }
+    const bh=seeThrough(1.7); bh.position.y=.6; g.add(bh); return {g,boxes:[[0,.07,0,1.8,.07,1.4],[-.1,.81,-1.06,1.5,.68,.06],[-1.56,.81,-.38,.06,.68,.75],[1.36,.81,-.38,.06,.68,.75]],drop:{x:-.1,z:.1},slots}; }
+  return {werk,sfab,cent,paal,huis,kant,kraan,opsl,board,man,log,blockMat,STONE,lit,unlit}; })();
 
 /* ---------- machines you drive: excavator, wheel loader, dump truck. The nose points along +x, the origin sits on the ground ---------- */
 /* ---------- villages: little houses of toy blocks, and a platform with the village's name ---------- */
@@ -871,9 +877,9 @@ const trein=(()=>{
   /* front: a path that stays free in front of it; node: it carries power (plant, pole); use: it needs power (house, office); store: how much wood the plant keeps */
   const BLD={werk:{hw:2,hd:1.5,name:'Werkplaats',front:1},sfab:{hw:2.1,hd:1.5,name:'Steenfabriek',takes:'steen',pay:10,front:1},cent:{hw:2.1,hd:1.5,name:'Centrale',takes:'hout',store:10,front:1,node:true},
     paal:{hw:.3,hd:.3,name:'Stroompaal',node:true},huis:{hw:1.05,hd:.95,name:'Huis',front:1,use:true},kant:{hw:1.4,hd:1.2,name:'Kantoor',front:1,use:true},
-    kraan:{hw:.35,hd:.35,name:'Hijskraan',crane:true}};
+    kraan:{hw:.35,hd:.35,name:'Hijskraan',crane:true},opsl:{hw:1.8,hd:1.4,name:'Opslag',takes:'beide',hold:20,front:1}};
   /* what everything costs in the campaign (coins), how far a worker goes for a block, the money you start with */
-  const COST={recht:5,bocht:10,wissel:20,brug:25,eind:10,tunnel:50,weg:5,wbocht:10,overweg:20,loc:100,goed:50,pass:50,auto:50,sensor:20,boost:20,werk:200,sfab:150,cent:200,paal:20,huis:100,kant:200,station:200,kraan:100}, RFAB=6.5, START=1000;
+  const COST={recht:5,bocht:10,wissel:20,brug:25,eind:10,tunnel:50,weg:5,wbocht:10,overweg:20,loc:100,goed:50,pass:50,auto:50,sensor:20,boost:20,werk:200,sfab:150,cent:200,paal:20,huis:100,kant:200,station:200,kraan:100,opsl:100}, RFAB=6.5, START=1000;
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
@@ -1062,7 +1068,7 @@ const trein=(()=>{
       p:own.map(p=>[p.type,p.x,p.z,p.q,p.lv,p.m,p.sw?1:0,p.shut?1:0,p.nm==null?-1:p.nm]), t:tuns.map(t=>[t.net,t.a.spot,t.b.spot]),
       x:[props.filter(q=>!hd(q)).map(q=>[R3(q.x),R3(q.z),R3(q.yaw),q.sec]),boosts.filter(f=>!hd(f)).map(f=>[R3(f.x),R3(f.z),R3(f.yaw)])],
       w:[trees.filter(t=>!t.alive).map(t=>t.id),rocks.filter(r=>r.left<ROCK).map(r=>[r.id,r.left]),heaps.map(h=>[h.id,h.n]),logs.map(L=>[R3(L.x),R3(L.z),R3(L.y),R3(L.ux),R3(L.uz),L.left])],
-      z:mills.filter(m=>!hd(m)).map(m=>[m.nid,m.sort,R3(m.x),R3(m.z),m.seed,m.store,m.burn>0?1:0]),
+      z:mills.filter(m=>!hd(m)).map(m=>[m.nid,m.sort,R3(m.x),R3(m.z),m.seed,m.store,m.burn>0?1:0,m.goods.map(x=>x==='steen'?'s':'h').join('')]),
       f:folk.map(f=>[f.i,f.home.nid,f.st,f.leg,f.at?pk(f.at):'',f.dest?pk(f.dest):'',f.v?f.v.nid:0,f.paid]),
       v:vehs.map(v=>[v.nid,v.sort,v.load.map(l=>l.sh),v.ci||0]), m:machs.map(m=>[m.nid,m.sort,m.load.slice(),m.carry.slice()]), b:blocks.map(r=>[r.nid,r.sh])}; }
   /* only the sections that changed since the last time */
@@ -1075,7 +1081,7 @@ const trein=(()=>{
     for(const r of blocks){ if(!all&&!known.b.has(r.nid)) continue; const p=r.m.position, q=r.m.quaternion, a=[r.nid,Q2(p.x),Q2(p.y),Q2(p.z),Q3(q.x),Q3(q.y),Q3(q.z),Q3(q.w)]; if(!same(r,a)) F.b.push(...a); }
     for(const z of mills){ if(!z.kr) continue; const a=[z.nid,Q3(wrapA(z.th)),Q2(z.r),Q2(z.len),z.load==='steen'?2:z.load==='hout'?1:0,z.to?z.to.nid:0]; if(!same(z,a)) F.k.push(...a); }
     for(const f of folk){ if(f.st!=='walk') continue; const a=[f.i,Q2(f.x),Q2(f.z)]; if(!same(f,a)) F.w.push(...a); }
-    for(const z of mills){ const w=z.man; if(!w) continue; const a=[z.nid,Q2(w.x),Q2(w.z),Q3(w.yaw),w.carry?(w.kind==='steen'?2:1):0]; if(!same(z,a)) F.z.push(...a); }
+    for(const z of mills){ const w=z.man; if(!w) continue; const a=[z.nid,Q2(w.x),Q2(w.z),Q3(w.yaw),w.carry?((w.ck||w.kind)==='steen'?2:1):0]; if(!same(z,a)) F.z.push(...a); }
     if(me) F.a.push(1,Q2(me.x),Q2(me.z),Q3(me.yaw),driving?driving.nid:0,me.up?1:0); for(const a of avs.values()) if(!a.fresh) F.a.push(a.pid,Q2(a.tx),Q2(a.tz),Q3(a.tyaw),a.st,a.ty>.1?1:0);
     return F; }
   /* the host: what a guest asks */
@@ -1190,9 +1196,9 @@ const trein=(()=>{
   /* a guest: the buildings the host has, where he has them */
   function millsTo(list,snap){ const ids=new Set(list.map(a=>a[0]));
     for(const m of mills.slice()) if(!ids.has(m.nid)&&!(held&&held.rec===m)) removeMill(m);
-    for(const [nid,sort,x,z,seed,store,burn] of list){ if(!BLD[sort]) continue; let m=mills.find(q=>q.nid===nid);
+    for(const [nid,sort,x,z,seed,store,burn,gd] of list){ if(!BLD[sort]) continue; let m=mills.find(q=>q.nid===nid);
       if(!m){ m=addMill(sort,[x,z],{quiet:snap,copy:true,seed}); if(!m) continue; m.nid=nid; }
-      if(m.store!==(store|0)){ m.store=store|0; showStore(m); } m.burn=burn?1:0;
+      if(m.store!==(store|0)){ m.store=store|0; showStore(m); } m.burn=burn?1:0; if(typeof gd==='string'&&gd!==m.goods.map(x=>x==='steen'?'s':'h').join('')){ m.goods=[...gd].map(c=>c==='s'?'steen':'hout'); showGoods(m); }
       if(held&&held.rec===m) continue; if(m.x!==x||m.z!==z){ m.x=x; m.z=z; m.y=hAt(x,z); millBody(m,true); if(m.man) manHome(m); } } }
   /* a guest: the residents, where they are and how they travel (the walkers' places come with the quick updates) */
   let netFolk=[];
@@ -1254,7 +1260,7 @@ const trein=(()=>{
     const D={v:2,mode,seed:seedW,pan:[R3(panX),R3(panZ)],coins,
       pieces:own.map(p=>[p.type,p.x,p.z,p.q,p.lv,p.m,p.sw?1:0,p.shut?1:0,p.nm==null?-1:p.nm]),
       tunnels:tuns.map(t=>[t.net,t.a.spot,t.b.spot]),
-      mills:Z.map(m=>[m.sort,R3(m.x),R3(m.z),m.seed,m.store,R3(m.burn)]),
+      mills:Z.map(m=>[m.sort,R3(m.x),R3(m.z),m.seed,m.store,R3(m.burn),m.goods.map(x=>x==='steen'?'s':'h').join('')]),
       vehs:V.map(v=>{ const o={s:v.sort,l:v.load.map(l=>l.sh)}; if(!v.c){ const p=v.inW?v.b.position:v.tp; o.f=[R3(p.x),R3(p.z),R3(v.yaw)]; } return o; }),
       cons:cons.map(c=>{ const h=c.veh[0].pos, r=h&&ref(h.p); return r?{n:c.net,d:c.dir,v:c.veh.map(v=>V.indexOf(v)),p:[r,h.si,R3(h.u),h.d]}:null; }).filter(Boolean),
       machs:machs.map(m=>({s:m.sort,x:R3(m.x),z:R3(m.z),y:R3(m.yaw),u:m.up?1:0,l:m.load.slice(),w:Z.indexOf(m.ws)})),
@@ -1272,7 +1278,7 @@ const trein=(()=>{
     const hn=new Map(D.heaps||[]); for(const h of heaps.slice()){ const n=hn.get(h.id)||0; if(n<=0){ g.remove(h.g); if(h.b&&world) world.removeBody(h.b); heaps=heaps.filter(x=>x!==h); } else if(n!==h.n){ h.n=n; h.ms.forEach((o,i)=>{ o.visible=i<n; }); heapBody(h); } }
     for(const [x,z,y,ux,uz,left] of D.logs||[]){ const lg=BOUW.log(); lg.position.set(x,y,z); lg.rotation.y=Math.atan2(-uz,ux); lg.scale.x=left/3; g.add(lg); logs.push({g:lg,x,z,y,ux,uz,left}); }
     /* the buildings, where they stood */
-    const Z=(D.mills||[]).map(([sort,x,z,seed,store,burn])=>{ if(!BLD[sort]) return null; const m=addMill(sort,[x,z],{quiet:true,copy:true,seed}); if(m){ m.store=store|0; m.burn=+burn||0; showStore(m); } return m; });
+    const Z=(D.mills||[]).map(([sort,x,z,seed,store,burn,gd])=>{ if(!BLD[sort]) return null; const m=addMill(sort,[x,z],{quiet:true,copy:true,seed}); if(m){ m.store=store|0; m.burn=+burn||0; showStore(m); if(typeof gd==='string'){ m.goods=[...gd].map(c=>c==='s'?'steen':'hout').slice(0,20); showGoods(m); } } return m; });
     /* the track and the tunnels */
     const own=(D.pieces||[]).map(([type,x,z,q,lv,m,sw,sh,nm])=>{ const p=layPiece(type,x,z,q,false,lv,m,nm>=0?nm:null); if(sw&&p.arm){ p.sw=1; p.arm.rotation.y=.44; } if(sh&&p.gates){ p.shut=true; p.gates.forEach(b=>{ b.rotation.z=0; }); } return p; });
     const tuns=(D.tunnels||[]).map(([net,a,b])=>{ const t={a:null,b:null,gang:null,net}; if(!SPOTS[a]||!SPOTS[b]) return null; t.a=portal(t,SPOTS[a]); t.b=portal(t,SPOTS[b]); tunnels.push(t); bore(t); return t; });
@@ -1706,7 +1712,7 @@ const trein=(()=>{
   function addMill(sort,at,o){ o=o||{}; const B=BLD[sort], c=o.near||[panX,panZ-.5], s=at||nearSite(clampN(c[0],MX-B.hw-.5),clampN(c[1],MZ-B.hd-.5),null,B.hw,B.hd,B.front); if(!s){ sfx.boing(); return null; }
     const seed=o.seed!=null?o.seed:((Math.random()*2147483646)|0)+1, b=BOUW[sort](seed), m={kind:'z',nid:++nidN,sort,hw:B.hw,hd:B.hd,front:B.front||0,x:s[0],z:s[1],y:hAt(s[0],s[1]),g:b.g,boxes:b.boxes,drop:b.drop||{x:0,z:0},top:b.top||[0,1.6,0],
       win:b.win||null,fire:b.fire||null,stack:b.store||null,seed,store:0,burn:0,pow:false,net:null,feed:null,b:null,man:null,ls:null,icon:null,bornT:null,puff:0,
-      kr:b.kr||null,th:PI/2,r:1.1,len:.5,st:'idle',job:null,load:null,lm:null,scan:0,to:null};
+      kr:b.kr||null,th:PI/2,r:1.1,len:.5,st:'idle',job:null,load:null,lm:null,scan:0,to:null,goods:[],slots:b.slots||null};
     b.g.userData.rec=m; b.g.position.set(m.x,m.y,m.z); g.add(b.g); mills.push(m); if(m.win) BOUW.unlit(m.win);
     if(B.takes){ const w=BOUW.man('fab'); m.man={g:w.g,body:w.body,arm:w.arm,pack:w.pack,bub:w.bub,x:0,z:0,yaw:0,st:'home',t:0,step:0,job:null,kind:B.takes,carry:false}; g.add(w.g); manHome(m); w.g.position.set(m.man.x,m.y,m.man.z); }
     millBody(m,true); bind();
@@ -1723,12 +1729,13 @@ const trein=(()=>{
     if(sort==='kant') hint('kant','Bewoners gaan met de trein naar kantoor. Zet een station bij hun huis en een bij het kantoor, met een sensor bij elk station.'); }
   /* the workshop brings its machines: an excavator, a loader and a dump truck stand in front of it */
   function crew(w){ [['graaf',-1.6],['shovel',.5],['kiep',2.5]].forEach(([sort,dx])=>{ const k=newMach(sort,w.x+dx,w.z+w.hd+1.9,-PI/2,.3,true); if(k){ k.ws=w; popIn(k.g,.35); } }); }
-  function removeMill(m,all){ if(m.kr) craneStop(m); millBody(m,false); if(m.man){ manHome(m); g.remove(m.man.g); } if(m.icon) g.remove(m.icon); g.remove(m.g); mills=mills.filter(x=>x!==m); if(all) for(const k of machs.slice()) if(k.ws===m) removeMach(k); bind(); }
+  function removeMill(m,all){ if(m.kr) craneStop(m); if(all&&NET!==2&&world&&m.goods.length){ m.goods.forEach((sh,i)=>dropRaw(sh,clampN(m.x-1+(i%5)*.5,MX-.6),.6+((i/5)|0)*.4,clampN(m.z+m.hd+.6,MZ-.6))); m.goods=[]; } millBody(m,false); if(m.man){ manHome(m); g.remove(m.man.g); } if(m.icon) g.remove(m.icon); g.remove(m.g); mills=mills.filter(x=>x!==m); if(all) for(const k of machs.slice()) if(k.ws===m) removeMach(k); bind(); }
   /* tap a building: how it is doing */
   function about(m){ const B=BLD[m.sort], camp=mode==='camp', U=m.net?m.net.users.length:0;
     if(m.sort==='werk') return 'Werkplaats: hier horen je graafmachine, shovel en kiepwagen bij.';
     if(m.sort==='sfab') return camp?'Steenfabriek: kiep steen ernaast. Elk blokje is '+B.pay+' coins.':'Steenfabriek: kiep steen ernaast, het poppetje brengt het naar binnen.';
     if(m.sort==='cent') return 'Centrale: '+m.store+' van '+B.store+' blokjes hout'+(U?', stroom voor '+U+(U===1?' gebouw':' gebouwen'):'')+'. Kiep hout ernaast.';
+    if(m.sort==='opsl'){ const h=m.goods.filter(x=>x==='hout').length; return 'Opslag: '+m.goods.length+' van '+B.hold+' ('+h+' hout, '+(m.goods.length-h)+' steen). Kiep of schep het ernaast; een hijskraan ernaast laadt het in een goederenwagon.'; }
     if(m.sort==='kraan') return 'Hijskraan: lost een goederenwagon die bij een sensor stilstaat. Hout gaat naar een centrale, steen naar een steenfabriek, binnen zijn bereik.';
     if(m.sort==='paal') return 'Stroompaal: '+(m.pow?'er is stroom':'geen stroom')+'. Hij reikt tot '+WIRE+' naar een paal of centrale en tot '+REACH+' naar een huis of kantoor.';
     if(m.sort==='huis'){ const n=folk.filter(f=>f.home===m).length; return 'Huis: '+n+' van '+BEW+' bewoners'+(m.pow?'':', geen stroom')+(nearSt(m)?'':', geen station dichtbij')+'.'; }
@@ -1742,7 +1749,9 @@ const trein=(()=>{
     tw(1.5,(e,k)=>{ sp.position.y=y+e*1.5; sp.material.opacity=k<.6?1:1-(k-.6)/.4; },ease.out,()=>{ g.remove(sp); sp.material.dispose(); }); fxp('mar',84,.55); fxp('mar',88,.45,.08); }
   /* a block goes into a building: the stone factory pays for it, the power plant puts it in its store */
   function deliver(m,kind){ const B=BLD[m.sort], x=m.x+m.drop.x, z=m.z+m.drop.z; if(seen(x,z)){ fxp('knock',kind,.7); burst(cv.set(x,m.y+1.4,z),4,1.6,kind==='steen'?0xaab2c2:C.brown); } pop(m.g,.03,.2);
-    if(B.pay) earn(B.pay,x,m.y+1.7,z); if(B.store){ m.store=Math.min(B.store,m.store+1); showStore(m); } }
+    if(B.pay) earn(B.pay,x,m.y+1.7,z); if(B.store){ m.store=Math.min(B.store,m.store+1); showStore(m); } if(B.hold&&m.goods.length<B.hold){ m.goods.push(kind); showGoods(m); } }
+  /* the blocks in the store, in the order they came */
+  function showGoods(m){ if(!m.slots) return; m.slots.forEach((o,i)=>{ const sh=m.goods[i]; if(sh){ o.material=BOUW.blockMat(sh); if(!o.visible) popIn(o,.2); } o.visible=!!sh; }); }
   /* a guest sees the worker put a block in: only the "+10" */
   function paid(m){ const B=BLD[m.sort]; if(B.pay&&m.drop) coinPop(B.pay,m.x+m.drop.x,m.y+1.7,m.z+m.drop.z); }
   function showStore(m){ if(!m.stack) return; m.stack.forEach((o,i)=>{ const on=i<m.store; if(on&&!o.visible) popIn(o,.2); o.visible=on; }); }
@@ -1831,20 +1840,29 @@ const trein=(()=>{
   /* turn the jib, run the trolley and pay out the cable a step towards where they should be; true once they are there */
   function jibTo(k,th,r,len,dt){ let da=th-k.th; da-=Math.round(da/TAU)*TAU; k.th+=clampN(da,2.6*dt); k.r+=clampN(r-k.r,2*dt); k.len+=clampN(len-k.len,2.8*dt); return Math.abs(da)<.03&&Math.abs(r-k.r)<.03&&Math.abs(len-k.len)<.03; }
   const wants=(m,sh)=>{ const B=BLD[m.sort]; return B.takes===sh&&!(B.store&&m.store>=B.store); };
-  /* a wagon with something a building in reach wants: which block (the last one that fits) and where it goes */
-  function craneJob(k){ for(const c of cons){ if(c.net!=='rail'||!still(c,.2)) continue; for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length) continue; const d=Math.hypot(v.tp.x-k.x,v.tp.z-k.z); if(d<RMIN||d>RMAX) continue;
+  /* a store in reach: the crane only loads (store into a goods wagon with room), it does not unload there, or it would go to and fro */
+  function storeOf(k){ for(const m of mills){ if(!BLD[m.sort].hold||(held&&held.rec===m)) continue; const d=Math.hypot(m.x+m.drop.x-k.x,m.z+m.drop.z-.45-k.z); if(d>=RMIN-.2&&d<=RMAX+.2) return m; } return null; }
+  /* a wagon with something a building in reach wants: which block (the last one that fits) and where it goes; or, beside a store, a wagon with room for what lies in it */
+  function craneJob(k){ const st=storeOf(k); if(st){ if(!st.goods.length) return null; for(const c of cons){ if(c.net!=='rail'||!still(c,.2)) continue; for(const v of c.veh){ if(v.sort!=='goed'||v.load.length>=CAP) continue; const d=Math.hypot(v.tp.x-k.x,v.tp.z-k.z); if(d>=RMIN&&d<=RMAX) return {c,v,from:st,load:true}; } } return null; }
+    for(const c of cons){ if(c.net!=='rail'||!still(c,.2)) continue; for(const v of c.veh){ if(v.sort!=='goed'||!v.load.length) continue; const d=Math.hypot(v.tp.x-k.x,v.tp.z-k.z); if(d<RMIN||d>RMAX) continue;
         for(const m of mills){ if(!BLD[m.sort].takes||(held&&held.rec===m)) continue; const dm=Math.hypot(m.x+m.drop.x-k.x,m.z+m.drop.z-k.z); if(dm<RMIN||dm>RMAX+.2) continue; for(let i=v.load.length-1;i>=0;i--) if(wants(m,v.load[i].sh)) return {c,v,i,to:m}; } } } return null; }
   function hold(k){ const J=k.job; if(J&&cons.indexOf(J.c)>=0&&motor(J.c)&&J.c.stop) J.c.pause=Math.max(J.c.pause,1); }
   function hookLoad(k,sh){ if(k.lm){ k.kr.hook.remove(k.lm); k.lm=null; } if(sh){ k.lm=mesh(BLOK.geos[sh],BOUW.blockMat(sh),0,-.26,0,k.kr.hook); k.lm.scale.setScalar(.8); } }
   /* put down whatever it holds (it is moved or taken away) */
   function craneStop(k){ if(k.lm){ hookAt(k,cv); if(NET!==2&&k.load&&world) dropRaw(k.load,clampN(cv.x,MX-.6),Math.max(cv.y-.4,hAt(cv.x,cv.z)+.5),clampN(cv.z,MZ-.6)); hookLoad(k,null); } k.load=null; k.job=null; k.to=null; k.st='idle'; }
   function craneStep(k,dt){ if(held&&held.rec===k) return; const J=k.y+JIB;
-    if(k.st==='idle'){ jibTo(k,KHOME,1.1,.5,dt); if((k.scan-=dt)>0) return; k.scan=.4; const job=craneJob(k); if(job){ k.job=job; k.to=job.to; k.st='reach'; } }
+    if(k.st==='idle'){ jibTo(k,KHOME,1.1,.5,dt); if((k.scan-=dt)>0) return; k.scan=.4; const job=craneJob(k); if(job){ k.job=job; k.to=job.to||null; k.st='reach'; } }
+    else if(k.st==='reach'&&k.job.load){ const c=k.job.c, v=k.job.v, m=k.job.from; if(cons.indexOf(c)<0||v.c!==c||!still(c,.05)||v.load.length>=CAP||mills.indexOf(m)<0||!m.goods.length){ k.job=null; k.st='back'; return; } hold(k);
+      const x=m.x+m.drop.x, z=m.z+m.drop.z-.45; if(jibTo(k,Math.atan2(k.z-z,x-k.x),Math.hypot(x-k.x,z-k.z),J-(m.y+.62+(m.goods.length>10?.36:0)),dt)){ const sh=m.goods.pop(); showGoods(m); k.load=sh; hookLoad(k,sh); klik(); k.st='lift'; } }
     else if(k.st==='reach'){ const c=k.job.c, v=k.job.v; if(cons.indexOf(c)<0||v.c!==c||!still(c,.05)||!v.load.length){ k.job=null; k.st='back'; return; } hold(k);
       const i=Math.min(k.job.i,v.load.length-1), x=v.tp.x+Math.cos(v.yaw)*SLX[i], z=v.tp.z-Math.sin(v.yaw)*SLX[i], fl=v.tp.y-v.K.vh+.33+(i>2?.21:0);
       if(jibTo(k,Math.atan2(k.z-z,x-k.x),Math.hypot(x-k.x,z-k.z),J-(fl+.42),dt)){ const l=v.load[i]; if(!l||!wants(k.to,l.sh)){ k.job=null; k.st='back'; return; }
         v.load.splice(i,1); v.inner.remove(l.m); l.m.material.dispose(); relay(v); pop(v.g,.06); k.load=l.sh; hookLoad(k,l.sh); klik(); k.st='lift'; } }
     else if(k.st==='lift'){ hold(k); if(jibTo(k,k.th,k.r,.5,dt)) k.st='carry'; }
+    else if(k.st==='carry'&&k.job&&k.job.load){ hold(k); const c=k.job.c, v=k.job.v, m=k.job.from;
+      if(cons.indexOf(c)<0||v.c!==c||!still(c,.05)||v.load.length>=CAP){ const sh=k.load; hookLoad(k,null); k.load=null; if(mills.indexOf(m)>=0&&m.goods.length<BLD[m.sort].hold){ m.goods.push(sh); showGoods(m); } else craneStop(k); k.job=null; k.st='back'; return; }   /* the wagon went: the block goes back */
+      const i=v.load.length, x=v.tp.x+Math.cos(v.yaw)*SLX[i], z=v.tp.z-Math.sin(v.yaw)*SLX[i], fl=v.tp.y-v.K.vh+.33+(i>2?.21:0);
+      if(jibTo(k,Math.atan2(k.z-z,x-k.x),Math.hypot(x-k.x,z-k.z),J-(fl+.5),dt)){ const sh=k.load; hookLoad(k,null); k.load=null; addLoad(v,sh,rawCol(sh)); pop(v.g,.06); sfx.plop(); const nx=craneJob(k); if(nx&&nx.c===c){ k.job=nx; k.st='reach'; } else { k.job=null; k.st='back'; } } }
     else if(k.st==='carry'){ hold(k); const m=k.to; if(mills.indexOf(m)<0||(held&&held.rec===m)){ craneStop(k); k.st='back'; return; } const x=m.x+m.drop.x, z=m.z+m.drop.z;
       if(jibTo(k,Math.atan2(k.z-z,x-k.x),Math.hypot(x-k.x,z-k.z),J-(m.y+1.8),dt)){ const sh=k.load; hookLoad(k,null); k.load=null; deliver(m,sh); const c=k.job&&k.job.c, nx=craneJob(k); if(nx&&nx.c===c){ k.job=nx; k.to=nx.to; k.st='reach'; } else { k.job=null; k.st='back'; } } }
     else if(k.st==='back'){ if(jibTo(k,k.th,k.r,.5,dt)) k.st='idle'; } }
@@ -1870,10 +1888,10 @@ const trein=(()=>{
   /* the worker of a building: he fetches loose blocks of his kind (stone for the stone factory) that lie near it, one at a time, and puts them in */
   function fabStep(m,dt){ const w=m.man; w.t+=dt; w.bub.visible=false;
     if(w.st==='home'){ homeOf(m,a2); if(stride(w,a2.x,a2.z,dt)) w.yaw=-PI/2; if(w.t>=.25){ let best=null, bd=RFAB;
-        const full=BLD[m.sort].store&&m.store>=BLD[m.sort].store; if(!full) for(const r of blocks){ if(r.sh!==w.kind||r.claim||r.pt>0||(held&&held.rec===r)||r.b.velocity.norm2()>.5) continue; const q=r.b.position, d=Math.hypot(q.x-m.x,q.z-m.z); if(d<bd){ bd=d; best=r; } } if(best){ w.job=best; w.st='go'; } } }
+        const B=BLD[m.sort], full=(B.store&&m.store>=B.store)||(B.hold&&m.goods.length>=B.hold); if(!full) for(const r of blocks){ if(!(w.kind==='beide'?raw(r.sh):r.sh===w.kind)||r.claim||r.pt>0||(held&&held.rec===r)||r.b.velocity.norm2()>.5) continue; const q=r.b.position, d=Math.hypot(q.x-m.x,q.z-m.z); if(d<bd){ bd=d; best=r; } } if(best){ w.job=best; w.st='go'; } } }
     else if(w.st==='go'){ const r=w.job; if(!r||blocks.indexOf(r)<0||r.claim||(held&&held.rec===r)){ w.job=null; w.t=0; w.st='home'; } else { const q=r.b.position, dx=w.x-q.x, dz=w.z-q.z, l=Math.hypot(dx,dz)||1;
-        if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.carry=true; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) fxp('knock',r.sh,.5); w.st='carry'; } } }
-    else if(w.st==='carry'){ if(stride(w,m.x+m.drop.x,m.z+m.drop.z+.6,dt)){ w.yaw=PI/2; w.carry=false; if(mills.indexOf(m)>=0) deliver(m,w.kind); w.t=.1; w.st='home'; } }
+        if(l<=.5||stride(w,q.x+dx/l*.42,q.z+dz/l*.42,dt)){ w.job=null; w.carry=true; w.ck=r.sh; w.pack.material=BOUW.blockMat(r.sh); removeBlock(r,true); wakeAll(); if(seen(w.x,w.z)) fxp('knock',r.sh,.5); w.st='carry'; } } }
+    else if(w.st==='carry'){ if(stride(w,m.x+m.drop.x,m.z+m.drop.z+.6,dt)){ w.yaw=PI/2; w.carry=false; if(mills.indexOf(m)>=0) deliver(m,w.ck||w.kind); w.t=.1; w.st='home'; } }
     w.pack.visible=w.carry; }
 
   /* ----- loose blocks of wood and stone: drag to move one, slide a finger over it to shove it ----- */
@@ -2102,6 +2120,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
     kant:'<rect x="5" y="4.500" width="14" height="16" rx="1.200" fill="#5b8fd9"/><rect x="4.200" y="3" width="15.600" height="2.200" rx=".800" fill="#fffdf6"/><path d="M7.300 7.500h2v2.200h-2zM11 7.500h2v2.200h-2zM14.700 7.500h2v2.200h-2zM7.300 11.500h2v2.200h-2zM11 11.500h2v2.200h-2zM14.700 11.500h2v2.200h-2zM7.300 15.500h2v2.200h-2zM14.700 15.500h2v2.200h-2z" fill="#bfe6ff"/><rect x="10.600" y="16" width="2.800" height="4.500" fill="#2a2157"/>',
     station:'<rect x="2" y="16" width="20" height="3.200" rx="1" fill="#f2c078"/><path d="M2 17.600h20" stroke="#b9762c" stroke-width=".8"/><rect x="3" y="11.500" width="18" height="3.600" rx=".8" fill="#e4dccb"/><path d="M3.300 14.700h17.400" stroke="#ffd22e" stroke-width="1.100"/><rect x="3.800" y="5" width="7.400" height="1.700" rx=".600" fill="#ff4d5a"/><path d="M5 6.700v4.800M10 6.700v4.800" stroke="#2a2157" stroke-width="1.100"/><rect x="13" y="6" width="7.500" height="3.200" rx=".600" fill="#fffdf6" stroke="#2f9bff" stroke-width="1"/><path d="M14.500 9.200v2.300M19 9.200v2.300" stroke="#2a2157" stroke-width="1"/>',
     stad:'<path d="M3 20.500V12l4.500-4 4.500 4v8.500z"/><path d="M12 20.500V7.500h9v13z"/><path d="M15 11h3M15 14.500h3M3 20.500h18"/>',
+    opsl:'<rect x="3" y="9.500" width="18" height="11" rx="1" fill="#a8683a"/><path d="M2 10.500 12 4.500l10 6z" fill="#ff4d5a"/><rect x="5.500" y="12.500" width="13" height="8" fill="#5a3a20"/><rect x="6.500" y="17" width="3.300" height="3" rx=".500" fill="#c98a55"/><rect x="10.400" y="17" width="3.300" height="3" rx=".500" fill="#8791a6"/><rect x="14.300" y="17" width="3.300" height="3" rx=".500" fill="#c98a55"/><rect x="8.400" y="13.700" width="3.300" height="3" rx=".500" fill="#8791a6"/>',
     kraan:'<path d="M6.500 20.500V6.500" stroke="#ffd22e" stroke-width="2.800"/><rect x="3.300" y="19.300" width="6.400" height="2.200" rx=".700" fill="#2a2157"/><rect x="4.500" y="4.300" width="4" height="3" rx=".700" fill="#ff4d5a"/><path d="M5 5.200h16.500" stroke="#ffd22e" stroke-width="1.900" stroke-linecap="round"/><path d="M1.800 5.200h3" stroke="#2a2157" stroke-width="2.400"/><path d="M17.500 5.500v6.200" stroke="#2a2157" stroke-width="1"/><rect x="15.800" y="11.700" width="3.400" height="3" rx=".500" fill="#8791a6"/>'};
   /* the drawer at the bottom: four tabs with a word under them; the buttons of the open tab sit beside them (wide screen) or below them (narrow screen), always on one row */
   const p=document.createElement('div'), tabs=document.createElement('div'), items=document.createElement('div'), G={}, tb=[], N=6, GAP=8, SEP=14;
@@ -2275,6 +2294,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
   price(mkBtn(G.bouw,{id:'bouw-cent',cls:'btn face',svg:ST.cent,label:'Centrale: kiep hout ernaast, dan geeft hij stroom',on:()=>trein.build('cent')}),'cent');
   price(mkBtn(G.bouw,{id:'bouw-paal',cls:'btn face',svg:ST.paal,label:'Stroompaal: brengt de stroom verder; huizen en kantoren tot 5 ver krijgen stroom',on:()=>trein.build('paal')}),'paal');
   price(mkBtn(G.bouw,{id:'bouw-kraan',cls:'btn face',svg:ST.kraan,label:'Hijskraan: lost een goederenwagon bij een sensor en brengt hout of steen naar een gebouw ernaast',on:()=>trein.build('kraan')}),'kraan');
+  price(mkBtn(G.bouw,{id:'bouw-opsl',cls:'btn face',svg:ST.opsl,label:'Opslag: bewaart 20 blokjes hout of steen; een hijskraan ernaast laadt ze in een goederenwagon',on:()=>trein.build('opsl')}),'opsl');
   /* Stad: houses, offices and stations */
   price(mkBtn(G.stad,{id:'bouw-huis',cls:'btn face',svg:ST.huis,label:'Huis: met stroom komen er 2 bewoners wonen',on:()=>trein.build('huis')}),'huis');
   price(mkBtn(G.stad,{id:'bouw-kant',cls:'btn face',svg:ST.kant,label:'Kantoor: 4 werkplekken, heeft stroom nodig',on:()=>trein.build('kant')}),'kant');
