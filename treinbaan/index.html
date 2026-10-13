@@ -232,9 +232,10 @@ body.menu #toast{z-index:6}
 @media (max-width:640px){#start{background:rgba(14,26,48,.3)}#start .in{left:10px;right:10px;top:10px;bottom:10px;width:auto;border-radius:20px}#start .in::after{inset:7px;border-radius:14px}#start .rol{margin:9px;padding:13px 10px 22px;gap:16px}}
 @media (prefers-reduced-motion:reduce){#start .kop.rij .loc{animation:none}#start .mode{transition:none}}
 /* campaign: the machines come with the workshop, not from a button */
-body:not(.vrij) #tab-mach{display:none}
+body:not(.klein) #tab-mach{display:none}
 /* creative: no money and no prices */
-body.vrij #hud,body.vrij .cost{display:none}
+body.klein #hud,body.klein .cost{display:none}
+body.vrij .cost.trk{display:none}
 /* an old campaign game in the list: it cannot go on */
 #start .slot .ld.oud{opacity:.55}
 #start .slot .ld small i.oud{background:#6b7a93}
@@ -262,7 +263,7 @@ body.vrij #hud,body.vrij .cost{display:none}
     <div class="saves" id="lobby" hidden><h2>Open spellen</h2><div class="lst" id="lobby-lst"></div><p class="snote" id="lobby-leeg">Zoeken naar spellen…</p></div>
     <div class="modes"><h2>Vertrek</h2>
       <button type="button" class="mode" id="start-camp"><i class="rt camp" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10.5 19v-5h3v5"/></svg></i><b>Campagne</b><span>Begin met 1000 coins en bouw je eigen stad</span><svg class="pijl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
-      <button type="button" class="mode" id="start-vrij"><i class="rt vrij" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/><path d="M8 6v12M12 6v12M16 6v12"/></svg></i><b>Creatief</b><span>Een lege wereld, alles is gratis</span><svg class="pijl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button type="button" class="mode" id="start-vrij"><i class="rt vrij" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/><path d="M8 6v12M12 6v12M16 6v12"/></svg></i><b>Creatief</b><span>Grote wereld, rails en weg zijn gratis</span><svg class="pijl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <div class="saves" id="saves" hidden><h2>Je spellen</h2><div class="lst" id="saves-lst"></div></div>
     <div class="naam" id="naam" hidden><b>Hoe heet je spel?</b><input id="naam-in" type="text" maxlength="24" autocomplete="off" enterkeyhint="go" aria-label="Naam van je spel"><div class="opts"><button type="button" class="go" id="naam-start">Start</button><button type="button" class="pill" id="naam-terug">Terug</button></div></div>
@@ -873,6 +874,8 @@ const trein=(()=>{
     kraan:{hw:.35,hd:.35,name:'Hijskraan',crane:true},opsl:{hw:1.8,hd:1.4,name:'Opslag',takes:'beide',hold:20,front:1}};
   /* what everything costs in the campaign (coins), how far a worker goes for a block, the money you start with */
   const COST={recht:5,bocht:10,wissel:20,brug:25,eind:10,tunnel:50,weg:5,wbocht:10,overweg:20,loc:100,goed:50,pass:50,auto:50,sensor:20,boost:20,werk:200,sfab:150,cent:200,paal:20,huis:100,kant:200,station:200,kraan:100,opsl:100}, RFAB=6.5, START=1000;
+  /* what a thing costs here: in the Campagne everything; in Creatief the rails and road pieces are free; an old Creatief game (small world) is free altogether */
+  const FREE=new Set(['recht','bocht','wissel','brug','eind','tunnel','weg','wbocht','overweg']), fee=type=>small||(mode==='vrij'&&FREE.has(type))?0:(COST[type]||0);
   /* per net: half a vehicle, how far its axles are from the middle, the distance between two vehicles, speed, half its height and its body */
   const KN={rail:{net:'rail',half:.56,ax:.3,gap:1.12,speed:2.3,vh:.36,box:[.52,.36,.28]},road:{net:'road',half:.45,ax:.24,gap:1.02,speed:2.6,vh:.25,box:[.42,.25,.23]}};
   const ST=1, TR=2, BK=4, DR=8, FR=16, ALL=31;   /* who bumps into whom: mat, track, blocks, a train on its rails, a train lying loose */
@@ -892,12 +895,12 @@ const trein=(()=>{
   function pickPlats(rs){ const out=[], n=AREA>1.5?6+((rs()*5)|0):rs()<.6?2:1;
     for(let k=0;k<n;k++) for(let tries=0;tries<400;tries++){ const w=8+2*((rs()*4)|0), d=6+2*((rs()*4)|0), x0=-BX+2*((rs()*((2*BX-w)/2+1))|0), z0=-BZ+2*((rs()*((2*BZ-d)/2+1))|0), P={x0,x1:x0+w,z0,z1:z0+d};
       if(P.x0-PV<7.5&&P.x1+PV>-7.5&&P.z0-PV<5.5&&P.z1+PV>-5.5) continue;
-      if(mode==='camp'&&P.x0-PV<START_R.x+START_R.hw+4&&P.x1+PV>START_R.x-START_R.hw-4&&P.z0-PV<START_R.z+START_R.hd+4&&P.z1+PV>START_R.z-START_R.hd-4) continue;   /* nor on the open ground where you begin */
+      if(!small&&P.x0-PV<START_R.x+START_R.hw+4&&P.x1+PV>START_R.x-START_R.hw-4&&P.z0-PV<START_R.z+START_R.hd+4&&P.z1+PV>START_R.z-START_R.hd-4) continue;   /* nor on the open ground where you begin */
       if(out.some(Q=>!(P.x0>=Q.x1+6||Q.x0>=P.x1+6||P.z0>=Q.z1+6||Q.z0>=P.z1+6))) continue;
       out.push(P); break; }
     return out; }
   const ghost=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}), ghostGeo=sph(.6,10,8);
-  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], heaps=[], heapN=0, vrects=[], locked=new Set(), mills=[], coins=START, coinsDirty=true, mode='camp', panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
+  let machs=[], driving=null, stX=0, stZ=0, engT=0, bumpT=0, lastP=null, boosts=[], fastest=1, tunnels=[], pick=null, marks=[], pieces=[], vehs=[], cons=[], open=[], blocks=[], props=[], held=null, ptr=null, wide=true, chuffT=0, locN=0, carN=0, consN=0, frameN=0, tab='rails', lastC=-1, lastTok=0, pushSnd=0, tall=0, tallA=0, trees=[], rocks=[], logs=[], heaps=[], heapN=0, vrects=[], locked=new Set(), mills=[], coins=START, coinsDirty=true, mode='camp', small=false, panX=0, panZ=0, vw=20, vd=12, ppuV=36, botPx=110, binSt=0;
   const F=new V3(), cv=new V3(), a1=new V3(), a2=new V3(), old=new V3(), hd=new V3(), h2=new V3(), P1={p:null,si:0,u:0,d:1};
   const tgt=new V3(), heldQ=new T.Quaternion(), fw=new V3(), rt=new V3(), nrm=new V3(), org=new V3(), DN=new V3(0,-1,0), dray=(()=>{ const r=new T.Raycaster(); r.camera=camera; return r; })(), te=new T.Euler(0,0,0,'YZX'), tq=new T.Quaternion();
   const o5=[[0,0],[.33,.33],[-.33,.33],[.33,-.33],[-.33,-.33]];
@@ -994,7 +997,7 @@ const trein=(()=>{
     for(const P of PLS){ const n=(P.x1-P.x0)*(P.z1-P.z0)>=100?2:1; for(let k=0,t=0;k<n&&t<120;t++){ const x=P.x0+1.8+rs()*(P.x1-P.x0-3.6), z=P.z0+1.8+rs()*(P.z1-P.z0-3.6); if(ok(x,z,true)){ put(x,z); k++; } } }
     const want=Math.round(12*AREA); for(let t=0;rocks.length<want&&t<800*AREA;t++){ const x=(rs()*2-1)*(MX-1.6), z=(rs()*2-1)*(MZ-1.6); if(ok(x,z,false)) put(x,z); } }
   /* the open ground where you begin (in the campaign): no trees or rocks there, so there is room to build */
-  const START_R={x:0,z:3,hw:16,hd:10.5}, inStart=(x,z,pad)=>mode==='camp'&&inMill(START_R,x,z,pad);
+  const START_R={x:0,z:3,hw:16,hd:10.5}, inStart=(x,z,pad)=>!small&&inMill(START_R,x,z,pad);
   function staticBox(x,y,z,hw,hh,hd){ if(!world) return null; const b=new PH.Body({mass:0}); b.addShape(new PH.Box(V(hw,hh,hd))); b.position.set(x,y,z); b.collisionFilterGroup=ST; b.collisionFilterMask=BK|FR; world.addBody(b); return b; }
   function layPiece(type,x,z,q,fixed,lv,m,nm){ const t=TYPE[type], mm=SPOOR.piece(type), p={kind:'p',type,x,z,q,lv:lv||0,m:m||1,fixed:!!fixed,sw:0,shut:false,g:mm.g,pier:mm.pier,arm:mm.arm,gates:mm.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; mm.g.userData.rec=p; g.add(mm.g); pieces.push(p); fix(p); mm.g.position.set(p.tx,p.ty,p.tz); mm.g.rotation.y=q*PI/2; if(p.m<0) mm.g.scale.z=-Math.abs(mm.g.scale.z); if(type==='station') nameSt(p,nm); return p; }
   /* tap a station: its name, who waits there, and whether a train will stop */
@@ -1007,7 +1010,7 @@ const trein=(()=>{
   /* the blocks in a goods wagon lie in their places again (after one was taken out of the middle) */
   function relay(v){ v.load.forEach((l,i)=>{ const ms=msOf(l.sh); l.m.position.set(SLX[i],.33+(i>2?.21:0)+BLOK.bottom[l.sh]*ms,0); }); }
   /* the first words of a new campaign */
-  const hello=()=>{ after(1.2,()=>{ if(mode==='camp'&&!mills.length) toast('Je hebt '+START+' coins. Begin met een werkplaats in het tabblad Gebouwen: daar krijg je je machines.'); }); };
+  const hello=()=>{ after(1.2,()=>{ if(!small&&!mills.length) toast('Je hebt '+START+' coins. Begin met een werkplaats in het tabblad Gebouwen: daar krijg je je machines.'); }); };
   /* heaps of loose wood and stone lying about: the shovel (and the excavator) take from them; an empty heap is gone. Four near the start, more all over the field */
   const HEAPP=(()=>{ const o=[]; for(let y=0;y<3;y++){ const n=3-y; for(let i=0;i<n;i++) for(let j=0;j<n;j++) o.push([(i-(n-1)/2)*.47,y*.36+.18,(j-(n-1)/2)*.47]); } return o; })();
   function addHeap(x,z,sh,n){ const hg=new T.Group(), ms=HEAPP.map((p,i)=>{ const o=mesh(BLOK.geos[sh],BOUW.blockMat(sh),p[0],p[1],p[2],hg); o.rotation.y=((i*37)%7-3)*.05; o.visible=i<n; return o; }); hg.position.set(x,hAt(x,z),z); g.add(hg);
@@ -1022,7 +1025,7 @@ const trein=(()=>{
   function placeHeaps(rs){ [[-10,8,'hout',10],[-6.5,10.5,'steen',10],[9.5,8.5,'hout',8],[13,6,'steen',8]].forEach(q=>addHeap(...q));
     const want=Math.round(1.4*AREA); for(let t=0;heaps.length<4+want&&t<2000;t++){ const x=(rs()*2-1)*(MX-3), z=(rs()*2-1)*(MZ-3);
       if(inPlat(x,z,PV+2)||inStart(x,z,2)||heapAt(x,z,3)) continue; addHeap(Math.round(x*2)/2,Math.round(z*2)/2,rs()<.5?'hout':'steen',6+((rs()*5)|0)); } }
-  function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
+  function homeMe(){ if(!me) return; if(driving||walking) leave(true); me.yaw=-PI/2; me.g.visible=true; me.g.add(me.tag); me.tag.position.y=1.75; placeMe(small?0:2.5,small?3:7.6); }
   /* ----- you: a doll in your own colour with your name over it. Tap it to walk (the stick moves it); next to a machine the big button gets you in, and the name goes with you onto the machine ----- */
   const PCOL=[C.red,C.orange,C.yellow,C.green,C.blue,C.purple,C.pink];
   let me=null, walking=false, hintM=false, nearT=0, ambT=0, engT2=0, mdX=0, mdZ=0, mdT=0;
@@ -1035,7 +1038,7 @@ const trein=(()=>{
   function setMe(name,ci){ name=(name||'').trim().slice(0,14)||'Speler'; ci=((ci|0)%PCOL.length+PCOL.length)%PCOL.length;
     let fresh=false; if(!me){ fresh=true; me={kind:'a',x:0,z:0,y:0,up:false,yaw:-PI/2,step:0,g:new T.Group(),body:null,tag:null,name,ci}; me.g.userData.rec=me; g.add(me.g); }
     if(me.body){ me.g.remove(me.body); } if(me.tag){ if(me.tag.parent) me.tag.parent.remove(me.tag); me.tag.material.map.dispose(); }
-    me.name=name; me.ci=ci; me.body=DORP.player(PCOL[ci]); me.g.add(me.body); me.tag=DORP.nameTag(name,PCOL[ci],.6); (driving?driving.g:me.g).add(me.tag); me.tag.position.y=driving?2.7:1.75; if(fresh) placeMe(mode==='camp'?2.5:0,mode==='camp'?7.6:3); }
+    me.name=name; me.ci=ci; me.body=DORP.player(PCOL[ci]); me.g.add(me.body); me.tag=DORP.nameTag(name,PCOL[ci],.6); (driving?driving.g:me.g).add(me.tag); me.tag.position.y=driving?2.7:1.75; if(fresh) placeMe(small?0:2.5,small?3:7.6); }
   /* is there room for the doll here (the same things a machine bumps into) */
   const meFree=(x,z)=>!hitsAt(me,x,z,.3);
   function placeMe(x,z){ me.up=inPlat(x,z,0); me.y=me.up?RISE:0; for(let r=0;r<=8;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(inPlat(sx,sz,0)===me.up&&meFree(sx,sz)){ me.x=sx; me.z=sz; me.g.position.set(sx,me.y,sz); me.g.rotation.y=me.yaw; return; } } me.x=x; me.z=z; me.g.position.set(x,me.y,z); }
@@ -1232,7 +1235,7 @@ const trein=(()=>{
   function blocksTo(list){ const ids=new Set(list.map(a=>a[0])); for(const r of blocks.slice()) if(!ids.has(r.nid)) removeBlock(r,true);
     const have=new Set(blocks.map(r=>r.nid)); for(const [nid,sh] of list) if(!have.has(nid)){ const r=dropRaw(sh,0,-40,0); r.nid=nid; r.m.visible=false; r.nt=null; } nmap(); }
   /* a guest joins: the host's world from its seed, then everything on top */
-  function netJoin(W,pl,mine){ if(driving||walking) leave(true); NET=0; mode=W.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',W.seed); clearPlay(); NET=2; for(const a of [...avs.values()]) avDrop(a); avSet(pl||[],mine);
+  function netJoin(W,pl,mine){ if(driving||walking) leave(true); NET=0; mode=W.mode==='vrij'?'vrij':'camp'; small=!!W.small; wipe(); gen(!small,W.seed); clearPlay(); NET=2; for(const a of [...avs.values()]) avDrop(a); avSet(pl||[],mine);
     netFolk=[]; netS(W.s,true); netF(W.f,true); if(me){ placeMe(me.x-1.4*Math.max(1,(mine|0)-1),me.z+.6); panX=me.x; panZ=me.z; } applyCamera(); }
   /* start or stop playing together (the others go; a guest's copy stays until a new game comes) */
   function netRole(r){ if(NET===2&&r!==2&&driving){ NET=r; leave(true); } NET=r; lastS={}; known={v:new Set(),m:new Set(),b:new Set()}; for(const o of [...vehs,...machs,...blocks,...mills]) o.ls=null; for(const m of machs){ m.by=0; m.sx=m.sz=0; } for(const a of [...avs.values()]) avDrop(a); }
@@ -1250,7 +1253,7 @@ const trein=(()=>{
   function serialize(){ const own=pieces.filter(p=>!p.fixed&&!p.gang&&!isGate(p)), tuns=tunnels.filter(t=>t.a&&t.b), V=vehs, Z=mills.filter(m=>!(held&&held.rec===m));
     const ref=p=>{ if(!p) return null; if(p.gang){ const i=tuns.indexOf(p.tun); return i<0?null:['G',i]; } if(isGate(p)){ const i=tuns.indexOf(p.tun); return i<0?null:['g',i,p.tun.a===p?0:1]; }
       const i=own.indexOf(p); return i<0?null:['p',i]; };
-    const D={v:2,mode,seed:seedW,pan:[R3(panX),R3(panZ)],coins,
+    const D={v:2,mode,big:small?0:1,seed:seedW,pan:[R3(panX),R3(panZ)],coins,
       pieces:own.map(p=>[p.type,p.x,p.z,p.q,p.lv,p.m,p.sw?1:0,p.shut?1:0,p.nm==null?-1:p.nm]),
       tunnels:tuns.map(t=>[t.net,t.a.spot,t.b.spot]),
       mills:Z.map(m=>[m.sort,R3(m.x),R3(m.z),m.seed,m.store,R3(m.burn),m.goods.map(x=>x==='steen'?'s':'h').join('')]),
@@ -1264,7 +1267,7 @@ const trein=(()=>{
       folk:folk.filter(f=>Z.indexOf(f.home)>=0).map(f=>[Z.indexOf(f.home),f.st,f.leg,own.indexOf(f.at),own.indexOf(f.dest),V.indexOf(f.v),R3(f.t),R3(f.x),R3(f.z),Z.indexOf(f.job),f.worked?1:0,f.paid,R3(f.tx),R3(f.tz),f.goal||'']),
       me:me?[R3(me.x),R3(me.z),R3(me.yaw)]:null};
     return D; }
-  function restore(D){ mode=D.mode==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',D.seed); clearPlay();
+  function restore(D){ mode=D.mode==='vrij'?'vrij':'camp'; small=mode==='vrij'&&!D.big; wipe(); gen(!small,D.seed); clearPlay();
     /* the world: felled trees, broken rocks, heaps, logs */
     for(const id of D.trees||[]){ const t=trees[id]; if(t&&t.alive){ t.alive=false; g.remove(t.g); if(t.b&&world){ world.removeBody(t.b); t.b=null; } } }
     for(const [id,left] of D.rocks||[]){ const r=rocks[id]; if(!r) continue; r.left=left; if(left<=0){ g.remove(r.g); if(r.b&&world){ world.removeBody(r.b); r.b=null; } } else rockSize(r); }
@@ -1421,11 +1424,11 @@ const trein=(()=>{
   /* the dots a piece of this net may start on */
   function eachDot(net,fn){ const a=net==='road'?BX-1:BX, b=net==='road'?BZ-1:BZ; for(let x=-a;x<=a;x+=2) for(let z=-b;z<=b;z+=2) fn(x,z); }
   /* money: paying for something, getting it back from the bin (in the creative game everything is free; a guest's game is paid by the host) */
-  const canPay=type=>mode!=='camp'||coins>=(COST[type]||0);
+  const canPay=type=>coins>=fee(type);
   const broke=()=>{ sfx.boing(); coinUI(coins,false,true); };
-  function pay(type,sign){ if(mode!=='camp'||NET===2||!COST[type]) return; coins-=COST[type]*sign; coinUI(coins,sign<0); }
+  function pay(type,sign){ const c=fee(type); if(!c||NET===2) return; coins-=c*sign; coinUI(coins,sign<0); }
   /* money that comes in: the counter jumps and a "+n" rises where it was earned */
-  function earn(n,x,y,z){ if(mode!=='camp') return; if(NET!==2){ coins+=n; coinUI(coins,true); } coinPop(n,x,y,z); }
+  function earn(n,x,y,z){ if(small) return; if(NET!==2){ coins+=n; coinUI(coins,true); } coinPop(n,x,y,z); }
   /* a new piece clicks straight onto an open end: first where you were building (the piece you put down last), else the open end nearest the middle of the picture; only ends you can see (where you were building may lie a little outside, the picture may still be on its way there). A bend tries left before right, a switch branches left before right, a bridge climbs from the ground and comes down from a high end */
   const inView=(x,z)=>Math.abs(x-panX)<vw/2&&Math.abs(z-panZ)<vd/2+1;
   function attach(type){ const ty=TYPE[type], ms=ty.mirror?[1,-1]:[1], L=open.filter(X=>X.p===lastP?Math.abs(X.e.x-panX)<vw/2+5&&Math.abs(X.e.z-panZ)<vd/2+5:inView(X.e.x,X.e.z));
@@ -1442,7 +1445,7 @@ const trein=(()=>{
     /* the picture follows a track that grows towards its edge */
     if(snap){ mid(best,a1); if(Math.abs(a1.x-panX)>vw/2-2.2||Math.abs(a1.z-panZ)>vd/2-1.6) glide(panX+(a1.x-panX)*.5,panZ+(a1.z-panZ)*.5); } }
   function placeNew(type,best,snap){ const t=TYPE[type], m=SPOOR.piece(type), p={kind:'p',type,x:best.x,z:best.z,q:best.q,lv:best.lv,m:best.m,sw:0,shut:false,g:m.g,pier:m.pier,arm:m.arm,gates:m.gates,segs:t.segs,endSegs:t.endSegs,multi:t.multi,n:[],cid:{},live:false,sb:null}; m.g.userData.rec=p; g.add(m.g); pieces.push(p); fix(p); m.g.position.set(p.tx,p.ty,p.tz); m.g.rotation.y=p.q*PI/2; if(type==='station'){ nameSt(p); hint('station','Station '+stName(p)+' staat er! Nieuwe treinen en wagons komen nu op een station.'); } popIn(m.g,.3); if(snap) klik(); sfx.pop(pieces.length%8); pay(type,1); lastP=p; rebuild(); settle(); return p; }
-  function addTrain(sort,quiet,force){ if(!force&&!canPay(sort)){ broke(); return; } const atSt=mode==='camp'&&sort!=='auto'&&!force; if(atSt&&!pieces.some(isSt)){ toast('Bouw eerst een station: daar komen nieuwe treinen en wagons.'); sfx.boing(); return; } if(NET===2&&!force){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'veh',s:sort,e:lowEdge()}); sfx.pop(3); return; } if(!force&&locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
+  function addTrain(sort,quiet,force){ if(!force&&!canPay(sort)){ broke(); return; } const atSt=!small&&sort!=='auto'&&!force; if(atSt&&!pieces.some(isSt)){ toast('Bouw eerst een station: daar komen nieuwe treinen en wagons.'); sfx.boing(); return; } if(NET===2&&!force){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'veh',s:sort,e:lowEdge()}); sfx.pop(3); return; } if(!force&&locked.has(sort)){ sfx.boing(); return; } const isLoc=sort==='loc', isCar=sort==='auto', K=isCar?KN.road:KN.rail, n=vehs.filter(v=>isLoc?v.loco:isCar?v.sort==='auto':v.K===KN.rail&&!v.loco).length;
     if(!force&&n>=(isLoc?MAXLOC:isCar?MAXCAR:MAXWAG)){ sfx.boing(); return; }
     const ci=isLoc?locN:isCar?carN:0, vg=new T.Group(), inner=isLoc?SPOOR.loco(locN++):isCar?SPOOR.car(carN++):sort==='goed'?SPOOR.goods():SPOOR.coach(), v={kind:'v',nid:++nidN,ci,sort,loco:isLoc,K,g:vg,inner,load:[],tp:new V3(),pos:null,yaw:0,pitch:0,spin:0,c:null,b:null,inW:false,drv:false,warp:false}; inner.position.y=-K.vh; vg.add(inner); vg.rotation.order='YZX'; vg.userData.rec=v; vg.add(new T.Mesh(ghostGeo,ghost));
     if(world){ const b=new PH.Body({mass:1.5,material:slipM}); b.addShape(new PH.Box(V(K.box[0],K.box[1],K.box[2]))); if(isCar) b.mass=1; b.linearDamping=.03; b.angularDamping=.35; b.allowSleep=true; b.sleepSpeedLimit=.1; b.sleepTimeLimit=1; b.veh=v; v.b=b; }
@@ -1579,7 +1582,7 @@ const trein=(()=>{
   function blockedAt(m,x,z,yaw,pad){ const S=MS[m.sort], fx=Math.cos(yaw)*S.off, fz=-Math.sin(yaw)*S.off, r=S.rad*.72+(pad||0); return hitsAt(m,x,z,r)||hitsAt(m,x+fx,z+fz,r)||hitsAt(m,x-fx,z-fz,r); }
   /* the nearest place where it fits, on the level of the spot you point at */
   function placeM(m,x,z,pad){ m.up=inPlat(x,z,0); m.y=m.up?RISE:0; for(let r=0;r<=9;r+=.5) for(let a=0,n=r?Math.ceil(r*6):1;a<n;a++){ const sx=x+Math.cos(a/n*TAU)*r, sz=z+Math.sin(a/n*TAU)*r; if(!blockedAt(m,sx,sz,m.yaw,pad)){ m.x=sx; m.z=sz; return true; } } return pad?placeM(m,x,z,0):false; }
-  function addMachine(sort){ if(mode==='camp'){ sfx.boing(); return; } if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
+  function addMachine(sort){ if(!small){ sfx.boing(); return; } if(NET===2){ if(locked.has(sort)){ sfx.boing(); return; } netOut({t:'mach',s:sort,e:lowEdge()}); return; } if(locked.has(sort)||machs.filter(m=>m.sort===sort).length>=MAXMACH){ sfx.boing(); return; } const e=lowEdge(); newMach(sort,(e.x0+e.x1)/2,e.z-1.3,0,.6); }
   function newMach(sort,x,z,yaw,pad,quiet,exact){ const M=MACH[sort](), m={kind:'m',nid:++nidN,by:0,sort,x:0,z:0,y:0,yaw:yaw||0,up:false,v:0,dist:0,g:M.g,M,b:null,load:[],carry:[],pose:Object.assign({},REST[sort]),kf:null,busy:false,work:false,dug:false,stopping:false};
     if(exact){ m.x=x; m.z=z; m.up=inPlat(x,z,0); m.y=m.up?RISE:0; } else if(!placeM(m,x,z,pad||0)){ sfx.boing(); return null; }   /* a new one keeps a little room around it */ M.g.userData.rec=m; M.g.position.set(m.x,m.y,m.z); M.g.rotation.y=m.yaw; g.add(M.g); machs.push(m); machBody(m,true); if(quiet) return m; popIn(M.g,.3); fxp('thud',.8); sfx.pop(2); return m; }
   function removeMach(m){ if(driving===m) leave(true); machBody(m,false); g.remove(m.g); machs=machs.filter(x=>x!==m); }
@@ -1714,7 +1717,7 @@ const trein=(()=>{
     return m; }
   /* the button of a building: buy it, it comes in the middle of the picture */
   let hints=new Set();
-  const hint=(k,msg,d)=>{ if(mode!=='camp'||hints.has(k)) return; hints.add(k); after(d||.8,()=>news(msg)); };
+  const hint=(k,msg,d)=>{ if(small||hints.has(k)) return; hints.add(k); after(d||.8,()=>news(msg)); };
   function build(sort,near,at,seed){ if(!BLD[sort]||held) return; if(!canPay(sort)){ broke(); return; } if(NET===2){ netOut({t:'bld',s:sort,c:[R3(panX),R3(panZ-.5)],at:at||null,seed:seed||null}); sfx.pop(2); return; }
     const B=BLD[sort]; if(at&&!siteFree(at[0],at[1],null,B.hw,B.hd,B.front)) at=nearSite(at[0],at[1],null,B.hw,B.hd,B.front);   /* someone else was quicker: the nearest place where it fits */
     const m=addMill(sort,at||null,{near,seed}); if(!m) return; burst(cv.set(m.x,1.4,m.z),18,3.4);
@@ -1749,7 +1752,7 @@ const trein=(()=>{
   function crew(w){ [['graaf',-1.6],['shovel',.5],['kiep',2.5]].forEach(([sort,dx])=>{ const k=newMach(sort,w.x+dx,w.z+w.hd+1.9,-PI/2,.3,true); if(k){ k.ws=w; popIn(k.g,.35); } }); }
   function removeMill(m,all){ if(m.kr) craneStop(m); if(all&&NET!==2&&world&&m.goods.length){ m.goods.forEach((sh,i)=>dropRaw(sh,clampN(m.x-1+(i%5)*.5,MX-.6),.6+((i/5)|0)*.4,clampN(m.z+m.hd+.6,MZ-.6))); m.goods=[]; } millBody(m,false); if(m.man){ manHome(m); g.remove(m.man.g); } if(m.icon) g.remove(m.icon); g.remove(m.g); mills=mills.filter(x=>x!==m); if(all) for(const k of machs.slice()) if(k.ws===m) removeMach(k); bind(); }
   /* tap a building: how it is doing */
-  function about(m){ const B=BLD[m.sort], camp=mode==='camp', U=m.net?m.net.users.length:0;
+  function about(m){ const B=BLD[m.sort], camp=!small, U=m.net?m.net.users.length:0;
     if(m.sort==='werk') return 'Werkplaats: hier horen je graafmachine, shovel en kiepwagen bij.';
     if(m.sort==='sfab') return camp?'Steenfabriek: kiep steen ernaast. Elk blokje is '+B.pay+' coins.':'Steenfabriek: kiep steen ernaast, het poppetje brengt het naar binnen.';
     if(m.sort==='cent') return 'Centrale: '+m.store+' van '+B.store+' blokjes hout'+(U?', stroom voor '+U+(U===1?' gebouw':' gebouwen'):'')+'. Kiep hout ernaast.';
@@ -1995,13 +1998,13 @@ const trein=(()=>{
     pieces.forEach(p=>{ if(world) unsolid(p); g.remove(p.g); }); vehs.forEach(v=>{ lift(v); g.remove(v.g); }); blocks.slice().forEach(r=>removeBlock(r,true)); props.forEach(s=>{ propBody(s,false); g.remove(s.g); }); boosts.forEach(f=>g.remove(f.g)); if(driving) leave(true); machs.forEach(m=>{ machBody(m,false); g.remove(m.g); });
     if(pick){ pick=null; digUI(false); } marksOff(); logs.forEach(L=>g.remove(L.g)); logs=[]; tunnels=[]; lastP=null; coins=START; coinsDirty=true; hints=new Set(); clearFolk(); pieces=[]; vehs=[]; cons=[]; props=[]; boosts=[]; machs=[]; held=null; ptr=null; ring.visible=false; rebuild(); }
   /* start again: everything away, and a new world in the same way of playing */
-  function reset(){ wipe(); gen(mode==='camp'); if(mode==='camp') hello(); panX=mode==='camp'?2:0; panZ=mode==='camp'?4:0; applyCamera(); sfx.boing(); }
+  function reset(){ wipe(); gen(!small); if(!small) hello(); panX=small?0:2; panZ=small?0:4; applyCamera(); sfx.boing(); }
 
 
   const TAU=PI*2, bar=()=>{ const e=document.getElementById('treinBar'); return e&&e.offsetHeight?e.offsetHeight+36:null; };
   gen(true);
   return { g, add, addTrain, addSensor, addBoost, addMachine, drive:getIn, leave, act, stick(x,z){ stX=x; stZ=z; }, get driving(){ return driving||walking; }, get walking(){ return walking; }, out, walk:stroll, setMe, get me(){ return me; },
-    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,cmd:netCmd,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, build, place:placing, serialize, restore, reset, dig, COST,
+    net:{role:netRole,diff:netDiff,fast:netFast,all:()=>({mode,small,seed:seedW,s:netSecs(),f:netFast(true)}),join:netJoin,S:netS,F:netF,players:avSet,me:netMe,stick:netStick,act:netAct,inn:netIn,outBy:freeBy,cmd:netCmd,mine:netMine,inOk:netInOk,set send(f){ netSend=f; },set news(f){ netNews=f; },get now(){ return NET; },get avs(){ return avs; }}, build, place:placing, serialize, restore, reset, dig, COST,
     get state(){ return {pieces,vehs,cons,open,blocks,props,boosts,machs,driving,mills,trees,rocks,logs,heaps,vrects,locked,coins,PLS,seed:seedW,held,wide,tab,tall:tallA,world,tunnels,pick,marks,SPOTS}; },
     setTab(t){ if(pick) undig(); unplace(); tab=t; sfx.tap(); if(cur==='trein') applyCamera(); },
     barH:bar,
@@ -2014,7 +2017,8 @@ const trein=(()=>{
       if(Math.abs(nx-mdX)+Math.abs(nz-mdZ)>1e-4){ mdX=nx; mdZ=nz; applyCamera(); } },
     get mode(){ return mode; },
     /* choose how to play ('camp' or 'vrij'): a fresh world either way */
-    setMode(m,seed){ mode=m==='vrij'?'vrij':'camp'; wipe(); gen(mode==='camp',seed); if(mode==='camp') hello(); panX=mode==='camp'?2:0; panZ=mode==='camp'?4:0; applyCamera(); },
+    setMode(m,seed,sm){ mode=m==='vrij'?'vrij':'camp'; small=mode==='vrij'&&!!sm; wipe(); gen(!small,seed); if(!small) hello(); panX=small?0:2; panZ=small?0:4; applyCamera(); },
+    get small(){ return small; }, fee, FREE,
     panBy(dx,dz){ panX+=dx; panZ+=dz; applyCamera(); },
     wheel(dx,dy){ panX+=dx/ppuV; panZ+=dy/ppuV/.743; applyCamera(); },
     enter(){},
@@ -2107,8 +2111,8 @@ function word(b,w){ const e=document.createElement('span'); e.className='lbl'; e
 placeUI=sort=>{ document.querySelectorAll('.btn.plc').forEach(b=>b.classList.remove('plc','on')); if(!sort) return; const b=$(sort==='station'?'#spoor-station':'#bouw-'+sort); if(b) b.classList.add('plc','on'); };
 /* the price sits on its button as a gold coin; the button fades when you have too little money */
 const priced=[];
-function price(b,k){ const c=trein.COST[k]; if(!c) return b; const e=document.createElement('span'); e.className='cost'; e.textContent=c; e.setAttribute('aria-hidden','true'); b.appendChild(e); priced.push([b,c]); b.title+=' ('+c+' coins)'; b.setAttribute('aria-label',b.getAttribute('aria-label')+' ('+c+' coins)'); return b; }
-priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classList.toggle('poor',!free&&n<c); };
+function price(b,k){ const c=trein.COST[k]; if(!c) return b; const e=document.createElement('span'); e.className='cost'+(trein.FREE.has(k)?' trk':''); e.textContent=c; e.setAttribute('aria-hidden','true'); b.appendChild(e); priced.push([b,k]); b.title+=' ('+c+' coins)'; b.setAttribute('aria-label',b.getAttribute('aria-label')+' ('+c+' coins)'); return b; }
+priceUI=n=>{ for(const [b,k] of priced){ const c=trein.fee(k); b.classList.toggle('poor',c>0&&n<c); } };
 /* top left only the menu, top right the bin, which shows only while something is in the hand. Sound, full screen and starting again live in the menu */
 { const bb=document.createElement('div'); bb.id='bin'; bb.className='btn'; bb.style.setProperty('--c','var(--red)'); bb.setAttribute('aria-hidden','true'); bb.innerHTML='<svg viewBox="0 0 24 24">'+ICON.bin+'</svg>'; tr.appendChild(bb);
   binUI=(on,hot)=>{ bb.classList.toggle('show',on); bb.classList.toggle('bin',on); bb.classList.toggle('hot',on&&hot); };
@@ -2167,7 +2171,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
   const startEl=$('#start'), door=$('#start-door'), again=$('#start-again'), snd=$('#start-sound'), full=$('#start-full'); let started=false;
   const shut=()=>{ startEl.hidden=true; };
   { const mark=()=>document.body.classList.toggle('menu',!startEl.hidden); new MutationObserver(mark).observe(startEl,{attributes:true,attributeFilter:['hidden']}); mark(); }
-  const play=m=>{ audio(); MP.before(); started=true; document.body.classList.toggle('vrij',m==='vrij'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); MP.after(); };
+  const play=m=>{ audio(); MP.before(); started=true; document.body.classList.toggle('vrij',m==='vrij'); document.body.classList.remove('klein'); trein.setMode(m); shut(); tabTo('rails'); sfx.tada(); MP.after(); };
   /* saved games: a list in the browser (name, way of playing, when), each game on its own. The game you play saves itself every few seconds, when the menu opens and when the app goes to the background */
   const LST='treinbaan-lijst', SKEY='treinbaan-spel-', modesEl=startEl.querySelector('.modes'), savesEl=$('#saves'), lstEl=$('#saves-lst'), naamEl=$('#naam'), naamIn=$('#naam-in'), optsEl=startEl.querySelector('.rol > .opts');
   const readList=()=>{ try{ const l=JSON.parse(localStorage.getItem(LST)||'[]'); return Array.isArray(l)?l:[]; }catch(e){ return []; } }, writeList=l=>{ try{ localStorage.setItem(LST,JSON.stringify(l)); }catch(e){} };
@@ -2187,7 +2191,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
   function loadGame(it){ audio(); if(curSave&&curSave.id===it.id&&started){ shut(); sfx.tap(); return; } let D=null; try{ D=JSON.parse(localStorage.getItem(SKEY+it.id)||'null'); }catch(e){} if(!D){ writeList(readList().filter(x=>x.id!==it.id)); showSaves(); sfx.boing(); return; }
     /* a game of the old campaign (villages, wood and stone) does not fit the new rules */
     if(D.mode!=='vrij'&&!(D.v>=2)){ toast('Dit spel hoort bij de oude Campagne en kan niet verder. Gooi het weg met het prullenbakje ernaast.'); sfx.boing(); return; }
-    saveNow(); MP.before(); started=true; curSave={id:it.id,name:it.name,mode:D.mode}; document.body.classList.toggle('vrij',D.mode==='vrij'); trein.restore(D); shut(); tabTo('rails'); sfx.tada(); saveNow(); MP.after(); }
+    saveNow(); MP.before(); started=true; curSave={id:it.id,name:it.name,mode:D.mode}; document.body.classList.toggle('vrij',D.mode==='vrij'); document.body.classList.toggle('klein',D.mode==='vrij'&&!D.big); trein.restore(D); shut(); tabTo('rails'); sfx.tada(); saveNow(); MP.after(); }
   /* a new game: first its name (with a name ready to use), then a fresh world */
   function askName(m){ audio(); sfx.tap(); newMode=m; const base=m==='vrij'?'Creatief':'Campagne', names=new Set(readList().map(x=>x.name)); let n=1; while(names.has(base+' '+n)) n++; naamIn.value=base+' '+n;
     modesEl.hidden=savesEl.hidden=optsEl.hidden=true; naamEl.hidden=false; try{ naamIn.focus(); naamIn.select(); }catch(e){} }
@@ -2254,7 +2258,7 @@ priceUI=n=>{ const free=trein.mode!=='camp'; for(const [b,c] of priced) b.classL
       if(d.t==='vol'){ e.asked=false; toast('Dit spel is vol.'); render(); return; }
       if(d.t==='welcome'){ if(role===1||(role===2&&c!==hostC)) return; const first=role!==2; if(first) saveNow(); role=2; hostC=c; myId=d.id; if(e.info) hostName=e.info.name; lastHost=now();
         for(const [k,o] of lob) if(o!==e){ clearTimeout(o.to); try{ o.c.close(); }catch(x){} lob.delete(k); } clearInterval(lobT); lobT=null;
-        curSave=null; started=true; document.body.classList.add('gast'); document.body.classList.toggle('vrij',d.W.mode==='vrij'); trein.net.send=m=>sendTo(hostC,m); trein.net.join(d.W,d.pl,d.id); players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]}));
+        curSave=null; started=true; document.body.classList.add('gast'); document.body.classList.toggle('vrij',d.W.mode==='vrij'); document.body.classList.toggle('klein',!!d.W.small); trein.net.send=m=>sendTo(hostC,m); trein.net.join(d.W,d.pl,d.id); players=d.pl.map(a=>({id:a[0],name:a[1],ci:a[2]}));
         go(); chips(); if(first){ shut(); tabTo('rails'); sfx.tada(); toast('Je speelt mee met '+hostName+'!'); } else toast(hostName+' begint een nieuw spel.'); return; }
       if(role!==2||c!==hostC) return; lastHost=now(); const N=trein.net;
       if(d.t==='f') N.F(d.F); else if(d.t==='s') N.S(d.S); else if(d.t==='e'){ toast(d.m); if(d.fx==='tada') sfx.tada(); }
